@@ -360,11 +360,13 @@ Uruchamiany cronem co ~3 h (`.github/workflows/search.yml`); w dev ręcznie (`wo
 - [x] `DealCardComponent` + filtry (kraj, lotnisko, cena, sort) + siatka kart (filtr/sort po stronie klienta, signals) + strona `/deals` (✅ 2026-06-11)
 - [x] Strona `/deals/saved` (✅ 2026-06-11)
 
-### Faza 4 — Deploy + Szlif _(Status: ⬜ nierozpoczęta)_
-- [ ] Prywatne repo na GitHub; `.github/workflows/search.yml` — `workflow_dispatch` + cron co ~3 h (sekret `DATABASE_URL`), fail→e-mail
-- [ ] Deploy API (Render free), frontend (Cloudflare Pages), DB (Neon)
-- [ ] Zmienne środowiskowe, health checks, realistyczne nagłówki w silniku
-- [ ] Graceful error handling (błąd jednej trasy → reszta runu działa)
+### Faza 4 — Deploy + Szlif _(Status: 🟡 w toku)_
+- [x] Prywatne repo na GitHub `2patryk/lotsy`; `.github/workflows/search.yml` — `workflow_dispatch` + cron co 3 h (sekret `DATABASE_URL`), fail→e-mail przez GH (✅ 2026-06-11)
+- [~] Deploy API (Render free) — `render.yaml` gotowy; do stworzenia serwisu w dashboardzie (🚧 w toku)
+- [~] Deploy frontend (Cloudflare Pages) — `_redirects` i `fileReplacements` gotowe; do połączenia z GitHub (🚧 w toku)
+- [x] DB (Neon) — już działa, migracja zastosowana (✅ 2026-06-11)
+- [x] Zmienne środowiskowe, health checks, realistyczne nagłówki w silniku (✅ 2026-06-11)
+- [x] Graceful error handling (błąd jednej trasy → reszta runu działa) (✅ 2026-06-11)
 - [ ] Testy: unit logiki silnika; smoke happy-path end-to-end
 - [ ] Rozszerzenie z podzbioru tras do pełnej mapy destynacji
 

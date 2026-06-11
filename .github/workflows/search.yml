@@ -1,0 +1,38 @@
+name: Search Engine
+
+on:
+  workflow_dispatch:   # manual trigger for dev/testing
+  schedule:
+    - cron: '0 */3 * * *'   # every 3 hours
+
+jobs:
+  run-engine:
+    name: Find deals
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @lotsy/db prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run search engine
+        run: pnpm --filter @lotsy/engine start
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_ENV: production

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: lotsy-api
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @lotsy/db prisma generate && pnpm --filter @lotsy/api build
+    startCommand: node api/dist/main.js
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # set manually in Render dashboard
+      - key: FRONTEND_URL
+        value: https://lotsy.pages.dev   # update after Cloudflare Pages deploy
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+    healthCheckPath: /health

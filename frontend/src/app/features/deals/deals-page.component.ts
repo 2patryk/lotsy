@@ -1,6 +1,6 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, effect, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,46 +9,38 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatBadgeModule } from '@angular/material/badge';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { switchMap, tap } from 'rxjs';
 import { DealCardComponent } from './deal-card.component';
 import { DealsService, type DealsQueryParams } from '../../core/services/deals.service';
 import { SavedDealsService } from '../../core/services/saved-deals.service';
 import type { Deal } from '../../core/models/deal.model';
 
-const COUNTRY_FLAGS: Record<string, string> = {
-  IT: '🇮🇹', ES: '🇪🇸', GR: '🇬🇷', HR: '🇭🇷', PT: '🇵🇹',
-  MT: '🇲🇹', CY: '🇨🇾', TR: '🇹🇷', BG: '🇧🇬', FR: '🇫🇷',
-  AL: '🇦🇱', ME: '🇲🇪', MA: '🇲🇦', IL: '🇮🇱', TN: '🇹🇳',
-  RS: '🇷🇸', RO: '🇷🇴', BA: '🇧🇦', MK: '🇲🇰', XK: '🇽🇰',
-  GB: '🇬🇧', IE: '🇮🇪', IS: '🇮🇸', JO: '🇯🇴',
-};
-
 const ALL_COUNTRIES: { code: string; name: string; flag: string }[] = [
-  { code: 'AL', name: 'Albania',        flag: '🇦🇱' },
-  { code: 'BA', name: 'Bośnia',         flag: '🇧🇦' },
-  { code: 'BG', name: 'Bułgaria',       flag: '🇧🇬' },
-  { code: 'HR', name: 'Chorwacja',      flag: '🇭🇷' },
-  { code: 'CY', name: 'Cypr',           flag: '🇨🇾' },
-  { code: 'FR', name: 'Francja',        flag: '🇫🇷' },
-  { code: 'GR', name: 'Grecja',         flag: '🇬🇷' },
-  { code: 'ES', name: 'Hiszpania',      flag: '🇪🇸' },
-  { code: 'IE', name: 'Irlandia',       flag: '🇮🇪' },
-  { code: 'IS', name: 'Islandia',       flag: '🇮🇸' },
-  { code: 'IL', name: 'Izrael',         flag: '🇮🇱' },
-  { code: 'JO', name: 'Jordania',       flag: '🇯🇴' },
-  { code: 'XK', name: 'Kosowo',         flag: '🇽🇰' },
-  { code: 'MK', name: 'Macedonia',      flag: '🇲🇰' },
-  { code: 'MT', name: 'Malta',          flag: '🇲🇹' },
-  { code: 'MA', name: 'Maroko',         flag: '🇲🇦' },
-  { code: 'ME', name: 'Czarnogóra',     flag: '🇲🇪' },
-  { code: 'IT', name: 'Włochy',         flag: '🇮🇹' },
-  { code: 'PT', name: 'Portugalia',     flag: '🇵🇹' },
-  { code: 'RO', name: 'Rumunia',        flag: '🇷🇴' },
-  { code: 'RS', name: 'Serbia',         flag: '🇷🇸' },
-  { code: 'TN', name: 'Tunezja',        flag: '🇹🇳' },
-  { code: 'TR', name: 'Turcja',         flag: '🇹🇷' },
+  { code: 'AL', name: 'Albania',         flag: '🇦🇱' },
+  { code: 'BA', name: 'Bośnia',          flag: '🇧🇦' },
+  { code: 'BG', name: 'Bułgaria',        flag: '🇧🇬' },
+  { code: 'ME', name: 'Czarnogóra',      flag: '🇲🇪' },
+  { code: 'FR', name: 'Francja',         flag: '🇫🇷' },
+  { code: 'GR', name: 'Grecja',          flag: '🇬🇷' },
+  { code: 'ES', name: 'Hiszpania',       flag: '🇪🇸' },
+  { code: 'IE', name: 'Irlandia',        flag: '🇮🇪' },
+  { code: 'IS', name: 'Islandia',        flag: '🇮🇸' },
+  { code: 'IL', name: 'Izrael',          flag: '🇮🇱' },
+  { code: 'JO', name: 'Jordania',        flag: '🇯🇴' },
+  { code: 'XK', name: 'Kosowo',          flag: '🇽🇰' },
+  { code: 'MK', name: 'Macedonia',       flag: '🇲🇰' },
+  { code: 'MT', name: 'Malta',           flag: '🇲🇹' },
+  { code: 'MA', name: 'Maroko',          flag: '🇲🇦' },
+  { code: 'IT', name: 'Włochy',          flag: '🇮🇹' },
+  { code: 'PT', name: 'Portugalia',      flag: '🇵🇹' },
+  { code: 'RO', name: 'Rumunia',         flag: '🇷🇴' },
+  { code: 'RS', name: 'Serbia',          flag: '🇷🇸' },
+  { code: 'TN', name: 'Tunezja',         flag: '🇹🇳' },
+  { code: 'TR', name: 'Turcja',          flag: '🇹🇷' },
   { code: 'GB', name: 'Wielka Brytania', flag: '🇬🇧' },
+  { code: 'HR', name: 'Chorwacja',       flag: '🇭🇷' },
+  { code: 'CY', name: 'Cypr',            flag: '🇨🇾' },
 ].sort((a, b) => a.name.localeCompare(b.name, 'pl'));
 
 const AIRPORT_NAMES: Record<string, string> = {
@@ -235,6 +227,8 @@ const DEFAULT_MAX_PRICE = 800;
 export class DealsPageComponent implements OnInit {
   private dealsService = inject(DealsService);
   private savedService = inject(SavedDealsService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   readonly DEFAULT_MAX_PRICE = DEFAULT_MAX_PRICE;
   readonly availableCountries = ALL_COUNTRIES;
@@ -279,15 +273,48 @@ export class DealsPageComponent implements OnInit {
             : undefined,
   }));
 
-  ngOnInit() {
+  constructor() {
+    // Initialize signals from URL query params
+    const params = this.route.snapshot.queryParams;
+    if (params['countries']) this.selectedCountries.set(params['countries'].split(','));
+    if (params['origins'])   this.selectedOrigins.set(params['origins'].split(','));
+    if (params['maxPrice'])  this.maxPrice.set(Number(params['maxPrice']));
+    if (params['sort'])      this.sortBy.set(params['sort']);
+    if (params['openJaw'])   this.openJawFilter.set(params['openJaw']);
+
+    // Re-fetch when any filter changes
     toObservable(this.query).pipe(
       tap(() => { this.loading.set(true); this.error.set(false); this.visibleCount.set(24); }),
       switchMap((q) => this.dealsService.getDeals(q)),
+      takeUntilDestroyed(),
     ).subscribe({
       next: (deals) => { this.allDeals.set(deals); this.loading.set(false); },
       error: () => { this.error.set(true); this.loading.set(false); },
     });
 
+    // Sync filter state back to URL
+    effect(() => {
+      const countries = this.selectedCountries();
+      const origins = this.selectedOrigins();
+      const maxPrice = this.maxPrice();
+      const sort = this.sortBy();
+      const openJaw = this.openJawFilter();
+
+      this.router.navigate([], {
+        relativeTo: this.route,
+        replaceUrl: true,
+        queryParams: {
+          countries: countries.length ? countries.join(',') : null,
+          origins:   origins.length   ? origins.join(',')   : null,
+          maxPrice:  maxPrice < DEFAULT_MAX_PRICE ? maxPrice : null,
+          sort:      sort !== 'price' ? sort : null,
+          openJaw:   openJaw !== 'all' ? openJaw : null,
+        },
+      });
+    });
+  }
+
+  ngOnInit() {
     this.dealsService.getHealth().subscribe({
       next: (h) => {
         if (h.lastSuccessfulRun) {

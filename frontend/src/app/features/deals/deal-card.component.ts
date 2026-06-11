@@ -85,21 +85,9 @@ const MONTHS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', '
       </mat-card-content>
 
       <mat-card-actions>
-        @if (deal().mixedCarrier) {
-          <a mat-button color="primary" [href]="deal().outboundBookingUrl" target="_blank" rel="noopener">
-            <mat-icon>flight_takeoff</mat-icon> Wylot
-          </a>
-          <a mat-button color="primary" [href]="deal().returnBookingUrl" target="_blank" rel="noopener">
-            <mat-icon>flight_land</mat-icon> Powrót
-          </a>
-        } @else {
-          <a mat-raised-button color="primary" [href]="deal().outboundBookingUrl" target="_blank" rel="noopener">
-            <mat-icon>open_in_new</mat-icon> Rezerwuj
-          </a>
-          <a mat-button [href]="deal().returnBookingUrl" target="_blank" rel="noopener">
-            Powrót ↗
-          </a>
-        }
+        <a mat-raised-button color="primary" [href]="deal().outboundBookingUrl" target="_blank" rel="noopener">
+          <mat-icon>open_in_new</mat-icon> Rezerwuj
+        </a>
       </mat-card-actions>
     </mat-card>
   `,

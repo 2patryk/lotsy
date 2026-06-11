@@ -3,13 +3,14 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "dev": "dotenv -e .env -- concurrently -n api,frontend -c blue,green \"pnpm --filter @lotsy/api start:dev\" \"pnpm --filter frontend start\"",
+    "engine:run": "dotenv -e .env -- pnpm --filter @lotsy/engine start",
     "db:generate": "pnpm --filter @lotsy/db prisma generate",
-    "db:migrate": "pnpm --filter @lotsy/db prisma migrate deploy",
-    "engine:run": "pnpm --filter @lotsy/engine start",
-    "api:dev": "pnpm --filter @lotsy/api dev",
-    "frontend:dev": "pnpm --filter @lotsy/frontend dev"
+    "db:migrate": "dotenv -e .env -- pnpm --filter @lotsy/db prisma migrate deploy"
   },
   "devDependencies": {
+    "concurrently": "^10.0.3",
+    "dotenv-cli": "^11.0.0",
     "typescript": "^5.4.5"
   }
 }

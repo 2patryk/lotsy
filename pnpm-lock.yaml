@@ -3,7 +3,7 @@ lockfileVersion: '9.0'
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
-  onlyBuiltDependencies:
+  neverBuiltDependencies:
     - '@parcel/watcher'
     - lmdb
     - msgpackr-extract

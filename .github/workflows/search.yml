@@ -23,6 +23,12 @@ jobs:
           node-version: '22'
           cache: 'pnpm'
 
+      - name: Allow native module build scripts
+        run: |
+          echo 'onlyBuiltDependencies[]=@parcel/watcher' >> ~/.npmrc
+          echo 'onlyBuiltDependencies[]=lmdb' >> ~/.npmrc
+          echo 'onlyBuiltDependencies[]=msgpackr-extract' >> ~/.npmrc
+
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 

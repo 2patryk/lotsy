@@ -59,24 +59,17 @@ async function runConcurrent<T, R>(
   return results;
 }
 
-function buildBookingUrl(
-  origin: string,
-  destination: string,
-  outDate: string,
-  retDate: string,
-): string {
+function buildOneWayUrl(origin: string, destination: string, date: string): string {
   return (
     `https://www.ryanair.com/pl/pl/trip/flights/select` +
     `?adults=1&teens=0&children=0&infants=0` +
-    `&dateOut=${outDate}&dateIn=${retDate}` +
+    `&dateOut=${date}&dateIn=` +
     `&isConnectedFlight=false&discount=0&promoCode=` +
     `&originIataOut=${origin}&destinationIataOut=${destination}` +
-    `&originIataIn=${destination}&destinationIataIn=${origin}` +
     `&tpAdults=1&tpTeens=0&tpChildren=0&tpInfants=0` +
-    `&tpStartDate=${outDate}&tpEndDate=${retDate}` +
+    `&tpStartDate=${date}&tpEndDate=` +
     `&tpDiscount=0&tpPromoCode=` +
-    `&tpOriginIataOut=${origin}&tpDestinationIataOut=${destination}` +
-    `&tpOriginIataIn=${destination}&tpDestinationIataIn=${origin}`
+    `&tpOriginIataOut=${origin}&tpDestinationIataOut=${destination}`
   );
 }
 
@@ -160,8 +153,8 @@ async function main() {
         const departAt = new Date(pair.outbound.departureTime);
         const returnAt = new Date(pair.inbound.departureTime);
 
-        const outboundBookingUrl = buildBookingUrl(origin, destination, pair.outbound.date, pair.inbound.date);
-        const returnBookingUrl = null;
+        const outboundBookingUrl = buildOneWayUrl(origin, destination, pair.outbound.date);
+        const returnBookingUrl = buildOneWayUrl(destination, origin, pair.inbound.date);
 
         const dealData = {
           mixedCarrier: false,

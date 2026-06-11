@@ -10,7 +10,7 @@ services:
       - key: DATABASE_URL
         sync: false   # set manually in Render dashboard
       - key: FRONTEND_URL
-        value: https://lotsy.pages.dev   # update after Cloudflare Pages deploy
+        value: https://lotsy.pages.dev
       - key: NODE_ENV
         value: production
       - key: PORT

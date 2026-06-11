@@ -86,13 +86,8 @@ const MONTHS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', '
 
       <mat-card-actions>
         <a mat-raised-button color="primary" [href]="deal().outboundBookingUrl" target="_blank" rel="noopener">
-          <mat-icon>flight_takeoff</mat-icon> Wylot
+          <mat-icon>open_in_new</mat-icon> Rezerwuj
         </a>
-        @if (deal().returnBookingUrl) {
-          <a mat-raised-button color="accent" [href]="deal().returnBookingUrl!" target="_blank" rel="noopener">
-            <mat-icon>flight_land</mat-icon> Powrót
-          </a>
-        }
       </mat-card-actions>
     </mat-card>
   `,

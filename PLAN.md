@@ -351,7 +351,7 @@ Uruchamiany cronem co ~3 h (`.github/workflows/search.yml`); w dev ręcznie (`wo
 - [x] Próg cenowy (config 800 PLN), `stops=0`, top 3 per trasa (✅ 2026-06-11)
 - [x] Upsert `Deal` + czyszczenie (`expiresAt`/`departAt`), logowanie `SearchRun` (✅ 2026-06-11)
 - [x] Uruchom na małym podzbiorze tras, sprawdź realne deale w bazie — 259 dealów zapisanych do Neon, `SearchRun=SUCCESS` (✅ 2026-06-11)
-- [ ] **Faza 2b (po MVP):** klient Wizz (`timetable` + dynamiczny `{ver}`) + mix & match
+- [!] **Faza 2b (po MVP):** klient Wizz (`timetable` + dynamiczny `{ver}`) + mix & match (⛔ blokada: `be.wizzair.com` zwraca 403 przez CloudFront — wymaga tokenu/cookie z sesji przeglądarki; alternatywa: Kiwi Tequila API)
 
 ### Faza 3 — API + Frontend _(Status: ✅ ukończona)_
 - [x] `DealsModule`: `GET /deals` z filtrami (warunek `expiresAt>now` i `departAt>now`), `GET /deals/:id`, `/health`; znacznik „ostatnia aktualizacja" z `SearchRun` (✅ 2026-06-11)

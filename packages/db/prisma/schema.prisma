@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Deal {
+  id String @id @default(cuid())
+
+  // true when outbound and return are different carriers (UI: "two separate tickets")
+  mixedCarrier Boolean @default(false)
+
+  // Outbound leg
+  originAirport String
+  originCountry String
+  departAt      DateTime
+
+  // Destination
+  destAirport  String
+  destCountry  String
+  returnAt     DateTime
+
+  nights Int
+
+  // Total price (outbound + return, per 1 person)
+  totalPrice     Float
+  currency       String @default("PLN")
+  pricePerPerson Float
+
+  // Outbound leg — independent carrier
+  outboundSource     String
+  outboundAirline    String
+  outboundPrice      Float
+  outboundFlightNo   String?
+  outboundStops      Int     @default(0)
+  outboundBookingUrl String?
+
+  // Return leg — independent carrier (may differ from outbound)
+  returnSource     String
+  returnAirline    String
+  returnPrice      Float
+  returnFlightNo   String?
+  returnStops      Int     @default(0)
+  returnBookingUrl String?
+
+  foundAt   DateTime @default(now())
+  expiresAt DateTime
+
+  @@unique([originAirport, destAirport, departAt, returnAt, outboundSource, returnSource])
+  @@index([destCountry, totalPrice])
+  @@index([expiresAt])
+  @@index([departAt])
+}
+
+model SearchRun {
+  id            String    @id @default(cuid())
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  status        String    // "SUCCESS" | "FAILED" | "PARTIAL"
+  dealsFound    Int       @default(0)
+  routesQueried Int       @default(0)
+  errorMessage  String?
+
+  @@index([startedAt])
+}

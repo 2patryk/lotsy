@@ -1,0 +1,15 @@
+{
+  "name": "lotsy",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "db:generate": "pnpm --filter @lotsy/db prisma generate",
+    "db:migrate": "pnpm --filter @lotsy/db prisma migrate deploy",
+    "engine:run": "pnpm --filter @lotsy/engine start",
+    "api:dev": "pnpm --filter @lotsy/api dev",
+    "frontend:dev": "pnpm --filter @lotsy/frontend dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

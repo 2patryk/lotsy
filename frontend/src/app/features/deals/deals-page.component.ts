@@ -1,6 +1,5 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,7 +7,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatBadgeModule } from '@angular/material/badge';
 import { DealCardComponent } from './deal-card.component';
@@ -28,14 +26,16 @@ const AIRPORT_NAMES: Record<string, string> = {
   WRO: 'Wrocław (WRO)', POZ: 'Poznań (POZ)', LCJ: 'Łódź (LCJ)',
 };
 
+const DEFAULT_MAX_PRICE = 800;
+
 @Component({
   selector: 'app-deals-page',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, RouterLink,
+    CommonModule, RouterLink,
     MatToolbarModule, MatButtonModule, MatIconModule,
     MatSelectModule, MatSliderModule, MatProgressSpinnerModule,
-    MatChipsModule, MatFormFieldModule, MatBadgeModule,
+    MatFormFieldModule, MatBadgeModule,
     DealCardComponent,
   ],
   template: `
@@ -52,7 +52,7 @@ const AIRPORT_NAMES: Record<string, string> = {
       <div class="filters-bar">
         <mat-form-field appearance="outline" class="filter-field">
           <mat-label>Kraj</mat-label>
-          <mat-select multiple [(ngModel)]="selectedCountries">
+          <mat-select multiple [value]="selectedCountries()" (valueChange)="selectedCountries.set($event)">
             @for (c of availableCountries(); track c.code) {
               <mat-option [value]="c.code">{{ c.flag }} {{ c.name }}</mat-option>
             }
@@ -61,7 +61,7 @@ const AIRPORT_NAMES: Record<string, string> = {
 
         <mat-form-field appearance="outline" class="filter-field">
           <mat-label>Lotnisko wylotu</mat-label>
-          <mat-select multiple [(ngModel)]="selectedOrigins">
+          <mat-select multiple [value]="selectedOrigins()" (valueChange)="selectedOrigins.set($event)">
             @for (ap of availableOrigins(); track ap) {
               <mat-option [value]="ap">{{ airportName(ap) }}</mat-option>
             }
@@ -70,14 +70,14 @@ const AIRPORT_NAMES: Record<string, string> = {
 
         <div class="price-filter">
           <label class="price-label">Maks. cena: <strong>{{ maxPrice() }} zł</strong></label>
-          <mat-slider min="200" max="1500" step="50" class="price-slider">
-            <input matSliderThumb [(ngModel)]="maxPriceValue" />
+          <mat-slider min="200" [max]="maxPriceSliderMax()" step="50" class="price-slider">
+            <input matSliderThumb [value]="maxPrice()" (valueChange)="maxPrice.set($event)" />
           </mat-slider>
         </div>
 
         <mat-form-field appearance="outline" class="filter-field sort-field">
           <mat-label>Sortuj</mat-label>
-          <mat-select [(ngModel)]="sortBy">
+          <mat-select [value]="sortBy()" (valueChange)="sortBy.set($event)">
             <mat-option value="price">Cena rosnąco</mat-option>
             <mat-option value="departure">Data wylotu</mat-option>
             <mat-option value="duration">Liczba nocy</mat-option>
@@ -86,7 +86,7 @@ const AIRPORT_NAMES: Record<string, string> = {
 
         @if (activeFilterCount() > 0) {
           <button mat-button color="warn" (click)="clearFilters()">
-            <mat-icon>clear</mat-icon> Wyczyść filtry ({{ activeFilterCount() }})
+            <mat-icon>clear</mat-icon> Wyczyść ({{ activeFilterCount() }})
           </button>
         }
       </div>
@@ -157,7 +157,6 @@ const AIRPORT_NAMES: Record<string, string> = {
     .price-filter {
       display: flex;
       flex-direction: column;
-      gap: 0;
       min-width: 200px;
     }
     .price-label { font-size: 0.85rem; color: #555; margin-bottom: -8px; }
@@ -202,14 +201,18 @@ export class DealsPageComponent implements OnInit {
   allDeals = signal<Deal[]>([]);
   lastUpdate = signal<string | null>(null);
 
-  selectedCountries: string[] = [];
-  selectedOrigins: string[] = [];
-  maxPriceValue = 800;
-  sortBy: 'price' | 'departure' | 'duration' = 'price';
+  // All filter state as signals so computed() tracks them reactively
+  selectedCountries = signal<string[]>([]);
+  selectedOrigins = signal<string[]>([]);
+  maxPrice = signal(DEFAULT_MAX_PRICE);
+  sortBy = signal<'price' | 'departure' | 'duration'>('price');
   visibleCount = signal(24);
 
-  maxPrice = computed(() => this.maxPriceValue);
   savedCount = computed(() => this.savedService.savedDeals().length);
+
+  maxPriceSliderMax = computed(() =>
+    Math.max(DEFAULT_MAX_PRICE, ...this.allDeals().map((d) => d.totalPrice)),
+  );
 
   availableCountries = computed(() => {
     const codes = new Set(this.allDeals().map((d) => d.destCountry));
@@ -226,45 +229,38 @@ export class DealsPageComponent implements OnInit {
   });
 
   filteredDeals = computed(() => {
+    const countries = this.selectedCountries();
+    const origins = this.selectedOrigins();
+    const max = this.maxPrice();
+    const sort = this.sortBy();
+
     let deals = this.allDeals();
 
-    if (this.selectedCountries.length > 0) {
-      deals = deals.filter((d) => this.selectedCountries.includes(d.destCountry));
-    }
-    if (this.selectedOrigins.length > 0) {
-      deals = deals.filter((d) => this.selectedOrigins.includes(d.originAirport));
-    }
-    deals = deals.filter((d) => d.totalPrice <= this.maxPriceValue);
+    if (countries.length > 0) deals = deals.filter((d) => countries.includes(d.destCountry));
+    if (origins.length > 0)   deals = deals.filter((d) => origins.includes(d.originAirport));
+    deals = deals.filter((d) => d.totalPrice <= max);
 
-    deals = [...deals].sort((a, b) => {
-      if (this.sortBy === 'departure') return a.departAt.localeCompare(b.departAt);
-      if (this.sortBy === 'duration') return a.nights - b.nights;
+    return [...deals].sort((a, b) => {
+      if (sort === 'departure') return a.departAt.localeCompare(b.departAt);
+      if (sort === 'duration')  return a.nights - b.nights;
       return a.totalPrice - b.totalPrice;
     });
-
-    return deals;
   });
 
   visibleDeals = computed(() => this.filteredDeals().slice(0, this.visibleCount()));
 
   activeFilterCount = computed(() => {
     let n = 0;
-    if (this.selectedCountries.length > 0) n++;
-    if (this.selectedOrigins.length > 0) n++;
-    if (this.maxPriceValue < 800) n++;
+    if (this.selectedCountries().length > 0) n++;
+    if (this.selectedOrigins().length > 0) n++;
+    if (this.maxPrice() < DEFAULT_MAX_PRICE) n++;
     return n;
   });
 
   ngOnInit() {
     this.dealsService.getDeals().subscribe({
-      next: (deals) => {
-        this.allDeals.set(deals);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.error.set(true);
-        this.loading.set(false);
-      },
+      next: (deals) => { this.allDeals.set(deals); this.loading.set(false); },
+      error: () => { this.error.set(true); this.loading.set(false); },
     });
 
     this.dealsService.getHealth().subscribe({
@@ -284,10 +280,11 @@ export class DealsPageComponent implements OnInit {
   }
 
   clearFilters() {
-    this.selectedCountries = [];
-    this.selectedOrigins = [];
-    this.maxPriceValue = 800;
-    this.sortBy = 'price';
+    this.selectedCountries.set([]);
+    this.selectedOrigins.set([]);
+    this.maxPrice.set(DEFAULT_MAX_PRICE);
+    this.sortBy.set('price');
+    this.visibleCount.set(24);
   }
 
   airportName(code: string): string {

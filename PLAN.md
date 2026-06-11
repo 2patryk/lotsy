@@ -353,12 +353,12 @@ Uruchamiany cronem co ~3 h (`.github/workflows/search.yml`); w dev ręcznie (`wo
 - [x] Uruchom na małym podzbiorze tras, sprawdź realne deale w bazie — 259 dealów zapisanych do Neon, `SearchRun=SUCCESS` (✅ 2026-06-11)
 - [ ] **Faza 2b (po MVP):** klient Wizz (`timetable` + dynamiczny `{ver}`) + mix & match
 
-### Faza 3 — API + Frontend _(Status: ⬜ nierozpoczęta)_
-- [ ] `DealsModule`: `GET /deals` z filtrami (warunek `expiresAt>now` i `departAt>now`), `GET /deals/:id`, `/health`; znacznik „ostatnia aktualizacja" z `SearchRun`
-- [ ] Angular: setup, routing, Material + custom theme (PL)
-- [ ] `SavedDealsService` (localStorage + signal, pełny snapshot)
-- [ ] `DealCardComponent` + `DealFiltersComponent` + `DealsGridComponent` (filtr/sort po stronie klienta) + strona `/deals`
-- [ ] Strona `/deals/saved`
+### Faza 3 — API + Frontend _(Status: ✅ ukończona)_
+- [x] `DealsModule`: `GET /deals` z filtrami (warunek `expiresAt>now` i `departAt>now`), `GET /deals/:id`, `/health`; znacznik „ostatnia aktualizacja" z `SearchRun` (✅ 2026-06-11)
+- [x] Angular: setup, routing, Material + custom theme (PL) — indigo/amber theme, Inter font (✅ 2026-06-11)
+- [x] `SavedDealsService` (localStorage + signal, pełny snapshot, TTL 48h) (✅ 2026-06-11)
+- [x] `DealCardComponent` + filtry (kraj, lotnisko, cena, sort) + siatka kart (filtr/sort po stronie klienta, signals) + strona `/deals` (✅ 2026-06-11)
+- [x] Strona `/deals/saved` (✅ 2026-06-11)
 
 ### Faza 4 — Deploy + Szlif _(Status: ⬜ nierozpoczęta)_
 - [ ] Prywatne repo na GitHub; `.github/workflows/search.yml` — `workflow_dispatch` + cron co ~3 h (sekret `DATABASE_URL`), fail→e-mail

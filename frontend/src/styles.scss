@@ -1,0 +1,37 @@
+@use '@angular/material' as mat;
+
+// Custom Lotsy theme: deep blue primary, amber accent
+$primary: mat.m2-define-palette(mat.$m2-indigo-palette, 700, 500, 900);
+$accent: mat.m2-define-palette(mat.$m2-amber-palette, 600);
+$warn: mat.m2-define-palette(mat.$m2-red-palette);
+
+$theme: mat.m2-define-light-theme((
+  color: (primary: $primary, accent: $accent, warn: $warn),
+  typography: mat.m2-define-typography-config(
+    $font-family: '"Inter", "Roboto", sans-serif',
+  ),
+  density: 0,
+));
+
+@include mat.all-component-themes($theme);
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #f4f6f9;
+  font-family: 'Inter', 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.mat-mdc-card {
+  border-radius: 12px !important;
+}

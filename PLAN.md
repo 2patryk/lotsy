@@ -339,18 +339,18 @@ Uruchamiany cronem co ~3 h (`.github/workflows/search.yml`); w dev ręcznie (`wo
 
 > **Śledzenie postępu — reguła:** patrz [Zasady prowadzenia planu](#zasady-prowadzenia-planu-postęp). W skrócie: każdą pozycję oznaczamy `- [ ]` → `- [x]`, dopisując `(✅ RRRR-MM-DD)`. Zadania w toku: `- [~] … (🚧 w toku: krótka notatka)`. Zablokowane: `- [!] … (⛔ blokada: powód)`. Status fazy aktualizujemy w nagłówku.
 
-### Faza 1 — Fundament _(Status: ⬜ nierozpoczęta)_
-- [ ] Struktura monorepo (pnpm workspaces): `api/` (NestJS), `engine/` (skrypt), `frontend/`, `packages/flights-client/`, `packages/db/` (Prisma współdzielony)
-- [ ] Prisma: schemat `Deal` + `SearchRun`, migracja na Neon
-- [ ] `flights-client`: klient **Ryanair** (`oneWayFares/cheapestPerDay`, `routes/destinations`) — typy z prawdziwych odpowiedzi (zwraca ceny **i godziny**)
-- [ ] Smoke test na realnych trasach (np. `WMI→CIA`, `KRK→BCN`, `WAW→AGP`)
+### Faza 1 — Fundament _(Status: ✅ ukończona)_
+- [x] Struktura monorepo (pnpm workspaces): `api/` (NestJS), `engine/` (skrypt), `frontend/`, `packages/flights-client/`, `packages/db/` (Prisma współdzielony) (✅ 2026-06-11)
+- [x] Prisma: schemat `Deal` + `SearchRun`, migracja na Neon (✅ 2026-06-11)
+- [x] `flights-client`: klient **Ryanair** (`oneWayFares/cheapestPerDay`, `routes/destinations`) — typy z prawdziwych odpowiedzi (zwraca ceny **i godziny**) (✅ 2026-06-11)
+- [x] Smoke test na realnych trasach (`WMI→CIA`, `KRK→BCN`, `WAW→AGP`) — API zwraca realne ceny z godzinami (✅ 2026-06-11)
 
-### Faza 2 — Silnik wyszukiwania (MVP: Ryanair) _(Status: ⬜ nierozpoczęta)_
-- [ ] Cache realnych tras Ryanaira (`routes/destinations`)
-- [ ] Logika składania par dni wg wzorca **dat** (czw/pt/sob → niedz/pon/sob, 3–7 nocy) + scoring godzinowy (miękki)
-- [ ] Próg cenowy (config), `stops=0`, top 3 per trasa
-- [ ] Upsert `Deal` + czyszczenie (`expiresAt`/`departAt`), logowanie `SearchRun`
-- [ ] Uruchom na małym podzbiorze tras, sprawdź realne deale w bazie
+### Faza 2 — Silnik wyszukiwania (MVP: Ryanair) _(Status: ✅ ukończona)_
+- [x] Cache realnych tras Ryanaira (`routes/destinations`) — 120 realnych tras z 8 lotnisk (✅ 2026-06-11)
+- [x] Logika składania par dni wg wzorca **dat** (czw/pt/sob → niedz/pon/sob, 3–7 nocy) + scoring godzinowy (miękki) (✅ 2026-06-11)
+- [x] Próg cenowy (config 800 PLN), `stops=0`, top 3 per trasa (✅ 2026-06-11)
+- [x] Upsert `Deal` + czyszczenie (`expiresAt`/`departAt`), logowanie `SearchRun` (✅ 2026-06-11)
+- [x] Uruchom na małym podzbiorze tras, sprawdź realne deale w bazie — 259 dealów zapisanych do Neon, `SearchRun=SUCCESS` (✅ 2026-06-11)
 - [ ] **Faza 2b (po MVP):** klient Wizz (`timetable` + dynamiczny `{ver}`) + mix & match
 
 ### Faza 3 — API + Frontend _(Status: ⬜ nierozpoczęta)_

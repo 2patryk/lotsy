@@ -1,0 +1,19 @@
+{
+  "name": "@lotsy/engine",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/search.ts",
+    "smoke": "tsx src/search.ts --dry-run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lotsy/db": "workspace:*",
+    "@lotsy/flights-client": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4",
+    "typescript": "^5.4.5"
+  }
+}

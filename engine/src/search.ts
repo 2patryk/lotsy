@@ -59,17 +59,32 @@ async function runConcurrent<T, R>(
   return results;
 }
 
-function buildOneWayUrl(origin: string, destination: string, date: string): string {
+/**
+ * Builds a Ryanair trip-select URL with both outbound and return legs.
+ * Format validated against: originIataOut→destinationIataOut / originIataIn→destinationIataIn
+ * For regular round-trips: retOrigin = outDest, retDest = outOrigin
+ * For open-jaw: retOrigin = outDest, retDest = different Polish airport
+ */
+function buildBookingUrl(
+  outOrigin: string,
+  outDest: string,
+  retDest: string,
+  outDate: string,
+  retDate: string,
+): string {
+  const retOrigin = outDest;
   return (
     `https://www.ryanair.com/pl/pl/trip/flights/select` +
     `?adults=1&teens=0&children=0&infants=0` +
-    `&dateOut=${date}&dateIn=` +
-    `&isConnectedFlight=false&discount=0&promoCode=` +
-    `&originIataOut=${origin}&destinationIataOut=${destination}` +
+    `&dateOut=${outDate}&dateIn=${retDate}` +
+    `&discount=0&isReturn=false&promoCode=` +
+    `&originIataOut=${outOrigin}&destinationIataOut=${outDest}` +
+    `&originIataIn=${retOrigin}&destinationIataIn=${retDest}` +
     `&tpAdults=1&tpTeens=0&tpChildren=0&tpInfants=0` +
-    `&tpStartDate=${date}&tpEndDate=` +
+    `&tpStartDate=${outDate}&tpEndDate=${retDate}` +
     `&tpDiscount=0&tpPromoCode=` +
-    `&tpOriginIataOut=${origin}&tpDestinationIataOut=${destination}`
+    `&tpOriginIataOut=${outOrigin}&tpDestinationIataOut=${outDest}` +
+    `&tpOriginIataIn=${retOrigin}&tpDestinationIataIn=${retDest}`
   );
 }
 
@@ -168,8 +183,7 @@ async function main() {
           const departAt = new Date(pair.outbound.departureTime);
           const returnAt = new Date(pair.inbound.departureTime);
 
-          const outboundBookingUrl = buildOneWayUrl(origin, destination, pair.outbound.date);
-          const returnBookingUrl = buildOneWayUrl(destination, returnAirport, pair.inbound.date);
+          const bookingUrl = buildBookingUrl(origin, destination, returnAirport, pair.outbound.date, pair.inbound.date);
 
           const dealData = {
             mixedCarrier: false,
@@ -190,13 +204,13 @@ async function main() {
             outboundPrice: pair.outbound.price,
             outboundFlightNo: null,
             outboundStops: 0,
-            outboundBookingUrl,
+            outboundBookingUrl: bookingUrl,
             returnSource: pair.inbound.source,
             returnAirline: pair.inbound.airline,
             returnPrice: pair.inbound.price,
             returnFlightNo: null,
             returnStops: 0,
-            returnBookingUrl,
+            returnBookingUrl: bookingUrl,
             expiresAt,
           };
 

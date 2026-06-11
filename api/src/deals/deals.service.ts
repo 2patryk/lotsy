@@ -7,6 +7,7 @@ export interface DealsQuery {
   maxPrice?: number;
   origin?: string;        // comma-separated: "WAW,KTW"
   sort?: 'price' | 'departure' | 'duration';
+  openJaw?: boolean;      // true = only open-jaw, false = only round-trips, undefined = all
 }
 
 @Injectable()
@@ -31,6 +32,12 @@ export class DealsService {
     if (query.origin) {
       const origins = query.origin.split(',').map((o) => o.trim().toUpperCase());
       where.originAirport = { in: origins };
+    }
+
+    if (query.openJaw === true) {
+      where.openJaw = true;
+    } else if (query.openJaw === false) {
+      where.openJaw = false;
     }
 
     const orderBy: Prisma.DealOrderByWithRelationInput =

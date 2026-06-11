@@ -11,13 +11,18 @@ import { SavedDealsService } from '../../core/services/saved-deals.service';
 const COUNTRY_FLAGS: Record<string, string> = {
   IT: '🇮🇹', ES: '🇪🇸', GR: '🇬🇷', HR: '🇭🇷', PT: '🇵🇹',
   MT: '🇲🇹', CY: '🇨🇾', TR: '🇹🇷', BG: '🇧🇬', FR: '🇫🇷',
-  AL: '🇦🇱', ME: '🇲🇪',
+  AL: '🇦🇱', ME: '🇲🇪', MA: '🇲🇦', IL: '🇮🇱', TN: '🇹🇳',
+  RS: '🇷🇸', RO: '🇷🇴', BA: '🇧🇦', MK: '🇲🇰', XK: '🇽🇰',
+  GB: '🇬🇧', IE: '🇮🇪', IS: '🇮🇸', JO: '🇯🇴',
 };
 
 const COUNTRY_NAMES: Record<string, string> = {
   IT: 'Włochy', ES: 'Hiszpania', GR: 'Grecja', HR: 'Chorwacja',
   PT: 'Portugalia', MT: 'Malta', CY: 'Cypr', TR: 'Turcja',
   BG: 'Bułgaria', FR: 'Francja', AL: 'Albania', ME: 'Czarnogóra',
+  MA: 'Maroko', IL: 'Izrael', TN: 'Tunezja', RS: 'Serbia',
+  RO: 'Rumunia', BA: 'Bośnia', MK: 'Macedonia', XK: 'Kosowo',
+  GB: 'Wielka Brytania', IE: 'Irlandia', IS: 'Islandia', JO: 'Jordania',
 };
 
 const WEEKDAYS = ['ndz', 'pon', 'wt', 'śr', 'czw', 'pt', 'sob'];
@@ -34,7 +39,12 @@ const MONTHS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', '
           <span class="flag">{{ flag() }}</span>
           <div class="destination">
             <span class="country-name">{{ countryName() }}</span>
-            <span class="airport-pair">{{ deal().originAirport }} → {{ deal().destAirport }}</span>
+            <span class="airport-pair">
+              {{ deal().originAirport }} ✈ {{ deal().destAirport }}
+              @if (deal().openJaw) {
+                <span class="return-airport"> ✈ {{ deal().returnAirport }}</span>
+              }
+            </span>
           </div>
           <button
             mat-icon-button
@@ -65,6 +75,11 @@ const MONTHS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', '
           </div>
         </div>
 
+        @if (deal().openJaw) {
+          <div class="open-jaw-badge">
+            ✈→✈ Open-jaw — powrót do {{ deal().returnAirport }} (inny lot)
+          </div>
+        }
         @if (deal().mixedCarrier) {
           <div class="mixed-warning">
             🔀 2 osobne bilety — oddzielne rezerwacje
@@ -110,6 +125,7 @@ const MONTHS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', '
     .destination { flex: 1; }
     .country-name { display: block; font-weight: 600; font-size: 1.1rem; }
     .airport-pair { font-size: 0.85rem; color: #666; }
+    .return-airport { color: #1565c0; font-weight: 600; }
     .save-btn { color: #e91e63; }
 
     .flight-info {
@@ -138,6 +154,14 @@ const MONTHS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', '
     }
     .nights-label { font-size: 0.65rem; font-weight: 400; color: #1976d2; }
 
+    .open-jaw-badge {
+      font-size: 0.78rem;
+      color: #1565c0;
+      background: #e3f2fd;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
     .mixed-warning {
       font-size: 0.78rem;
       color: #f57c00;

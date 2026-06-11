@@ -18,6 +18,9 @@ const COUNTRY_NAMES: Record<string, string> = {
   IT: 'Włochy', ES: 'Hiszpania', GR: 'Grecja', HR: 'Chorwacja',
   PT: 'Portugalia', MT: 'Malta', CY: 'Cypr', TR: 'Turcja',
   BG: 'Bułgaria', FR: 'Francja', AL: 'Albania', ME: 'Czarnogóra',
+  MA: 'Maroko', IL: 'Izrael', TN: 'Tunezja', RS: 'Serbia',
+  RO: 'Rumunia', BA: 'Bośnia', MK: 'Macedonia', XK: 'Kosowo',
+  GB: 'Wielka Brytania', IE: 'Irlandia', IS: 'Islandia', JO: 'Jordania',
 };
 
 const AIRPORT_NAMES: Record<string, string> = {
@@ -81,6 +84,15 @@ const DEFAULT_MAX_PRICE = 800;
             <mat-option value="price">Cena rosnąco</mat-option>
             <mat-option value="departure">Data wylotu</mat-option>
             <mat-option value="duration">Liczba nocy</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field sort-field">
+          <mat-label>Typ lotu</mat-label>
+          <mat-select [value]="openJawFilter()" (valueChange)="openJawFilter.set($event)">
+            <mat-option value="all">Wszystkie</mat-option>
+            <mat-option value="roundtrip">Tylko tam i z powrotem</mat-option>
+            <mat-option value="openjaw">Tylko open-jaw ✈→✈</mat-option>
           </mat-select>
         </mat-form-field>
 
@@ -206,6 +218,7 @@ export class DealsPageComponent implements OnInit {
   selectedOrigins = signal<string[]>([]);
   maxPrice = signal(DEFAULT_MAX_PRICE);
   sortBy = signal<'price' | 'departure' | 'duration'>('price');
+  openJawFilter = signal<'all' | 'roundtrip' | 'openjaw'>('all');
   visibleCount = signal(24);
 
   savedCount = computed(() => this.savedService.savedDeals().length);
@@ -233,12 +246,15 @@ export class DealsPageComponent implements OnInit {
     const origins = this.selectedOrigins();
     const max = this.maxPrice();
     const sort = this.sortBy();
+    const ojFilter = this.openJawFilter();
 
     let deals = this.allDeals();
 
     if (countries.length > 0) deals = deals.filter((d) => countries.includes(d.destCountry));
     if (origins.length > 0)   deals = deals.filter((d) => origins.includes(d.originAirport));
     deals = deals.filter((d) => d.totalPrice <= max);
+    if (ojFilter === 'roundtrip') deals = deals.filter((d) => !d.openJaw);
+    if (ojFilter === 'openjaw')   deals = deals.filter((d) => d.openJaw);
 
     return [...deals].sort((a, b) => {
       if (sort === 'departure') return a.departAt.localeCompare(b.departAt);
@@ -254,6 +270,7 @@ export class DealsPageComponent implements OnInit {
     if (this.selectedCountries().length > 0) n++;
     if (this.selectedOrigins().length > 0) n++;
     if (this.maxPrice() < DEFAULT_MAX_PRICE) n++;
+    if (this.openJawFilter() !== 'all') n++;
     return n;
   });
 
@@ -284,6 +301,7 @@ export class DealsPageComponent implements OnInit {
     this.selectedOrigins.set([]);
     this.maxPrice.set(DEFAULT_MAX_PRICE);
     this.sortBy.set('price');
+    this.openJawFilter.set('all');
     this.visibleCount.set(24);
   }
 
@@ -295,7 +313,9 @@ export class DealsPageComponent implements OnInit {
     const flags: Record<string, string> = {
       IT: '🇮🇹', ES: '🇪🇸', GR: '🇬🇷', HR: '🇭🇷', PT: '🇵🇹',
       MT: '🇲🇹', CY: '🇨🇾', TR: '🇹🇷', BG: '🇧🇬', FR: '🇫🇷',
-      AL: '🇦🇱', ME: '🇲🇪',
+      AL: '🇦🇱', ME: '🇲🇪', MA: '🇲🇦', IL: '🇮🇱', TN: '🇹🇳',
+      RS: '🇷🇸', RO: '🇷🇴', BA: '🇧🇦', MK: '🇲🇰', XK: '🇽🇰',
+      GB: '🇬🇧', IE: '🇮🇪', IS: '🇮🇸', JO: '🇯🇴',
     };
     return flags[code] ?? '🌍';
   }

@@ -17,12 +17,14 @@ export class DealsController {
     @Query('maxPrice') maxPrice?: string,
     @Query('origin') origin?: string,
     @Query('sort') sort?: 'price' | 'departure' | 'duration',
+    @Query('openJaw') openJaw?: string,
   ) {
     return this.dealsService.findAll({
       destCountry,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
       origin,
       sort,
+      openJaw: openJaw === 'true' ? true : openJaw === 'false' ? false : undefined,
     });
   }
 

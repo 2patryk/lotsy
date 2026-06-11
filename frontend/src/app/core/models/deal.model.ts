@@ -1,12 +1,14 @@
 export interface Deal {
   id: string;
   mixedCarrier: boolean;
+  openJaw: boolean;
   originAirport: string;
   originCountry: string;
   departAt: string;
   destAirport: string;
   destCountry: string;
   returnAt: string;
+  returnAirport: string;
   nights: number;
   totalPrice: number;
   currency: string;

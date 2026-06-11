@@ -368,7 +368,8 @@ Uruchamiany cronem co ~3 h (`.github/workflows/search.yml`); w dev ręcznie (`wo
 - [x] Zmienne środowiskowe, health checks, realistyczne nagłówki w silniku (✅ 2026-06-11)
 - [x] Graceful error handling (błąd jednej trasy → reszta runu działa) (✅ 2026-06-11)
 - [ ] Testy: unit logiki silnika; smoke happy-path end-to-end
-- [ ] Rozszerzenie z podzbioru tras do pełnej mapy destynacji
+- [x] Rozszerzenie z podzbioru tras do pełnej mapy destynacji — dodano Wyspy Kanaryjskie, Maroko, Izrael, Tunezję, Serbię, Rumunię, Bośnię, Macedonię, Kosowo, UK, Irlandię, Islandię + nowe lotniska włoskie/greckie/tureckie (✅ 2026-06-11)
+- [x] Open-jaw (powrót na inne polskie lotnisko): schemat DB (`openJaw`, `returnAirport`), silnik (inbound do wszystkich PL lotnisk z trasy), API (`?openJaw=true/false`), UI (filtr typ lotu + badge na karcie) (✅ 2026-06-11)
 
 ---
 
@@ -415,7 +416,7 @@ Ten dokument jest **żywy** — w trakcie realizacji aktualizujemy go na bieżą
 
 7. **Auth — świadomie odłożone.** MVP bez kont; „zapisz" w `localStorage`. `AuthModule` + modele `User`/`SavedDeal` dodajemy, gdy pojawi się potrzeba synchronizacji między urządzeniami.
 
-8. **Open-jaw (różne lotniska PL tam/z powrotem) — MVP 2.** Powrót na inne polskie lotnisko niż wylot (tam z WAW, z powrotem do KRK). Wymagania:
-   - **Logika silnika:** `roundTripFares` Ryanaira zakłada to samo lotniska w obie strony, więc open-jaw trzeba budować z **dwóch zapytań one-way** (`oneWayFares`/`cheapestPerDay` osobno dla `WAW→FCO` i `FCO→KRK`) i sumować — to mnoży liczbę kombinacji (każda destynacja × każda para lotnisk PL), więc na osobny etap, nie do MVP.
-   - **Schemat:** dodać `returnAirport String?` (PL lotnisko powrotu; w MVP = `originAirport`). Klucz `@@unique` rozszerzyć o `returnAirport`.
-   - **UI:** osobny przełącznik filtra `openJaw` (domyślnie OFF), żeby nie zaśmiecać domyślnego widoku ofertami z dojazdem powrotnym do innego miasta.
+8. **Open-jaw (różne lotniska PL tam/z powrotem) — ✅ ZAIMPLEMENTOWANE (2026-06-11).** Powrót na inne polskie lotnisko niż wylot (tam z WAW, z powrotem do KRK).
+   - **Logika silnika:** `destToOrigins` (reverse route map) → dla każdej destynacji pobieramy inbound do wszystkich PL lotnisk, które do niej latają. Deduplikacja kluczy fetch — żaden `(dest, returnAirport)` nie jest fetchowany dwa razy.
+   - **Schemat:** `openJaw Boolean @default(false)`, `returnAirport String` (non-nullable, = `originAirport` dla round-tripów). Klucz `@@unique` rozszerzony o `returnAirport` (map: `Deal_route_unique_key`). Migracja: `20260611200000_open_jaw`.
+   - **UI:** filtr „Typ lotu" (Wszystkie / Tylko tam-i-z-powrotem / Tylko open-jaw ✈→✈), badge na karcie z docelowym lotniskiem powrotu.

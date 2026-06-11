@@ -1,16 +1,18 @@
 // Polish departure airports (all Ryanair-served)
 export const ORIGIN_AIRPORTS = ['WAW', 'WMI', 'KTW', 'KRK', 'GDN', 'WRO', 'POZ', 'LCJ'] as const;
 
-// Target destination airports (southern Europe leisure)
+// Target destination airports (southern Europe + nearby leisure)
 export const DEST_AIRPORTS = new Set([
   // Italy
-  'FCO', 'MXP', 'NAP', 'BLQ', 'VCE', 'PSA',
-  // Spain
-  'BCN', 'MAD', 'AGP', 'PMI', 'ALC', 'SVQ',
+  'FCO', 'CIA', 'MXP', 'BGY', 'NAP', 'BLQ', 'VCE', 'TSF', 'PSA', 'BRI', 'CTA', 'PMO', 'OLB', 'CAG',
+  // Spain (mainland)
+  'BCN', 'MAD', 'AGP', 'PMI', 'ALC', 'SVQ', 'VLC', 'IBZ', 'MAH',
+  // Spain (Canary Islands)
+  'TFS', 'LPA', 'FUE', 'ACE', 'SPC',
   // Greece
-  'ATH', 'HER', 'RHO', 'SKG', 'CFU',
+  'ATH', 'HER', 'RHO', 'SKG', 'CFU', 'KGS', 'ZTH', 'JMK', 'MJT', 'CHQ', 'JTR',
   // Croatia
-  'SPU', 'DBV', 'ZAD',
+  'SPU', 'DBV', 'ZAD', 'PUY',
   // Albania
   'TIA',
   // Montenegro
@@ -20,13 +22,37 @@ export const DEST_AIRPORTS = new Set([
   // Malta
   'MLA',
   // Cyprus
-  'LCA', 'PFO',
+  'LCA', 'PFO', 'ECN',
   // Turkey
-  'AYT', 'IST', 'ESB',
+  'AYT', 'IST', 'SAW', 'ESB', 'ADB', 'DLM', 'BJV',
   // Bulgaria (coast)
   'VAR', 'BOJ',
-  // France (south)
-  'NCE', 'MRS',
+  // France (south + Corsica)
+  'NCE', 'MRS', 'AJA', 'FSC',
+  // Morocco
+  'RAK', 'AGA', 'CMN', 'FEZ', 'TNG',
+  // Israel
+  'TLV',
+  // Jordan
+  'AMM',
+  // Tunisia
+  'TUN', 'DJE', 'MIR',
+  // Serbia
+  'BEG',
+  // Romania
+  'OTP', 'CLJ', 'TSR', 'IAS',
+  // Bosnia & Herzegovina
+  'SJJ',
+  // North Macedonia
+  'SKP',
+  // Kosovo
+  'PRN',
+  // UK
+  'STN', 'LTN', 'MAN', 'EDI', 'BRS', 'BHX', 'GLA',
+  // Ireland
+  'DUB', 'ORK', 'KIR',
+  // Iceland
+  'KEF',
 ]);
 
 // Max round-trip price per person to qualify as a deal

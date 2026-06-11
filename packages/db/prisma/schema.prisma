@@ -13,6 +13,9 @@ model Deal {
   // true when outbound and return are different carriers (UI: "two separate tickets")
   mixedCarrier Boolean @default(false)
 
+  // true when return airport differs from origin (open-jaw); false = classic round-trip
+  openJaw      Boolean @default(false)
+
   // Outbound leg
   originAirport String
   originCountry String
@@ -22,6 +25,9 @@ model Deal {
   destAirport  String
   destCountry  String
   returnAt     DateTime
+
+  // Return airport (same as originAirport for round-trips; different Polish airport for open-jaw)
+  returnAirport String @default("")
 
   nights Int
 
@@ -49,7 +55,7 @@ model Deal {
   foundAt   DateTime @default(now())
   expiresAt DateTime
 
-  @@unique([originAirport, destAirport, departAt, returnAt, outboundSource, returnSource])
+  @@unique([originAirport, destAirport, departAt, returnAt, outboundSource, returnSource, returnAirport])
   @@index([destCountry, totalPrice])
   @@index([expiresAt])
   @@index([departAt])

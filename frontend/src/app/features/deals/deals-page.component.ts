@@ -9,19 +9,47 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatBadgeModule } from '@angular/material/badge';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { switchMap, tap } from 'rxjs';
 import { DealCardComponent } from './deal-card.component';
-import { DealsService } from '../../core/services/deals.service';
+import { DealsService, type DealsQueryParams } from '../../core/services/deals.service';
 import { SavedDealsService } from '../../core/services/saved-deals.service';
 import type { Deal } from '../../core/models/deal.model';
 
-const COUNTRY_NAMES: Record<string, string> = {
-  IT: 'Włochy', ES: 'Hiszpania', GR: 'Grecja', HR: 'Chorwacja',
-  PT: 'Portugalia', MT: 'Malta', CY: 'Cypr', TR: 'Turcja',
-  BG: 'Bułgaria', FR: 'Francja', AL: 'Albania', ME: 'Czarnogóra',
-  MA: 'Maroko', IL: 'Izrael', TN: 'Tunezja', RS: 'Serbia',
-  RO: 'Rumunia', BA: 'Bośnia', MK: 'Macedonia', XK: 'Kosowo',
-  GB: 'Wielka Brytania', IE: 'Irlandia', IS: 'Islandia', JO: 'Jordania',
+const COUNTRY_FLAGS: Record<string, string> = {
+  IT: '🇮🇹', ES: '🇪🇸', GR: '🇬🇷', HR: '🇭🇷', PT: '🇵🇹',
+  MT: '🇲🇹', CY: '🇨🇾', TR: '🇹🇷', BG: '🇧🇬', FR: '🇫🇷',
+  AL: '🇦🇱', ME: '🇲🇪', MA: '🇲🇦', IL: '🇮🇱', TN: '🇹🇳',
+  RS: '🇷🇸', RO: '🇷🇴', BA: '🇧🇦', MK: '🇲🇰', XK: '🇽🇰',
+  GB: '🇬🇧', IE: '🇮🇪', IS: '🇮🇸', JO: '🇯🇴',
 };
+
+const ALL_COUNTRIES: { code: string; name: string; flag: string }[] = [
+  { code: 'AL', name: 'Albania',        flag: '🇦🇱' },
+  { code: 'BA', name: 'Bośnia',         flag: '🇧🇦' },
+  { code: 'BG', name: 'Bułgaria',       flag: '🇧🇬' },
+  { code: 'HR', name: 'Chorwacja',      flag: '🇭🇷' },
+  { code: 'CY', name: 'Cypr',           flag: '🇨🇾' },
+  { code: 'FR', name: 'Francja',        flag: '🇫🇷' },
+  { code: 'GR', name: 'Grecja',         flag: '🇬🇷' },
+  { code: 'ES', name: 'Hiszpania',      flag: '🇪🇸' },
+  { code: 'IE', name: 'Irlandia',       flag: '🇮🇪' },
+  { code: 'IS', name: 'Islandia',       flag: '🇮🇸' },
+  { code: 'IL', name: 'Izrael',         flag: '🇮🇱' },
+  { code: 'JO', name: 'Jordania',       flag: '🇯🇴' },
+  { code: 'XK', name: 'Kosowo',         flag: '🇽🇰' },
+  { code: 'MK', name: 'Macedonia',      flag: '🇲🇰' },
+  { code: 'MT', name: 'Malta',          flag: '🇲🇹' },
+  { code: 'MA', name: 'Maroko',         flag: '🇲🇦' },
+  { code: 'ME', name: 'Czarnogóra',     flag: '🇲🇪' },
+  { code: 'IT', name: 'Włochy',         flag: '🇮🇹' },
+  { code: 'PT', name: 'Portugalia',     flag: '🇵🇹' },
+  { code: 'RO', name: 'Rumunia',        flag: '🇷🇴' },
+  { code: 'RS', name: 'Serbia',         flag: '🇷🇸' },
+  { code: 'TN', name: 'Tunezja',        flag: '🇹🇳' },
+  { code: 'TR', name: 'Turcja',         flag: '🇹🇷' },
+  { code: 'GB', name: 'Wielka Brytania', flag: '🇬🇧' },
+].sort((a, b) => a.name.localeCompare(b.name, 'pl'));
 
 const AIRPORT_NAMES: Record<string, string> = {
   WAW: 'Warszawa Chopin (WAW)', WMI: 'Warszawa Modlin (WMI)',
@@ -56,7 +84,7 @@ const DEFAULT_MAX_PRICE = 800;
         <mat-form-field appearance="outline" class="filter-field">
           <mat-label>Kraj</mat-label>
           <mat-select multiple [value]="selectedCountries()" (valueChange)="selectedCountries.set($event)">
-            @for (c of availableCountries(); track c.code) {
+            @for (c of availableCountries; track c.code) {
               <mat-option [value]="c.code">{{ c.flag }} {{ c.name }}</mat-option>
             }
           </mat-select>
@@ -73,7 +101,7 @@ const DEFAULT_MAX_PRICE = 800;
 
         <div class="price-filter">
           <label class="price-label">Maks. cena: <strong>{{ maxPrice() }} zł</strong></label>
-          <mat-slider min="200" [max]="maxPriceSliderMax()" step="50" class="price-slider">
+          <mat-slider min="200" [max]="DEFAULT_MAX_PRICE" step="50" class="price-slider">
             <input matSliderThumb [value]="maxPrice()" (valueChange)="maxPrice.set($event)" />
           </mat-slider>
         </div>
@@ -115,13 +143,13 @@ const DEFAULT_MAX_PRICE = 800;
         </div>
       } @else {
         <div class="results-header">
-          <span class="results-count">{{ filteredDeals().length }} ofert</span>
+          <span class="results-count">{{ allDeals().length }} ofert</span>
           @if (lastUpdate()) {
             <span class="last-update">Ostatnia aktualizacja: {{ lastUpdate() }}</span>
           }
         </div>
 
-        @if (filteredDeals().length === 0) {
+        @if (allDeals().length === 0) {
           <div class="empty-state">
             <mat-icon>search_off</mat-icon>
             <p>Brak ofert dla wybranych filtrów. Spróbuj zmienić kryteria.</p>
@@ -133,10 +161,10 @@ const DEFAULT_MAX_PRICE = 800;
             }
           </div>
 
-          @if (visibleDeals().length < filteredDeals().length) {
+          @if (visibleDeals().length < allDeals().length) {
             <div class="load-more">
               <button mat-stroked-button (click)="loadMore()">
-                Pokaż więcej ({{ filteredDeals().length - visibleDeals().length }} pozostałych)
+                Pokaż więcej ({{ allDeals().length - visibleDeals().length }} pozostałych)
               </button>
             </div>
           }
@@ -208,12 +236,14 @@ export class DealsPageComponent implements OnInit {
   private dealsService = inject(DealsService);
   private savedService = inject(SavedDealsService);
 
+  readonly DEFAULT_MAX_PRICE = DEFAULT_MAX_PRICE;
+  readonly availableCountries = ALL_COUNTRIES;
+
   loading = signal(true);
   error = signal(false);
   allDeals = signal<Deal[]>([]);
   lastUpdate = signal<string | null>(null);
 
-  // All filter state as signals so computed() tracks them reactively
   selectedCountries = signal<string[]>([]);
   selectedOrigins = signal<string[]>([]);
   maxPrice = signal(DEFAULT_MAX_PRICE);
@@ -223,47 +253,12 @@ export class DealsPageComponent implements OnInit {
 
   savedCount = computed(() => this.savedService.savedDeals().length);
 
-  maxPriceSliderMax = computed(() =>
-    Math.max(DEFAULT_MAX_PRICE, ...this.allDeals().map((d) => d.totalPrice)),
-  );
-
-  availableCountries = computed(() => {
-    const codes = new Set(this.allDeals().map((d) => d.destCountry));
-    return [...codes].sort().map((code) => ({
-      code,
-      name: COUNTRY_NAMES[code] ?? code,
-      flag: this.countryFlag(code),
-    }));
-  });
-
   availableOrigins = computed(() => {
     const codes = new Set(this.allDeals().map((d) => d.originAirport));
     return [...codes].sort();
   });
 
-  filteredDeals = computed(() => {
-    const countries = this.selectedCountries();
-    const origins = this.selectedOrigins();
-    const max = this.maxPrice();
-    const sort = this.sortBy();
-    const ojFilter = this.openJawFilter();
-
-    let deals = this.allDeals();
-
-    if (countries.length > 0) deals = deals.filter((d) => countries.includes(d.destCountry));
-    if (origins.length > 0)   deals = deals.filter((d) => origins.includes(d.originAirport));
-    deals = deals.filter((d) => d.totalPrice <= max);
-    if (ojFilter === 'roundtrip') deals = deals.filter((d) => !d.openJaw);
-    if (ojFilter === 'openjaw')   deals = deals.filter((d) => d.openJaw);
-
-    return [...deals].sort((a, b) => {
-      if (sort === 'departure') return a.departAt.localeCompare(b.departAt);
-      if (sort === 'duration')  return a.nights - b.nights;
-      return a.totalPrice - b.totalPrice;
-    });
-  });
-
-  visibleDeals = computed(() => this.filteredDeals().slice(0, this.visibleCount()));
+  visibleDeals = computed(() => this.allDeals().slice(0, this.visibleCount()));
 
   activeFilterCount = computed(() => {
     let n = 0;
@@ -274,8 +269,21 @@ export class DealsPageComponent implements OnInit {
     return n;
   });
 
+  private query = computed<DealsQueryParams>(() => ({
+    destCountry: this.selectedCountries().join(',') || undefined,
+    maxPrice: this.maxPrice(),
+    origin: this.selectedOrigins().join(',') || undefined,
+    sort: this.sortBy(),
+    openJaw: this.openJawFilter() === 'openjaw' ? 'true'
+            : this.openJawFilter() === 'roundtrip' ? 'false'
+            : undefined,
+  }));
+
   ngOnInit() {
-    this.dealsService.getDeals().subscribe({
+    toObservable(this.query).pipe(
+      tap(() => { this.loading.set(true); this.error.set(false); this.visibleCount.set(24); }),
+      switchMap((q) => this.dealsService.getDeals(q)),
+    ).subscribe({
       next: (deals) => { this.allDeals.set(deals); this.loading.set(false); },
       error: () => { this.error.set(true); this.loading.set(false); },
     });
@@ -307,16 +315,5 @@ export class DealsPageComponent implements OnInit {
 
   airportName(code: string): string {
     return AIRPORT_NAMES[code] ?? code;
-  }
-
-  countryFlag(code: string): string {
-    const flags: Record<string, string> = {
-      IT: '🇮🇹', ES: '🇪🇸', GR: '🇬🇷', HR: '🇭🇷', PT: '🇵🇹',
-      MT: '🇲🇹', CY: '🇨🇾', TR: '🇹🇷', BG: '🇧🇬', FR: '🇫🇷',
-      AL: '🇦🇱', ME: '🇲🇪', MA: '🇲🇦', IL: '🇮🇱', TN: '🇹🇳',
-      RS: '🇷🇸', RO: '🇷🇴', BA: '🇧🇦', MK: '🇲🇰', XK: '🇽🇰',
-      GB: '🇬🇧', IE: '🇮🇪', IS: '🇮🇸', JO: '🇯🇴',
-    };
-    return flags[code] ?? '🌍';
   }
 }

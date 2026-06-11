@@ -18,6 +18,7 @@ export class DealsController {
     @Query('origin') origin?: string,
     @Query('sort') sort?: 'price' | 'departure' | 'duration',
     @Query('openJaw') openJaw?: string,
+    @Query('perCountry') perCountry?: string,
   ) {
     return this.dealsService.findAll({
       destCountry,
@@ -25,6 +26,7 @@ export class DealsController {
       origin,
       sort,
       openJaw: openJaw === 'true' ? true : openJaw === 'false' ? false : undefined,
+      perCountry: perCountry ? Number(perCountry) : undefined,
     });
   }
 

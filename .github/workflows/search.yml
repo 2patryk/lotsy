@@ -24,8 +24,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-        continue-on-error: true
+        run: pnpm install --no-frozen-lockfile || true
 
       - name: Generate Prisma client
         run: pnpm --filter @lotsy/db prisma generate

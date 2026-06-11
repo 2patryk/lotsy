@@ -8714,6 +8714,7 @@ snapshots:
       '@parcel/watcher-win32-ia32': 2.5.6
       '@parcel/watcher-win32-x64': 2.5.6
     optional: true
+    requiresBuild: true
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
@@ -11500,6 +11501,7 @@ snapshots:
       '@lmdb/lmdb-linux-x64': 3.2.6
       '@lmdb/lmdb-win32-x64': 3.2.6
     optional: true
+    requiresBuild: true
 
   load-esm@1.0.3: {}
 
@@ -11748,6 +11750,7 @@ snapshots:
       '@msgpackr-extract/msgpackr-extract-linux-x64': 3.0.4
       '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.4
     optional: true
+    requiresBuild: true
 
   msgpackr@1.12.1:
     optionalDependencies:

@@ -17,7 +17,9 @@ export class DealsController {
     @Query('maxPrice') maxPrice?: string,
     @Query('origin') origin?: string,
     @Query('sort') sort?: 'price' | 'departure' | 'duration',
-    @Query('openJaw') openJaw?: string,
+    @Query('levels') levels?: string,
+    @Query('minNights') minNights?: string,
+    @Query('maxNights') maxNights?: string,
     @Query('perCountry') perCountry?: string,
   ) {
     return this.dealsService.findAll({
@@ -25,7 +27,9 @@ export class DealsController {
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
       origin,
       sort,
-      openJaw: openJaw === 'true' ? true : openJaw === 'false' ? false : undefined,
+      levels: levels ? levels.split(',').map(Number) : undefined,
+      minNights: minNights ? Number(minNights) : undefined,
+      maxNights: maxNights ? Number(maxNights) : undefined,
       perCountry: perCountry ? Number(perCountry) : undefined,
     });
   }

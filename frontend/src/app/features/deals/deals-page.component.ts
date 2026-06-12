@@ -98,6 +98,14 @@ const DEFAULT_MAX_PRICE = 800;
           </mat-slider>
         </div>
 
+        <div class="price-filter">
+          <label class="price-label">Liczba nocy: <strong>{{ minNights() }}–{{ maxNights() }}</strong></label>
+          <mat-slider min="1" max="7" step="1" class="price-slider">
+            <input matSliderStartThumb [value]="minNights()" (valueChange)="minNights.set($event)" />
+            <input matSliderEndThumb   [value]="maxNights()" (valueChange)="maxNights.set($event)" />
+          </mat-slider>
+        </div>
+
         <mat-form-field appearance="outline" class="filter-field sort-field">
           <mat-label>Sortuj</mat-label>
           <mat-select [value]="sortBy()" (valueChange)="sortBy.set($event)">
@@ -108,11 +116,11 @@ const DEFAULT_MAX_PRICE = 800;
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="filter-field sort-field">
-          <mat-label>Typ lotu</mat-label>
-          <mat-select [value]="openJawFilter()" (valueChange)="openJawFilter.set($event)">
-            <mat-option value="all">Wszystkie</mat-option>
-            <mat-option value="roundtrip">Tylko tam i z powrotem</mat-option>
-            <mat-option value="openjaw">Tylko open-jaw ✈→✈</mat-option>
+          <mat-label>Typ połączenia</mat-label>
+          <mat-select multiple [value]="selectedLevels()" (valueChange)="selectedLevels.set($event)">
+            <mat-option [value]="1">↩ Tam i z powrotem</mat-option>
+            <mat-option [value]="2">↔ Bliskie lotniska (WAW↔WMI, KRK↔KTW)</mat-option>
+            <mat-option [value]="3">✈→✈ Open-jaw (różne miasta)</mat-option>
           </mat-select>
         </mat-form-field>
 
@@ -242,7 +250,9 @@ export class DealsPageComponent implements OnInit {
   selectedOrigins = signal<string[]>([]);
   maxPrice = signal(DEFAULT_MAX_PRICE);
   sortBy = signal<'price' | 'departure' | 'duration'>('price');
-  openJawFilter = signal<'all' | 'roundtrip' | 'openjaw'>('all');
+  selectedLevels = signal<number[]>([1, 2, 3]);
+  minNights = signal(1);
+  maxNights = signal(7);
   visibleCount = signal(24);
 
   savedCount = computed(() => this.savedService.savedDeals().length);
@@ -259,7 +269,8 @@ export class DealsPageComponent implements OnInit {
     if (this.selectedCountries().length > 0) n++;
     if (this.selectedOrigins().length > 0) n++;
     if (this.maxPrice() < DEFAULT_MAX_PRICE) n++;
-    if (this.openJawFilter() !== 'all') n++;
+    if (this.selectedLevels().length < 3) n++;
+    if (this.minNights() > 1 || this.maxNights() < 7) n++;
     return n;
   });
 
@@ -268,9 +279,9 @@ export class DealsPageComponent implements OnInit {
     maxPrice: this.maxPrice(),
     origin: this.selectedOrigins().join(',') || undefined,
     sort: this.sortBy(),
-    openJaw: this.openJawFilter() === 'openjaw' ? 'true'
-            : this.openJawFilter() === 'roundtrip' ? 'false'
-            : undefined,
+    levels: this.selectedLevels().length < 3 ? [...this.selectedLevels()].sort().join(',') : undefined,
+    minNights: this.minNights() > 1 ? this.minNights() : undefined,
+    maxNights: this.maxNights() < 7 ? this.maxNights() : undefined,
   }));
 
   constructor() {
@@ -280,7 +291,9 @@ export class DealsPageComponent implements OnInit {
     if (params['origins'])   this.selectedOrigins.set(params['origins'].split(','));
     if (params['maxPrice'])  this.maxPrice.set(Number(params['maxPrice']));
     if (params['sort'])      this.sortBy.set(params['sort']);
-    if (params['openJaw'])   this.openJawFilter.set(params['openJaw']);
+    if (params['levels'])    this.selectedLevels.set(params['levels'].split(',').map(Number));
+    if (params['minNights']) this.minNights.set(Number(params['minNights']));
+    if (params['maxNights']) this.maxNights.set(Number(params['maxNights']));
 
     // Re-fetch when any filter changes
     toObservable(this.query).pipe(
@@ -298,8 +311,7 @@ export class DealsPageComponent implements OnInit {
       const origins = this.selectedOrigins();
       const maxPrice = this.maxPrice();
       const sort = this.sortBy();
-      const openJaw = this.openJawFilter();
-
+      const levels = this.selectedLevels();
       this.router.navigate([], {
         relativeTo: this.route,
         replaceUrl: true,
@@ -308,7 +320,9 @@ export class DealsPageComponent implements OnInit {
           origins:   origins.length   ? origins.join(',')   : null,
           maxPrice:  maxPrice < DEFAULT_MAX_PRICE ? maxPrice : null,
           sort:      sort !== 'price' ? sort : null,
-          openJaw:   openJaw !== 'all' ? openJaw : null,
+          levels:    levels.length < 3 ? [...levels].sort().join(',') : null,
+          minNights: this.minNights() > 1 ? this.minNights() : null,
+          maxNights: this.maxNights() < 7 ? this.maxNights() : null,
         },
       });
     });
@@ -336,7 +350,9 @@ export class DealsPageComponent implements OnInit {
     this.selectedOrigins.set([]);
     this.maxPrice.set(DEFAULT_MAX_PRICE);
     this.sortBy.set('price');
-    this.openJawFilter.set('all');
+    this.selectedLevels.set([1, 2, 3]);
+    this.minNights.set(1);
+    this.maxNights.set(7);
     this.visibleCount.set(24);
   }
 

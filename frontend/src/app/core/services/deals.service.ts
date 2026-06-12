@@ -8,7 +8,9 @@ export interface DealsQueryParams {
   maxPrice?: number;
   origin?: string;
   sort?: 'price' | 'departure' | 'duration';
-  openJaw?: 'true' | 'false';
+  levels?: string; // comma-separated: "1,2,3"
+  minNights?: number;
+  maxNights?: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -21,7 +23,9 @@ export class DealsService {
     if (query.maxPrice != null) params = params.set('maxPrice', String(query.maxPrice));
     if (query.origin) params = params.set('origin', query.origin);
     if (query.sort) params = params.set('sort', query.sort);
-    if (query.openJaw != null) params = params.set('openJaw', query.openJaw);
+    if (query.levels)    params = params.set('levels', query.levels);
+    if (query.minNights != null) params = params.set('minNights', String(query.minNights));
+    if (query.maxNights != null) params = params.set('maxNights', String(query.maxNights));
     return this.http.get<Deal[]>(`${environment.apiUrl}/deals`, { params });
   }
 

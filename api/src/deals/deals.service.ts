@@ -2,13 +2,26 @@ import { Injectable } from '@nestjs/common';
 import { prisma } from '@lotsy/db';
 import type { Prisma } from '@lotsy/db';
 
+const METRO_GROUPS: string[][] = [
+  ['WAW', 'WMI'], // Warsaw Chopin + Modlin
+  ['KRK', 'KTW'], // Kraków + Katowice
+];
+
+function dealLevel(origin: string, ret: string): 1 | 2 | 3 {
+  if (origin === ret) return 1;
+  if (METRO_GROUPS.some((g) => g.includes(origin) && g.includes(ret))) return 2;
+  return 3;
+}
+
 export interface DealsQuery {
   destCountry?: string;   // comma-separated: "IT,ES,GR"
   maxPrice?: number;
   origin?: string;        // comma-separated: "WAW,KTW"
   sort?: 'price' | 'departure' | 'duration';
-  openJaw?: boolean;      // true = only open-jaw, false = only round-trips, undefined = all
-  perCountry?: number;    // max results per destination country (used when no destCountry filter)
+  levels?: number[];      // [1,2,3] = all; [1] = round-trip; [2] = nearby; [3] = open-jaw
+  minNights?: number;
+  maxNights?: number;
+  perCountry?: number;
 }
 
 @Injectable()
@@ -35,11 +48,19 @@ export class DealsService {
       where.originAirport = { in: origins };
     }
 
-    if (query.openJaw === true) {
-      where.openJaw = true;
-    } else if (query.openJaw === false) {
-      where.openJaw = false;
+    if (query.minNights != null || query.maxNights != null) {
+      where.nights = {
+        ...(query.minNights != null ? { gte: query.minNights } : {}),
+        ...(query.maxNights != null ? { lte: query.maxNights } : {}),
+      };
     }
+
+    // Optimize at DB level when all requested levels are on the same side of openJaw
+    const levels = query.levels ?? [1, 2, 3];
+    const wantsRoundTrip = levels.includes(1);
+    const wantsOpenJaw   = levels.includes(2) || levels.includes(3);
+    if (wantsRoundTrip && !wantsOpenJaw) where.openJaw = false;
+    if (wantsOpenJaw   && !wantsRoundTrip) where.openJaw = true;
 
     const orderBy: Prisma.DealOrderByWithRelationInput =
       query.sort === 'departure'
@@ -48,18 +69,26 @@ export class DealsService {
           ? { nights: 'asc' }
           : { totalPrice: 'asc' };
 
-    // When filtering by specific country/countries, return up to 200 per query.
-    // When no country filter, cap per-country to avoid UK/GB dominating the list.
+    const levelSet = new Set(levels);
+    const needsJsLevelFilter = !(levelSet.size === 3 || (levelSet.size === 1 && (levelSet.has(1) || (levelSet.has(2) && !levelSet.has(3)) === false)));
+
+    const applyLevelFilter = (deals: { originAirport: string; returnAirport: string }[]) => {
+      if (levelSet.size === 3) return deals; // all levels — skip filtering
+      return deals.filter((d) => levelSet.has(dealLevel(d.originAirport, d.returnAirport)));
+    };
+
     if (query.destCountry) {
-      return prisma.deal.findMany({ where, orderBy, take: 200 });
+      const all = await prisma.deal.findMany({ where, orderBy, take: 200 });
+      return applyLevelFilter(all);
     }
 
     const perCountry = query.perCountry ?? 30;
     const all = await prisma.deal.findMany({ where, orderBy });
+    const leveled = applyLevelFilter(all);
 
     const countsByCountry = new Map<string, number>();
     const result = [];
-    for (const deal of all) {
+    for (const deal of leveled) {
       const count = countsByCountry.get(deal.destCountry) ?? 0;
       if (count < perCountry) {
         result.push(deal);

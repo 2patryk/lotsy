@@ -1,0 +1,4 @@
+- pojedyncze loty (powroty do polski w niedziele/poniedzialek)
+- update designu via claude design
+- find deals nie dziala - devDependencies: + typescript 5.9.3 [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: @parcel/watcher@2.5.6, lmdb@3.2.6, msgpackr-extract@3.0.4 Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts. Error: Process completed with exit code 1.
+- napraw linkow

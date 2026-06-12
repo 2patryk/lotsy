@@ -3,10 +3,6 @@ lockfileVersion: '9.0'
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
-  neverBuiltDependencies:
-    - '@parcel/watcher'
-    - lmdb
-    - msgpackr-extract
 
 importers:
 
@@ -122,6 +118,9 @@ importers:
         specifier: workspace:*
         version: link:../packages/flights-client
     devDependencies:
+      '@types/node':
+        specifier: ^24.13.1
+        version: 24.13.1
       tsx:
         specifier: ^4.22.4
         version: 4.22.4
@@ -8714,7 +8713,6 @@ snapshots:
       '@parcel/watcher-win32-ia32': 2.5.6
       '@parcel/watcher-win32-x64': 2.5.6
     optional: true
-    requiresBuild: true
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
@@ -11501,7 +11499,6 @@ snapshots:
       '@lmdb/lmdb-linux-x64': 3.2.6
       '@lmdb/lmdb-win32-x64': 3.2.6
     optional: true
-    requiresBuild: true
 
   load-esm@1.0.3: {}
 
@@ -11750,7 +11747,6 @@ snapshots:
       '@msgpackr-extract/msgpackr-extract-linux-x64': 3.0.4
       '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.4
     optional: true
-    requiresBuild: true
 
   msgpackr@1.12.1:
     optionalDependencies:

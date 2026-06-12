@@ -1,6 +1,5 @@
 @use '@angular/material' as mat;
 
-// Custom Lotsy theme: deep blue primary, amber accent
 $primary: mat.m2-define-palette(mat.$m2-indigo-palette, 700, 500, 900);
 $accent: mat.m2-define-palette(mat.$m2-amber-palette, 600);
 $warn: mat.m2-define-palette(mat.$m2-red-palette);
@@ -8,30 +7,53 @@ $warn: mat.m2-define-palette(mat.$m2-red-palette);
 $theme: mat.m2-define-light-theme((
   color: (primary: $primary, accent: $accent, warn: $warn),
   typography: mat.m2-define-typography-config(
-    $font-family: '"Inter", "Roboto", sans-serif',
+    $font-family: '"Outfit", "Roboto", sans-serif',
   ),
   density: 0,
 ));
 
 @include mat.all-component-themes($theme);
 
-*, *::before, *::after {
-  box-sizing: border-box;
+:root {
+  --color-brand:          #f48120;
+  --color-bg:             #f6f6f6;
+  --color-surface:        #ffffff;
+  --color-surface-hover:  #fafafa;
+  --color-sidebar-active: #f3f4f6;
+  --color-border:         #e5e7eb;
+  --color-border-strong:  #d1d5db;
+  --color-text-primary:   #1a1a1a;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary:  #9ca3af;
+  --color-blue-50:        #eff6ff;
+  --color-blue-100:       #dbeafe;
+  --color-blue-600:       #2563eb;
+  --color-blue-700:       #1d4ed8;
+  --color-blue-800:       #1e40af;
+  --color-green-100:      #dcfce7;
+  --color-green-600:      #16a34a;
+  --color-amber-100:      #fef3c7;
+  --color-amber-700:      #b45309;
+  --radius-sm:            4px;
+  --radius-md:            6px;
+  --radius-lg:            8px;
+  --radius-full:          9999px;
+  --shadow-sm:            0 1px 2px 0 rgba(0,0,0,.05);
+  --shadow-focus:         0 0 0 3px rgba(37,99,235,.22);
+  --header-h:             56px;
+  --font-sans:            'Outfit', system-ui, -apple-system, sans-serif;
 }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  margin: 0;
-  padding: 0;
-  background: #f4f6f9;
-  font-family: 'Inter', 'Roboto', sans-serif;
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
-.mat-mdc-card {
-  border-radius: 12px !important;
-}
+button, select, input { font-family: inherit; }
+a { text-decoration: none; color: inherit; }
+select { -webkit-appearance: none; appearance: none; }

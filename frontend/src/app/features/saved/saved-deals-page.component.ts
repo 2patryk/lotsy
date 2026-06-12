@@ -1,96 +1,153 @@
 import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { DealCardComponent } from '../deals/deal-card.component';
 import { SavedDealsService } from '../../core/services/saved-deals.service';
 
 @Component({
   selector: 'app-saved-deals-page',
   standalone: true,
-  imports: [
-    CommonModule, RouterLink,
-    MatToolbarModule, MatButtonModule, MatIconModule, MatSnackBarModule,
-    DealCardComponent,
-  ],
+  imports: [CommonModule, RouterLink, DealCardComponent],
   template: `
-    <mat-toolbar color="primary" class="app-toolbar">
-      <a mat-icon-button [routerLink]="['/deals']">
-        <mat-icon>arrow_back</mat-icon>
-      </a>
-      <span class="logo">Zapisane oferty</span>
-    </mat-toolbar>
-
-    <div class="page-container">
-      <div class="disclaimer">
-        <mat-icon>info_outline</mat-icon>
-        <span>Ceny mogą być nieaktualne. Oferty przechowywane 48h od zapisania.</span>
+    <header class="site-header">
+      <div class="header-inner">
+        <a [routerLink]="['/deals']" class="back-btn" aria-label="Wróć do okazji">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Okazje
+        </a>
+        <span class="header-title">Zapisane</span>
       </div>
+    </header>
+
+    <main class="page-main">
+      @if (saved().length > 0) {
+        <div class="disclaimer">
+          Oferty zachowane lokalnie · Ceny mogą być nieaktualne · Przechowywane 48h od zapisania
+        </div>
+      }
 
       @if (saved().length === 0) {
         <div class="empty-state">
-          <mat-icon>favorite_border</mat-icon>
-          <p>Nie masz jeszcze żadnych zapisanych ofert.</p>
-          <a mat-raised-button color="primary" [routerLink]="['/deals']">Przeglądaj oferty</a>
+          <div class="empty-icon">♡</div>
+          <div class="empty-title">Brak zapisanych ofert</div>
+          <div class="empty-sub">Kliknij ♡ na ofercie, żeby ją zapisać</div>
+          <a [routerLink]="['/deals']" class="btn-primary">Przeglądaj okazje</a>
         </div>
       } @else {
-        <div class="deals-grid">
+        <div class="results-card">
           @for (entry of saved(); track entry.deal.id) {
             <div class="saved-entry">
-              <div class="saved-meta">
-                Zapisano: {{ formatDate(entry.savedAt) }}
-              </div>
+              <div class="saved-meta">Zapisano: {{ formatDate(entry.savedAt) }}</div>
               <app-deal-card [deal]="entry.deal" />
             </div>
           }
         </div>
       }
-    </div>
+    </main>
   `,
   styles: [`
-    .app-toolbar { position: sticky; top: 0; z-index: 100; }
-    .logo { font-size: 1.2rem; font-weight: 600; margin-left: 8px; }
-    .page-container { max-width: 1200px; margin: 0 auto; padding: 16px; }
-
-    .disclaimer {
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      height: var(--header-h);
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .header-inner {
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 100%;
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      background: #fff8e1;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      color: #795548;
-      margin-bottom: 20px;
-    }
-
-    .deals-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 16px;
     }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      transition: background .12s;
+    }
+    .back-btn:hover { background: var(--color-sidebar-active); }
+    .header-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+    }
 
-    .saved-entry { display: flex; flex-direction: column; gap: 4px; }
-    .saved-meta { font-size: 0.75rem; color: #999; padding-left: 4px; }
+    .page-main {
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 28px 24px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .disclaimer {
+      font-size: 13px;
+      color: var(--color-amber-700);
+      background: var(--color-amber-100);
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+    }
+
+    .results-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .saved-entry { display: flex; flex-direction: column; }
+    .saved-meta {
+      font-size: 11px;
+      color: var(--color-text-tertiary);
+      padding: 8px 20px 0;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
 
     .empty-state {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
       padding: 80px 20px;
-      color: #999;
+      text-align: center;
     }
-    .empty-state mat-icon { font-size: 64px; height: 64px; width: 64px; }
+    .empty-icon { font-size: 40px; color: var(--color-text-tertiary); line-height: 1; }
+    .empty-title { font-size: 16px; font-weight: 600; color: var(--color-text-secondary); }
+    .empty-sub { font-size: 14px; color: var(--color-text-tertiary); }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 20px;
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-weight: 500;
+      background: var(--color-blue-700);
+      color: #fff;
+      text-decoration: none;
+      margin-top: 4px;
+      transition: background .12s;
+    }
+    .btn-primary:hover { background: var(--color-blue-800); }
   `],
 })
 export class SavedDealsPageComponent {
   private savedService = inject(SavedDealsService);
-  private snackBar = inject(MatSnackBar);
-
   saved = computed(() => this.savedService.savedDeals());
 
   formatDate(ts: number): string {

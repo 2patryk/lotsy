@@ -254,7 +254,7 @@ function fmtTime(iso: string): string {
         content: '';
         position: absolute;
         inset: 0;
-        width: 320px;
+        width: 240px;
         background: var(--thumb, none) center / cover no-repeat;
         mask-image: linear-gradient(to right, black 50%, transparent 100%);
         -webkit-mask-image: linear-gradient(to right, black 50%, transparent 100%);

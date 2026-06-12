@@ -13,6 +13,7 @@
     "@lotsy/flights-client": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^24.13.1",
     "tsx": "^4.22.4",
     "typescript": "^5.4.5"
   }

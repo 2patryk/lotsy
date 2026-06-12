@@ -6,7 +6,8 @@
     "dev": "dotenv -e .env -- concurrently -n api,frontend -c blue,green \"pnpm --filter @lotsy/api start:dev\" \"pnpm --filter frontend start\"",
     "engine:run": "dotenv -e .env -- pnpm --filter @lotsy/engine start",
     "db:generate": "pnpm --filter @lotsy/db prisma generate",
-    "db:migrate": "dotenv -e .env -- pnpm --filter @lotsy/db prisma migrate deploy"
+    "db:migrate": "dotenv -e .env -- pnpm --filter @lotsy/db prisma migrate deploy",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",

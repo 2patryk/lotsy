@@ -1,0 +1,30 @@
+#!/bin/sh
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+fail() {
+  printf "${RED}✗ $1${NC}\n" >&2
+  exit 1
+}
+
+step() {
+  printf "${YELLOW}▶ $1${NC}\n"
+}
+
+step "TypeScript — engine"
+pnpm --filter @lotsy/engine typecheck || fail "TypeScript failed in engine"
+
+step "TypeScript — api"
+pnpm --filter @lotsy/api typecheck || fail "TypeScript failed in api"
+
+step "TypeScript — frontend"
+pnpm --filter frontend typecheck || fail "TypeScript failed in frontend"
+
+step "ESLint — api"
+pnpm --filter @lotsy/api lint:check || fail "ESLint failed in api"
+
+printf "${GREEN}✓ All checks passed.${NC}\n"

@@ -14,11 +14,11 @@ function dealLevel(origin: string, ret: string): 1 | 2 | 3 {
 }
 
 export interface DealsQuery {
-  destCountry?: string;   // comma-separated: "IT,ES,GR"
+  destCountry?: string; // comma-separated: "IT,ES,GR"
   maxPrice?: number;
-  origin?: string;        // comma-separated: "WAW,KTW"
+  origin?: string; // comma-separated: "WAW,KTW"
   sort?: 'price' | 'departure' | 'duration';
-  levels?: number[];      // [1,2,3] = all; [1] = round-trip; [2] = nearby; [3] = open-jaw
+  levels?: number[]; // [1,2,3] = all; [1] = round-trip; [2] = nearby; [3] = open-jaw
   minNights?: number;
   maxNights?: number;
   perCountry?: number;
@@ -35,7 +35,9 @@ export class DealsService {
     };
 
     if (query.destCountry) {
-      const countries = query.destCountry.split(',').map((c) => c.trim().toUpperCase());
+      const countries = query.destCountry
+        .split(',')
+        .map((c) => c.trim().toUpperCase());
       where.destCountry = { in: countries };
     }
 
@@ -44,7 +46,9 @@ export class DealsService {
     }
 
     if (query.origin) {
-      const origins = query.origin.split(',').map((o) => o.trim().toUpperCase());
+      const origins = query.origin
+        .split(',')
+        .map((o) => o.trim().toUpperCase());
       where.originAirport = { in: origins };
     }
 
@@ -58,9 +62,9 @@ export class DealsService {
     // Optimize at DB level when all requested levels are on the same side of openJaw
     const levels = query.levels ?? [1, 2, 3];
     const wantsRoundTrip = levels.includes(1);
-    const wantsOpenJaw   = levels.includes(2) || levels.includes(3);
+    const wantsOpenJaw = levels.includes(2) || levels.includes(3);
     if (wantsRoundTrip && !wantsOpenJaw) where.openJaw = false;
-    if (wantsOpenJaw   && !wantsRoundTrip) where.openJaw = true;
+    if (wantsOpenJaw && !wantsRoundTrip) where.openJaw = true;
 
     const orderBy: Prisma.DealOrderByWithRelationInput =
       query.sort === 'departure'
@@ -70,11 +74,16 @@ export class DealsService {
           : { totalPrice: 'asc' };
 
     const levelSet = new Set(levels);
-    const needsJsLevelFilter = !(levelSet.size === 3 || (levelSet.size === 1 && (levelSet.has(1) || (levelSet.has(2) && !levelSet.has(3)) === false)));
 
-    const applyLevelFilter = (deals: { originAirport: string; returnAirport: string }[]) => {
+    const applyLevelFilter = <
+      T extends { originAirport: string; returnAirport: string },
+    >(
+      deals: T[],
+    ) => {
       if (levelSet.size === 3) return deals; // all levels — skip filtering
-      return deals.filter((d) => levelSet.has(dealLevel(d.originAirport, d.returnAirport)));
+      return deals.filter((d) =>
+        levelSet.has(dealLevel(d.originAirport, d.returnAirport)),
+      );
     };
 
     if (query.destCountry) {
@@ -87,7 +96,7 @@ export class DealsService {
     const leveled = applyLevelFilter(all);
 
     const countsByCountry = new Map<string, number>();
-    const result = [];
+    const result: typeof leveled = [];
     for (const deal of leveled) {
       const count = countsByCountry.get(deal.destCountry) ?? 0;
       if (count < perCountry) {

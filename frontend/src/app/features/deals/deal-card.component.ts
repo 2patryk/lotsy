@@ -245,6 +245,7 @@ function fmtTime(iso: string): string {
           linear-gradient(to right, rgba(255, 255, 255, 0.55) 0px, var(--color-surface) 200px),
           var(--thumb, none) left center / 200px 100% no-repeat,
           var(--color-surface);
+        background-origin: padding-box, border-box, padding-box;
         border-bottom: 1px solid var(--color-border);
         border-left: 3px solid transparent;
         cursor: pointer;
@@ -261,6 +262,7 @@ function fmtTime(iso: string): string {
           ),
           var(--thumb, none) left center / 200px 100% no-repeat,
           var(--color-surface-hover);
+        background-origin: padding-box, border-box, padding-box;
       }
       .deal-row.selected {
         border-left-color: var(--color-blue-600);

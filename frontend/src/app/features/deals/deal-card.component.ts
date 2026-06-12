@@ -76,6 +76,7 @@ function fmtTime(iso: string): string {
     <div
       class="deal-row"
       [class.selected]="selected()"
+      [class.has-photo]="!!thumbUrl()"
       [style.--thumb]="thumbUrl() ? 'url(' + thumbUrl() + ')' : 'none'"
       (click)="select.emit(deal().id)"
     >
@@ -240,7 +241,7 @@ function fmtTime(iso: string): string {
         grid-template-columns: 1fr auto;
         align-items: center;
         gap: 24px;
-        padding: 14px 20px 14px 88px;
+        padding: 14px 20px;
         position: relative;
         background: var(--color-surface);
         border-bottom: 1px solid var(--color-border);
@@ -263,6 +264,9 @@ function fmtTime(iso: string): string {
         opacity: 0.46;
         pointer-events: none;
         z-index: 0;
+      }
+      .deal-row.has-photo {
+        padding-left: 88px;
       }
       .deal-row:hover {
         background: var(--color-surface-hover);

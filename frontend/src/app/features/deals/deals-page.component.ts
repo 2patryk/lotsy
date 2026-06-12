@@ -994,16 +994,42 @@ const TIMES = [
           overflow-x: auto;
           flex-wrap: nowrap;
           -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .filter-row::-webkit-scrollbar {
+          display: none;
         }
         .filter-row--days {
+          overflow-x: visible;
+          flex-wrap: nowrap;
           padding: 10px 14px;
+          gap: 6px;
         }
         .filter-row--sliders {
           padding: 10px 14px;
           gap: 16px;
         }
         .fg {
-          min-width: 110px;
+          min-width: 100px;
+          padding: 10px 12px;
+        }
+        .dd-btn span {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 90px;
+        }
+        .dt-group {
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          scrollbar-width: none;
+          gap: 6px;
+        }
+        .dt-group::-webkit-scrollbar {
+          display: none;
+        }
+        .dt-pills {
+          flex-wrap: nowrap;
         }
         .results-header {
           padding: 0 14px;

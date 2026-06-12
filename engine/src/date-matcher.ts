@@ -44,7 +44,7 @@ const RETURN_MIN_HOUR_SAT: Record<number, number> = {
   6: 12, // Saturday from 12:00
 };
 
-const MIN_NIGHTS = 3;
+const MIN_NIGHTS = 2;
 const MAX_NIGHTS = 7;
 
 function dayOfWeek(dateStr: string): number {

@@ -966,6 +966,54 @@ const TIMES = [
         color: var(--color-text-tertiary);
         text-align: center;
       }
+
+      @media (max-width: 600px) {
+        .header-inner {
+          padding: 0 14px;
+          gap: 10px;
+        }
+        .main-nav {
+          display: none;
+        }
+        .page {
+          padding: 16px 0 40px;
+          gap: 14px;
+        }
+        .page-head {
+          padding: 0 14px;
+        }
+        .page-head h1 {
+          font-size: 20px;
+        }
+        .filter-card {
+          border-radius: 0;
+          border-left: none;
+          border-right: none;
+        }
+        .filter-row {
+          overflow-x: auto;
+          flex-wrap: nowrap;
+          -webkit-overflow-scrolling: touch;
+        }
+        .filter-row--days {
+          padding: 10px 14px;
+        }
+        .filter-row--sliders {
+          padding: 10px 14px;
+          gap: 16px;
+        }
+        .fg {
+          min-width: 110px;
+        }
+        .results-header {
+          padding: 0 14px;
+        }
+        .deal-list {
+          border-radius: 0;
+          border-left: none;
+          border-right: none;
+        }
+      }
     `,
   ],
 })

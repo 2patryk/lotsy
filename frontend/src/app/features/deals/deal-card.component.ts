@@ -546,6 +546,45 @@ function fmtTime(iso: string): string {
       .btn-primary:hover {
         background: var(--color-blue-800);
       }
+
+      @media (max-width: 600px) {
+        .deal-row {
+          gap: 12px;
+          padding: 12px 14px;
+        }
+        .deal-row.has-photo {
+          padding-left: 14px;
+        }
+        .deal-row::before {
+          display: none;
+        }
+        .dest-iata,
+        .dest-sep {
+          display: none;
+        }
+        .leg-route,
+        .week-dots,
+        .week-dots--two {
+          display: none;
+        }
+        .leg {
+          gap: 6px;
+          font-size: 12px;
+        }
+        .leg-time-group {
+          margin-left: 0;
+        }
+        .legs {
+          gap: 4px;
+        }
+        .price-val {
+          font-size: 20px;
+        }
+        .btn-primary {
+          padding: 6px 12px;
+          font-size: 12px;
+        }
+      }
     `,
   ],
 })

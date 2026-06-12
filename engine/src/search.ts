@@ -1,6 +1,6 @@
 import { prisma } from '@lotsy/db';
 import { getCheapestPerDay } from '@lotsy/flights-client';
-import { buildRouteCache } from './route-cache.js';
+import { getOrFetchRouteCache, fetchAndSaveRouteCache, getLevel } from './route-cache.js';
 import { matchPairs } from './date-matcher.js';
 import {
   MAX_TOTAL_PRICE,
@@ -12,39 +12,38 @@ import {
 } from './config.js';
 
 const DRY_RUN = process.argv.includes('--dry-run');
-const PURGE = process.argv.includes('--purge');
+const PURGE   = process.argv.includes('--purge');
+
+const STEP = (() => {
+  const flag = process.argv.find((a: string) => a.startsWith('--step='));
+  return flag ? (flag.split('=')[1] as 'routes' | 'prices') : 'all';
+})();
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** Returns [year, month (0-indexed)] pairs covering the next HORIZON_WEEKS weeks */
 function getMonthsToQuery(): Array<{ year: number; month: number }> {
   const months = new Set<string>();
   const now = new Date();
-
   for (let w = 0; w < HORIZON_WEEKS; w++) {
     const d = new Date(now.getTime() + w * 7 * 86_400_000);
     months.add(`${d.getFullYear()}-${d.getMonth()}`);
   }
-
   return [...months].map((s) => {
     const [y, m] = s.split('-').map(Number);
     return { year: y, month: m };
   });
 }
 
-/** Runs fn on items in batches of MAX_CONCURRENT with BATCH_DELAY_MS between batches */
 async function runConcurrent<T, R>(
   items: T[],
   fn: (item: T) => Promise<R>,
 ): Promise<Array<{ item: T; result?: R; error?: unknown }>> {
   const results: Array<{ item: T; result?: R; error?: unknown }> = [];
-
   for (let i = 0; i < items.length; i += MAX_CONCURRENT) {
     const batch = items.slice(i, i + MAX_CONCURRENT);
     const settled = await Promise.allSettled(batch.map(fn));
-
     for (let j = 0; j < batch.length; j++) {
       const s = settled[j];
       results.push(
@@ -53,19 +52,11 @@ async function runConcurrent<T, R>(
           : { item: batch[j], error: s.reason },
       );
     }
-
     if (i + MAX_CONCURRENT < items.length) await sleep(BATCH_DELAY_MS);
   }
-
   return results;
 }
 
-/**
- * Builds a Ryanair trip-select URL with both outbound and return legs.
- * Format validated against: originIataOut→destinationIataOut / originIataIn→destinationIataIn
- * For regular round-trips: retOrigin = outDest, retDest = outOrigin
- * For open-jaw: retOrigin = outDest, retDest = different Polish airport
- */
 function buildBookingUrl(
   outOrigin: string,
   outDest: string,
@@ -96,66 +87,53 @@ async function purge() {
   await prisma.$disconnect();
 }
 
-async function main() {
-  console.log(`[engine] Starting search run (dry-run=${DRY_RUN})`);
+async function runPrices() {
+  console.log(`[engine] Step: prices (dry-run=${DRY_RUN})`);
 
   const runRecord = DRY_RUN
     ? null
-    : await prisma.searchRun.create({
-        data: { status: 'PARTIAL' },
-      });
+    : await prisma.searchRun.create({ data: { status: 'PARTIAL' } });
 
   let dealsFound = 0;
   let routesQueried = 0;
 
   try {
-    const { routes, destToOrigins } = await buildRouteCache();
+    const { routes, destToReturnOptions } = await getOrFetchRouteCache();
     const months = getMonthsToQuery();
 
     console.log(`[engine] ${routes.length} routes × ${months.length} months`);
 
     type FetchTask = { from: string; to: string; year: number; month: number };
     const tasks: FetchTask[] = [];
-    const outboundKeys = new Set<string>();
-    const inboundKeys = new Set<string>();
+    const seen = new Set<string>();
 
     for (const { origin, destination } of routes) {
       for (const { year, month } of months) {
+        // outbound leg
         const outKey = `${origin}:${destination}:${year}:${month}`;
-        if (!outboundKeys.has(outKey)) {
-          outboundKeys.add(outKey);
+        if (!seen.has(outKey)) {
+          seen.add(outKey);
           tasks.push({ from: origin, to: destination, year, month });
         }
-      }
-    }
 
-    // Collect unique inbound legs: dest → each Polish airport that serves it
-    const inboundPairs = new Set<string>();
-    for (const { destination } of routes) {
-      const returnAirports = destToOrigins.get(destination) ?? [];
-      for (const returnAirport of returnAirports) {
-        const pairKey = `${destination}:${returnAirport}`;
-        if (!inboundPairs.has(pairKey)) {
-          inboundPairs.add(pairKey);
-          for (const { year, month } of months) {
-            const inKey = `${destination}:${returnAirport}:${year}:${month}`;
-            if (!inboundKeys.has(inKey)) {
-              inboundKeys.add(inKey);
-              tasks.push({ from: destination, to: returnAirport, year, month });
-            }
+        // inbound legs — all valid return airports for this destination
+        const returnOptions = destToReturnOptions.get(destination) ?? [];
+        for (const { airport: retAirport } of returnOptions) {
+          const inKey = `${destination}:${retAirport}:${year}:${month}`;
+          if (!seen.has(inKey)) {
+            seen.add(inKey);
+            tasks.push({ from: destination, to: retAirport, year, month });
           }
         }
       }
     }
 
-    console.log(`[engine] ${tasks.length} fetch tasks (${outboundKeys.size} outbound, ${inboundKeys.size} inbound)`);
+    console.log(`[engine] ${tasks.length} fetch tasks`);
 
-    // Fetch all fares
     const fareResults = await runConcurrent(tasks, (t) =>
       getCheapestPerDay(t.from, t.to, t.year, t.month),
     );
 
-    // Store fares by "from:to" key
     type DailyFareList = import('@lotsy/flights-client').DailyFare[];
     const faresByLeg = new Map<string, DailyFareList>();
 
@@ -176,11 +154,12 @@ async function main() {
 
     for (const { origin, destination } of routes) {
       const outFares = faresByLeg.get(`${origin}:${destination}`) ?? [];
-      const returnAirports = destToOrigins.get(destination) ?? [origin];
+      const returnOptions = destToReturnOptions.get(destination) ?? [{ airport: origin, level: 1 as const }];
 
-      for (const returnAirport of returnAirports) {
+      for (const { airport: returnAirport } of returnOptions) {
+        const level = getLevel(origin, returnAirport);
         const inFares = faresByLeg.get(`${destination}:${returnAirport}`) ?? [];
-        const openJaw = returnAirport !== origin;
+        const openJaw = level > 1;
 
         const pairs = matchPairs(outFares, inFares, MAX_TOTAL_PRICE);
         const topPairs = pairs
@@ -190,7 +169,6 @@ async function main() {
         for (const pair of topPairs) {
           const departAt = new Date(pair.outbound.departureTime);
           const returnAt = new Date(pair.inbound.departureTime);
-
           const bookingUrl = buildBookingUrl(origin, destination, returnAirport, pair.outbound.date, pair.inbound.date);
 
           const dealData = {
@@ -225,9 +203,8 @@ async function main() {
           if (DRY_RUN) {
             console.log(
               `[dry-run] ${origin}→${destination}→${returnAirport}` +
-              ` ${pair.outbound.date}→${pair.inbound.date}` +
-              ` ${pair.nights}n ${pair.totalPrice.toFixed(0)} PLN` +
-              (openJaw ? ' [open-jaw]' : ''),
+              ` L${level} ${pair.outbound.date}→${pair.inbound.date}` +
+              ` ${pair.nights}n ${pair.totalPrice.toFixed(0)} PLN`,
             );
             dealsFound++;
             continue;
@@ -265,7 +242,6 @@ async function main() {
       }
     }
 
-    // Clean up expired and past deals
     if (!DRY_RUN) {
       const deleted = await prisma.deal.deleteMany({
         where: {
@@ -283,20 +259,12 @@ async function main() {
     console.log(`[engine] Done. deals=${dealsFound} routes=${routesQueried}`);
   } catch (err) {
     console.error('[engine] Fatal error:', err);
-
     if (!DRY_RUN && runRecord) {
       await prisma.searchRun.update({
         where: { id: runRecord.id },
-        data: {
-          status: 'FAILED',
-          finishedAt: new Date(),
-          dealsFound,
-          routesQueried,
-          errorMessage: String(err),
-        },
+        data: { status: 'FAILED', finishedAt: new Date(), dealsFound, routesQueried, errorMessage: String(err) },
       });
     }
-
     process.exit(1);
   } finally {
     await prisma.$disconnect();
@@ -305,66 +273,47 @@ async function main() {
 
 function getCountryForAirport(iata: string): string {
   const map: Record<string, string> = {
-    // Italy
     FCO: 'IT', CIA: 'IT', MXP: 'IT', BGY: 'IT', NAP: 'IT', BLQ: 'IT',
     VCE: 'IT', TSF: 'IT', PSA: 'IT', BRI: 'IT', CTA: 'IT', PMO: 'IT',
     OLB: 'IT', CAG: 'IT',
-    // Spain (mainland + Balearics)
     BCN: 'ES', MAD: 'ES', AGP: 'ES', PMI: 'ES', ALC: 'ES', SVQ: 'ES',
     VLC: 'ES', IBZ: 'ES', MAH: 'ES',
-    // Spain (Canary Islands)
     TFS: 'ES', LPA: 'ES', FUE: 'ES', ACE: 'ES', SPC: 'ES',
-    // Greece
     ATH: 'GR', HER: 'GR', RHO: 'GR', SKG: 'GR', CFU: 'GR', KGS: 'GR',
     ZTH: 'GR', JMK: 'GR', MJT: 'GR', CHQ: 'GR', JTR: 'GR',
-    // Croatia
     SPU: 'HR', DBV: 'HR', ZAD: 'HR', PUY: 'HR',
-    // Albania
     TIA: 'AL',
-    // Montenegro
     TGD: 'ME', TIV: 'ME',
-    // Portugal
     LIS: 'PT', OPO: 'PT', FAO: 'PT',
-    // Malta
     MLA: 'MT',
-    // Cyprus
     LCA: 'CY', PFO: 'CY', ECN: 'CY',
-    // Turkey
     AYT: 'TR', IST: 'TR', SAW: 'TR', ESB: 'TR', ADB: 'TR', DLM: 'TR', BJV: 'TR',
-    // Bulgaria
     VAR: 'BG', BOJ: 'BG',
-    // France (south + Corsica)
     NCE: 'FR', MRS: 'FR', AJA: 'FR', FSC: 'FR',
-    // Morocco
     RAK: 'MA', AGA: 'MA', CMN: 'MA', FEZ: 'MA', TNG: 'MA',
-    // Israel
     TLV: 'IL',
-    // Jordan
     AMM: 'JO',
-    // Tunisia
     TUN: 'TN', DJE: 'TN', MIR: 'TN',
-    // Serbia
     BEG: 'RS',
-    // Romania
     OTP: 'RO', CLJ: 'RO', TSR: 'RO', IAS: 'RO',
-    // Bosnia & Herzegovina
     SJJ: 'BA',
-    // North Macedonia
     SKP: 'MK',
-    // Kosovo
     PRN: 'XK',
-    // UK
     STN: 'GB', LTN: 'GB', MAN: 'GB', EDI: 'GB', BRS: 'GB', BHX: 'GB', GLA: 'GB',
-    // Ireland
     DUB: 'IE', ORK: 'IE', KIR: 'IE',
-    // Iceland
     KEF: 'IS',
   };
   return map[iata] ?? 'XX';
 }
 
+// Entry point
 if (PURGE) {
   purge();
+} else if (STEP === 'routes') {
+  fetchAndSaveRouteCache()
+    .then(() => prisma.$disconnect())
+    .catch((err) => { console.error(err); process.exit(1); });
 } else {
-  main();
+  // 'prices' or 'all' — getOrFetchRouteCache() handles freshness for 'all'
+  runPrices();
 }

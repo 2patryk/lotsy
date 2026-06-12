@@ -61,6 +61,13 @@ model Deal {
   @@index([departAt])
 }
 
+model RouteCache {
+  id      String   @id // always "main"
+  savedAt DateTime
+  routes  Json     // Array<{origin: string, destination: string}>
+  destMap Json     // Array<{dest: string, options: Array<{airport: string, level: 1|2|3}>}>
+}
+
 model SearchRun {
   id            String    @id @default(cuid())
   startedAt     DateTime  @default(now())

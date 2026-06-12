@@ -73,6 +73,9 @@ export const BATCH_DELAY_MS = 300;
 // Deal TTL in hours
 export const DEAL_TTL_HOURS = 48;
 
+// Route cache TTL in hours (re-fetch Ryanair routes at most once per day)
+export const ROUTE_CACHE_TTL_HOURS = 24;
+
 // Scoring boost for "good-hour" departure/return (reduces price by this factor for ranking)
 export const GOOD_HOUR_BONUS = 20;
 

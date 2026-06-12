@@ -240,7 +240,7 @@ function fmtTime(iso: string): string {
         grid-template-columns: 1fr auto;
         align-items: center;
         gap: 24px;
-        padding: 14px 20px 14px 200px;
+        padding: 14px 20px 14px 140px;
         position: relative;
         background: var(--color-surface);
         border-bottom: 1px solid var(--color-border);
@@ -258,7 +258,7 @@ function fmtTime(iso: string): string {
         background: var(--thumb, none) center / cover no-repeat;
         mask-image: linear-gradient(to right, black 50%, transparent 100%);
         -webkit-mask-image: linear-gradient(to right, black 50%, transparent 100%);
-        opacity: 0.65;
+        opacity: 0.8;
         pointer-events: none;
       }
       .deal-row:hover {

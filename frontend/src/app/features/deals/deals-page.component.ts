@@ -6,6 +6,7 @@ import { Subject, switchMap } from 'rxjs';
 import { DealCardComponent } from './deal-card.component';
 import { DealsService, type DealsQueryParams } from '../../core/services/deals.service';
 import { SavedDealsService } from '../../core/services/saved-deals.service';
+import { AirportsService } from '../../core/services/airports.service';
 import type { Deal } from '../../core/models/deal.model';
 
 const ALL_COUNTRIES: { code: string; name: string }[] = [
@@ -23,16 +24,6 @@ const ALL_COUNTRIES: { code: string; name: string }[] = [
   { code: 'TR', name: 'Turcja' },        { code: 'GB', name: 'Wielka Brytania' },
 ].sort((a, b) => a.name.localeCompare(b.name, 'pl'));
 
-const ALL_AIRPORTS: { code: string; label: string }[] = [
-  { code: 'WAW', label: 'Warszawa Chopin (WAW)' },
-  { code: 'WMI', label: 'Warszawa Modlin (WMI)' },
-  { code: 'KTW', label: 'Katowice (KTW)' },
-  { code: 'KRK', label: 'Kraków (KRK)' },
-  { code: 'GDN', label: 'Gdańsk (GDN)' },
-  { code: 'WRO', label: 'Wrocław (WRO)' },
-  { code: 'POZ', label: 'Poznań (POZ)' },
-  { code: 'LCJ', label: 'Łódź (LCJ)' },
-];
 
 const TRIP_LEVELS = [
   { id: 1, label: 'Tam i z powrotem' },
@@ -131,10 +122,10 @@ const MAX_NIGHTS = 14;
             </button>
             @if (oOpen()) {
               <div class="dd-menu">
-                @for (ap of ALL_AIRPORTS; track ap.code) {
+                @for (ap of polishAirports(); track ap.iata) {
                   <label class="dd-item">
-                    <input type="checkbox" [checked]="selectedOrigins().includes(ap.code)" (change)="toggleOrigin(ap.code)">
-                    {{ ap.label }}
+                    <input type="checkbox" [checked]="selectedOrigins().includes(ap.iata)" (change)="toggleOrigin(ap.iata)">
+                    {{ ap.name }} ({{ ap.iata }})
                   </label>
                 }
               </div>
@@ -518,15 +509,16 @@ const MAX_NIGHTS = 14;
   `],
 })
 export class DealsPageComponent {
-  private dealsService = inject(DealsService);
-  private savedService = inject(SavedDealsService);
-  private router       = inject(Router);
-  private route        = inject(ActivatedRoute);
+  private dealsService  = inject(DealsService);
+  private savedService  = inject(SavedDealsService);
+  private airportsSvc   = inject(AirportsService);
+  private router        = inject(Router);
+  private route         = inject(ActivatedRoute);
 
   readonly DEFAULT_MAX_PRICE = DEFAULT_MAX_PRICE;
   readonly MAX_NIGHTS = MAX_NIGHTS;
   readonly ALL_COUNTRIES = ALL_COUNTRIES;
-  readonly ALL_AIRPORTS  = ALL_AIRPORTS;
+  polishAirports = this.airportsSvc.polishAirports;
   readonly TRIP_LEVELS   = TRIP_LEVELS;
 
   loading = signal(true);

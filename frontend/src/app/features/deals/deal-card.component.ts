@@ -2,28 +2,7 @@ import { Component, input, output, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import type { Deal } from '../../core/models/deal.model';
 import { SavedDealsService } from '../../core/services/saved-deals.service';
-
-// All airport codes → Polish city names
-export const CITY: Record<string, string> = {
-  WAW: 'Warszawa', WMI: 'Warszawa Modlin', KTW: 'Katowice', KRK: 'Kraków',
-  GDN: 'Gdańsk',  WRO: 'Wrocław',         POZ: 'Poznań',   LCJ: 'Łódź',
-  BCN: 'Barcelona',  FCO: 'Rzym',        CIA: 'Rzym',        AMS: 'Amsterdam',
-  LGW: 'Londyn',     STN: 'Londyn',      LTN: 'Londyn',      LHR: 'Londyn',
-  CPH: 'Kopenhaga',  CDG: 'Paryż',       ORY: 'Paryż',
-  ATH: 'Ateny',      HER: 'Heraklion',   RHO: 'Rodos',       SKG: 'Saloniki', CFU: 'Korfu',
-  PRG: 'Praga',      MAD: 'Madryt',      LIS: 'Lizbona',     VIE: 'Wiedeń',
-  DBV: 'Dubrownik',  SPU: 'Split',       ZAD: 'Zadar',
-  NAP: 'Neapol',     MXP: 'Mediolan',    BGY: 'Mediolan',    BLQ: 'Bolonia',
-  VCE: 'Wenecja',    PSA: 'Piza',        MRS: 'Marsylia',    NCE: 'Nicea',
-  PMI: 'Palma',      AGP: 'Malaga',      ALC: 'Alicante',    SVQ: 'Sewilla',
-  VAR: 'Warna',      BOJ: 'Burgas',      TIA: 'Tirana',      TGD: 'Podgorica', TIV: 'Tivat',
-  LCA: 'Larnaka',    PFO: 'Pafos',       MLA: 'Malta',
-  AYT: 'Antalya',    IST: 'Stambuł',     ESB: 'Ankara',
-  OPO: 'Porto',      FAO: 'Faro',        RAK: 'Marrakesz',   CMN: 'Casablanca',
-  TLV: 'Tel Awiw',   TUN: 'Tunis',       OTP: 'Bukareszt',
-  BEG: 'Belgrad',    SKP: 'Skopje',      PRN: 'Prisztina',   SJJ: 'Sarajewo',
-  KEF: 'Reykjavik',  DUB: 'Dublin',      BER: 'Berlin',      HAM: 'Hamburg',
-};
+import { AirportsService } from '../../core/services/airports.service';
 
 const COUNTRY_NAMES: Record<string, string> = {
   IT: 'Włochy',     ES: 'Hiszpania',   GR: 'Grecja',    HR: 'Chorwacja',
@@ -47,7 +26,6 @@ const WEEK = [
   { js: 0, label: 'Nd' },
 ];
 
-function city(code: string): string { return CITY[code] ?? code; }
 
 function activeDays(departAt: string, returnAt: string): Set<number> {
   const active = new Set<number>();
@@ -408,13 +386,15 @@ export class DealCardComponent {
   selected = input<boolean>(false);
   select   = output<string>();
 
-  private savedService = inject(SavedDealsService);
+  private savedService  = inject(SavedDealsService);
+  private airportsSvc   = inject(AirportsService);
   isSaved = computed(() => this.savedService.isSaved(this.deal().id));
 
-  readonly city    = city;
   readonly fmtDate = fmtDate;
   readonly fmtTime = fmtTime;
   readonly WEEK    = WEEK;
+
+  city = (code: string) => this.airportsSvc.cityName(code);
 
   tripDays  = computed(() => activeDays(this.deal().departAt, this.deal().returnAt));
   departDay = computed(() => new Date(this.deal().departAt).getUTCDay());
@@ -467,7 +447,7 @@ export class DealCardComponent {
     }
   }
 
-  cityName():    string { return city(this.deal().destAirport); }
+  cityName():    string { return this.airportsSvc.cityName(this.deal().destAirport); }
   countryLabel():string { return COUNTRY_NAMES[this.deal().destCountry] ?? this.deal().destCountry; }
   isGoodDeal():  boolean { return this.deal().totalPrice < 400; }
   bookingUrl():  string { return this.deal().outboundBookingUrl ?? this.deal().returnBookingUrl ?? '#'; }

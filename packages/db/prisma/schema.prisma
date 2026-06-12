@@ -61,6 +61,25 @@ model Deal {
   @@index([departAt])
 }
 
+model Airport {
+  iata     String  @id
+  name     String  // city name in Polish (from Ryanair /pl/ locale)
+  country  String  // 2-letter ISO code
+  isPolish Boolean @default(false)
+}
+
+model AirportRoute {
+  fromIata String
+  toIata   String
+  @@id([fromIata, toIata])
+  @@index([fromIata])
+}
+
+model AirportSync {
+  id       String   @id
+  syncedAt DateTime
+}
+
 model RouteCache {
   id      String   @id // always "main"
   savedAt DateTime

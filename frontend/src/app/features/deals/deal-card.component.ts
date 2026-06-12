@@ -240,7 +240,7 @@ function fmtTime(iso: string): string {
         grid-template-columns: 1fr auto;
         align-items: center;
         gap: 24px;
-        padding: 14px 20px;
+        padding: 14px 20px 14px 88px;
         position: relative;
         background: var(--color-surface);
         border-bottom: 1px solid var(--color-border);
@@ -253,12 +253,14 @@ function fmtTime(iso: string): string {
       .deal-row::before {
         content: '';
         position: absolute;
-        inset: 0;
-        width: 340px;
+        top: 0;
+        bottom: 0;
+        left: -3px;
+        width: 200px;
         background: var(--thumb, none) center / cover no-repeat;
-        mask-image: linear-gradient(to right, black 30%, transparent 85%);
-        -webkit-mask-image: linear-gradient(to right, black 30%, transparent 85%);
-        opacity: 0.92;
+        mask-image: linear-gradient(to right, black 0%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to right, black 0%, transparent 100%);
+        opacity: 0.46;
         pointer-events: none;
         z-index: 0;
       }

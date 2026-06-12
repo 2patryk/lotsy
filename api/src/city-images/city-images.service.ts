@@ -30,7 +30,7 @@ export class CityImagesService {
     await Promise.all(
       missing.map(async (city) => {
         try {
-          const url = `${UNSPLASH_URL}?query=${encodeURIComponent(city + ' city')}&per_page=1&orientation=landscape`;
+          const url = `${UNSPLASH_URL}?query=${encodeURIComponent(city + ' city center landmarks')}&per_page=1&orientation=landscape`;
           const res = await fetch(url, {
             headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` },
           });

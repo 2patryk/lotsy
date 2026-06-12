@@ -1066,8 +1066,6 @@ export class DealsPageComponent {
         next: (d) => {
           this.allDeals.set(d);
           this.loading.set(false);
-          const cities = [...new Set(d.map((deal) => this.airportsSvc.cityName(deal.destAirport)))];
-          this.cityImages.fetchBatch(cities);
         },
         error: () => {
           this.error.set(true);
@@ -1076,6 +1074,14 @@ export class DealsPageComponent {
       });
 
     effect(() => search$.next(this.query()));
+
+    effect(() => {
+      const deals = this.allDeals();
+      const nameMap = this.airportsSvc.nameMap();
+      if (deals.length === 0 || nameMap.size === 0) return;
+      const cities = [...new Set(deals.map((d) => this.airportsSvc.cityName(d.destAirport)))];
+      this.cityImages.fetchBatch(cities);
+    });
 
     effect(() => {
       const c = this.selectedCountries(),

@@ -21,6 +21,10 @@ export class DealsController {
     @Query('minNights') minNights?: string,
     @Query('maxNights') maxNights?: string,
     @Query('perCountry') perCountry?: string,
+    @Query('depDays') depDays?: string,
+    @Query('retDays') retDays?: string,
+    @Query('depTimes') depTimes?: string,
+    @Query('retTimes') retTimes?: string,
   ) {
     return this.dealsService.findAll({
       destCountry,
@@ -31,6 +35,10 @@ export class DealsController {
       minNights: minNights ? Number(minNights) : undefined,
       maxNights: maxNights ? Number(maxNights) : undefined,
       perCountry: perCountry ? Number(perCountry) : undefined,
+      depDays: depDays ? depDays.split(',').map(Number) : undefined,
+      retDays: retDays ? retDays.split(',').map(Number) : undefined,
+      depTimes: depTimes ? depTimes.split(',') : undefined,
+      retTimes: retTimes ? retTimes.split(',') : undefined,
     });
   }
 

@@ -45,6 +45,22 @@ const TRIP_LEVELS = [
 const DEFAULT_MAX_PRICE = 800;
 const MAX_NIGHTS = 14;
 
+const DAYS = [
+  { js: 1, label: 'Pn' },
+  { js: 2, label: 'Wt' },
+  { js: 3, label: 'Śr' },
+  { js: 4, label: 'Cz' },
+  { js: 5, label: 'Pt' },
+  { js: 6, label: 'Sb' },
+  { js: 0, label: 'Nd' },
+];
+
+const TIMES = [
+  { id: 'morning', label: 'Rano', sub: '6–12' },
+  { id: 'afternoon', label: 'Popoł.', sub: '12–18' },
+  { id: 'evening', label: 'Wiecz.', sub: '18–24' },
+];
+
 @Component({
   selector: 'app-deals-page',
   standalone: true,
@@ -294,6 +310,58 @@ const MAX_NIGHTS = 14;
                 />
                 <span class="nights-val">{{ maxNights() }}</span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3: days & times -->
+        <div class="filter-row filter-row--days">
+          <div class="dt-group">
+            <span class="dt-label">Wylot</span>
+            <div class="dt-pills">
+              @for (d of DAYS; track d.js) {
+                <button
+                  class="pill"
+                  [class.pill--on]="depDays().includes(d.js)"
+                  (click)="toggleDay(depDays, d.js)"
+                >
+                  {{ d.label }}
+                </button>
+              }
+              <span class="dt-sep"></span>
+              @for (t of TIMES; track t.id) {
+                <button
+                  class="pill pill--time"
+                  [class.pill--on]="depTimes().includes(t.id)"
+                  (click)="toggleTime(depTimes, t.id)"
+                >
+                  {{ t.label }}<span class="pill-sub">{{ t.sub }}</span>
+                </button>
+              }
+            </div>
+          </div>
+          <div class="dt-group">
+            <span class="dt-label">Powrót</span>
+            <div class="dt-pills">
+              @for (d of DAYS; track d.js) {
+                <button
+                  class="pill"
+                  [class.pill--on]="retDays().includes(d.js)"
+                  (click)="toggleDay(retDays, d.js)"
+                >
+                  {{ d.label }}
+                </button>
+              }
+              <span class="dt-sep"></span>
+              @for (t of TIMES; track t.id) {
+                <button
+                  class="pill pill--time"
+                  [class.pill--on]="retTimes().includes(t.id)"
+                  (click)="toggleTime(retTimes, t.id)"
+                >
+                  {{ t.label }}<span class="pill-sub">{{ t.sub }}</span>
+                </button>
+              }
             </div>
           </div>
         </div>
@@ -720,6 +788,76 @@ const MAX_NIGHTS = 14;
         color: var(--color-text-tertiary);
       }
 
+      /* ── Days & times row ───────────────────────── */
+      .filter-row--days {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 16px;
+        border-bottom: none;
+      }
+      .dt-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .dt-label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--color-text-tertiary);
+        min-width: 42px;
+      }
+      .dt-pills {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .dt-sep {
+        display: inline-block;
+        width: 1px;
+        height: 20px;
+        background: var(--color-border);
+        margin: 0 4px;
+      }
+      .pill {
+        padding: 3px 8px;
+        border-radius: var(--radius-full);
+        border: 1px solid var(--color-border);
+        background: var(--color-surface);
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all 0.12s;
+        line-height: 1.4;
+        white-space: nowrap;
+      }
+      .pill:hover {
+        border-color: var(--color-border-strong);
+        color: var(--color-text-primary);
+      }
+      .pill--on {
+        background: var(--color-blue-50);
+        border-color: var(--color-blue-600);
+        color: var(--color-blue-800);
+        font-weight: 600;
+      }
+      .pill--time {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2px 10px;
+      }
+      .pill-sub {
+        font-size: 9px;
+        font-weight: 400;
+        opacity: 0.7;
+        line-height: 1.2;
+      }
+
       /* ── State rows ──────────────────────────── */
       .state-row {
         display: flex;
@@ -837,6 +975,8 @@ export class DealsPageComponent {
   readonly DEFAULT_MAX_PRICE = DEFAULT_MAX_PRICE;
   readonly MAX_NIGHTS = MAX_NIGHTS;
   readonly ALL_COUNTRIES = ALL_COUNTRIES;
+  readonly DAYS = DAYS;
+  readonly TIMES = TIMES;
   polishAirports = this.airportsSvc.polishAirports;
   readonly TRIP_LEVELS = TRIP_LEVELS;
 
@@ -852,6 +992,10 @@ export class DealsPageComponent {
   selectedLevels = signal<number[]>([1]);
   minNights = signal(1);
   maxNights = signal(MAX_NIGHTS);
+  depDays = signal<number[]>([]);
+  retDays = signal<number[]>([]);
+  depTimes = signal<string[]>([]);
+  retTimes = signal<string[]>([]);
   visibleCount = signal(24);
   selectedId = signal<string | null>(null);
 
@@ -871,6 +1015,10 @@ export class DealsPageComponent {
     if (this.maxPrice() < DEFAULT_MAX_PRICE) n++;
     if (!(this.selectedLevels().length === 1 && this.selectedLevels()[0] === 1)) n++;
     if (this.minNights() > 1 || this.maxNights() < MAX_NIGHTS) n++;
+    if (this.depDays().length > 0) n++;
+    if (this.retDays().length > 0) n++;
+    if (this.depTimes().length > 0) n++;
+    if (this.retTimes().length > 0) n++;
     return n;
   });
 
@@ -883,6 +1031,10 @@ export class DealsPageComponent {
       this.selectedLevels().length < 3 ? [...this.selectedLevels()].sort().join(',') : undefined,
     minNights: this.minNights() > 1 ? this.minNights() : undefined,
     maxNights: this.maxNights() < MAX_NIGHTS ? this.maxNights() : undefined,
+    depDays: this.depDays().length ? this.depDays().join(',') : undefined,
+    retDays: this.retDays().length ? this.retDays().join(',') : undefined,
+    depTimes: this.depTimes().length ? this.depTimes().join(',') : undefined,
+    retTimes: this.retTimes().length ? this.retTimes().join(',') : undefined,
   }));
 
   @HostListener('document:click')
@@ -943,6 +1095,10 @@ export class DealsPageComponent {
           levels: !(l.length === 1 && l[0] === 1) ? [...l].sort().join(',') : null,
           minNights: this.minNights() > 1 ? this.minNights() : null,
           maxNights: this.maxNights() < MAX_NIGHTS ? this.maxNights() : null,
+          depDays: this.depDays().length ? this.depDays().join(',') : null,
+          retDays: this.retDays().length ? this.retDays().join(',') : null,
+          depTimes: this.depTimes().length ? this.depTimes().join(',') : null,
+          retTimes: this.retTimes().length ? this.retTimes().join(',') : null,
         },
       });
     });
@@ -971,6 +1127,16 @@ export class DealsPageComponent {
     this.selectedLevels.set(c.includes(id) ? c.filter((x) => x !== id) : [...c, id]);
   }
 
+  toggleDay(sig: typeof this.depDays, js: number) {
+    const c = sig();
+    sig.set(c.includes(js) ? c.filter((x) => x !== js) : [...c, js]);
+  }
+
+  toggleTime(sig: typeof this.depTimes, id: string) {
+    const c = sig();
+    sig.set(c.includes(id) ? c.filter((x) => x !== id) : [...c, id]);
+  }
+
   onMinNights(e: Event) {
     const v = this.readNum(e);
     this.minNights.set(Math.min(v, this.maxNights()));
@@ -992,6 +1158,10 @@ export class DealsPageComponent {
     this.selectedLevels.set([1]);
     this.minNights.set(1);
     this.maxNights.set(MAX_NIGHTS);
+    this.depDays.set([]);
+    this.retDays.set([]);
+    this.depTimes.set([]);
+    this.retTimes.set([]);
     this.visibleCount.set(24);
   }
 

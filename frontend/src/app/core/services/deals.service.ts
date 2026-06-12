@@ -8,9 +8,13 @@ export interface DealsQueryParams {
   maxPrice?: number;
   origin?: string;
   sort?: 'price' | 'departure' | 'duration';
-  levels?: string; // comma-separated: "1,2,3"
+  levels?: string;
   minNights?: number;
   maxNights?: number;
+  depDays?: string; // comma-separated JS day numbers: "1,2,3" (0=Sun)
+  retDays?: string;
+  depTimes?: string; // comma-separated: "morning,afternoon,evening"
+  retTimes?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -26,6 +30,10 @@ export class DealsService {
     if (query.levels) params = params.set('levels', query.levels);
     if (query.minNights != null) params = params.set('minNights', String(query.minNights));
     if (query.maxNights != null) params = params.set('maxNights', String(query.maxNights));
+    if (query.depDays) params = params.set('depDays', query.depDays);
+    if (query.retDays) params = params.set('retDays', query.retDays);
+    if (query.depTimes) params = params.set('depTimes', query.depTimes);
+    if (query.retTimes) params = params.set('retTimes', query.retTimes);
     return this.http.get<Deal[]>(`${environment.apiUrl}/deals`, { params });
   }
 

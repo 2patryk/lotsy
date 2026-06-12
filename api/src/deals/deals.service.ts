@@ -14,14 +14,32 @@ function dealLevel(origin: string, ret: string): 1 | 2 | 3 {
 }
 
 export interface DealsQuery {
-  destCountry?: string; // comma-separated: "IT,ES,GR"
+  destCountry?: string;
   maxPrice?: number;
-  origin?: string; // comma-separated: "WAW,KTW"
+  origin?: string;
   sort?: 'price' | 'departure' | 'duration';
-  levels?: number[]; // [1,2,3] = all; [1] = round-trip; [2] = nearby; [3] = open-jaw
+  levels?: number[];
   minNights?: number;
   maxNights?: number;
   perCountry?: number;
+  depDays?: number[]; // JS day numbers: 0=Sun, 1=Mon … 6=Sat
+  retDays?: number[];
+  depTimes?: string[]; // 'morning' | 'afternoon' | 'evening'
+  retTimes?: string[];
+}
+
+function hourOf(d: Date): number {
+  return d.getUTCHours();
+}
+
+function matchesTime(d: Date, times: string[]): boolean {
+  const h = hourOf(d);
+  return times.some(
+    (t) =>
+      (t === 'morning' && h >= 6 && h < 12) ||
+      (t === 'afternoon' && h >= 12 && h < 18) ||
+      (t === 'evening' && h >= 18),
+  );
 }
 
 @Injectable()
@@ -75,25 +93,48 @@ export class DealsService {
 
     const levelSet = new Set(levels);
 
-    const applyLevelFilter = <
-      T extends { originAirport: string; returnAirport: string },
+    const applyFilters = <
+      T extends {
+        originAirport: string;
+        returnAirport: string;
+        departAt: Date;
+        returnAt: Date;
+      },
     >(
       deals: T[],
     ) => {
-      if (levelSet.size === 3) return deals; // all levels — skip filtering
-      return deals.filter((d) =>
-        levelSet.has(dealLevel(d.originAirport, d.returnAirport)),
-      );
+      return deals.filter((d) => {
+        if (
+          levelSet.size < 3 &&
+          !levelSet.has(dealLevel(d.originAirport, d.returnAirport))
+        )
+          return false;
+        if (
+          query.depDays?.length &&
+          !query.depDays.includes(d.departAt.getUTCDay())
+        )
+          return false;
+        if (
+          query.retDays?.length &&
+          !query.retDays.includes(d.returnAt.getUTCDay())
+        )
+          return false;
+        if (query.depTimes?.length && !matchesTime(d.departAt, query.depTimes))
+          return false;
+        if (query.retTimes?.length && !matchesTime(d.returnAt, query.retTimes))
+          return false;
+        return true;
+      });
     };
 
     if (query.destCountry) {
       const all = await prisma.deal.findMany({ where, orderBy, take: 200 });
-      return applyLevelFilter(all);
+      return applyFilters(all);
     }
 
     const perCountry = query.perCountry ?? 30;
     const all = await prisma.deal.findMany({ where, orderBy });
-    const leveled = applyLevelFilter(all);
+    const leveled = applyFilters(all);
 
     const countsByCountry = new Map<string, number>();
     const result: typeof leveled = [];

@@ -137,10 +137,14 @@ const MAX_NIGHTS = 14;
             <span class="fg-label">Typ połączenia</span>
             <button
               class="dd-btn"
-              [class.dd-active]="selectedLevels().length < 3"
+              [class.dd-active]="!(selectedLevels().length === 1 && selectedLevels()[0] === 1)"
               (click)="tOpen.set(!tOpen())"
             >
-              <span>{{ selectedLevels().length === 3 ? 'Wszystkie typy' : selectedLevels().length + ' wybrane' }}</span>
+              <span>{{
+                selectedLevels().length === 1 && selectedLevels()[0] === 1 ? 'Tam i z powrotem' :
+                selectedLevels().length === 3 ? 'Wszystkie typy' :
+                selectedLevels().length + ' wybrane'
+              }}</span>
               <svg class="chevron" [class.flip]="tOpen()" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
             @if (tOpen()) {
@@ -383,7 +387,9 @@ const MAX_NIGHTS = 14;
       padding: 8px 14px;
       font-size: 13px; color: var(--color-text-primary);
       cursor: pointer; transition: background .1s;
+      border-bottom: 1px solid var(--color-border);
     }
+    .dd-item:last-child { border-bottom: none; }
     .dd-item:hover { background: var(--color-sidebar-active); }
     .dd-item input[type="checkbox"] {
       accent-color: var(--color-blue-700);
@@ -530,7 +536,7 @@ export class DealsPageComponent {
   selectedOrigins   = signal<string[]>([]);
   maxPrice          = signal(DEFAULT_MAX_PRICE);
   sortBy            = signal<'price' | 'departure' | 'duration'>('price');
-  selectedLevels    = signal<number[]>([1, 2, 3]);
+  selectedLevels    = signal<number[]>([1]);
   minNights         = signal(1);
   maxNights         = signal(MAX_NIGHTS);
   visibleCount      = signal(24);
@@ -550,7 +556,7 @@ export class DealsPageComponent {
     if (this.selectedCountries().length > 0)           n++;
     if (this.selectedOrigins().length > 0)             n++;
     if (this.maxPrice() < DEFAULT_MAX_PRICE)           n++;
-    if (this.selectedLevels().length < 3)              n++;
+    if (!(this.selectedLevels().length === 1 && this.selectedLevels()[0] === 1)) n++;
     if (this.minNights() > 1 || this.maxNights() < MAX_NIGHTS) n++;
     return n;
   });
@@ -609,7 +615,7 @@ export class DealsPageComponent {
           origins:   o.length ? o.join(',') : null,
           maxPrice:  p < DEFAULT_MAX_PRICE ? p : null,
           sort:      s !== 'price' ? s : null,
-          levels:    l.length < 3 ? [...l].sort().join(',') : null,
+          levels:    !(l.length === 1 && l[0] === 1) ? [...l].sort().join(',') : null,
           minNights: this.minNights() > 1 ? this.minNights() : null,
           maxNights: this.maxNights() < MAX_NIGHTS ? this.maxNights() : null,
         },
@@ -652,7 +658,7 @@ export class DealsPageComponent {
     this.selectedOrigins.set([]);
     this.maxPrice.set(DEFAULT_MAX_PRICE);
     this.sortBy.set('price');
-    this.selectedLevels.set([1, 2, 3]);
+    this.selectedLevels.set([1]);
     this.minNights.set(1);
     this.maxNights.set(MAX_NIGHTS);
     this.visibleCount.set(24);

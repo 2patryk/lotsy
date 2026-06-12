@@ -240,7 +240,7 @@ function fmtTime(iso: string): string {
         grid-template-columns: 1fr auto;
         align-items: center;
         gap: 24px;
-        padding: 14px 20px 14px 140px;
+        padding: 14px 20px;
         position: relative;
         background: var(--color-surface);
         border-bottom: 1px solid var(--color-border);
@@ -254,12 +254,13 @@ function fmtTime(iso: string): string {
         content: '';
         position: absolute;
         inset: 0;
-        width: 180px;
+        width: 340px;
         background: var(--thumb, none) center / cover no-repeat;
-        mask-image: linear-gradient(to right, black 50%, transparent 100%);
-        -webkit-mask-image: linear-gradient(to right, black 50%, transparent 100%);
-        opacity: 0.8;
+        mask-image: linear-gradient(to right, black 30%, transparent 85%);
+        -webkit-mask-image: linear-gradient(to right, black 30%, transparent 85%);
+        opacity: 0.92;
         pointer-events: none;
+        z-index: 0;
       }
       .deal-row:hover {
         background: var(--color-surface-hover);
@@ -277,6 +278,8 @@ function fmtTime(iso: string): string {
         flex-direction: column;
         gap: 10px;
         min-width: 0;
+        position: relative;
+        z-index: 1;
       }
 
       /* Dest header */
@@ -465,6 +468,8 @@ function fmtTime(iso: string): string {
         align-items: flex-end;
         gap: 10px;
         flex-shrink: 0;
+        position: relative;
+        z-index: 1;
       }
 
       .price-block {

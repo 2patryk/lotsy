@@ -243,7 +243,7 @@ function fmtTime(iso: string): string {
         padding: 14px 20px;
         background:
           linear-gradient(to right, rgba(255, 255, 255, 0.55) 0px, var(--color-surface) 200px),
-          var(--thumb, none) left center / auto 100% no-repeat,
+          var(--thumb, none) left center / 200px 100% no-repeat,
           var(--color-surface);
         border-bottom: 1px solid var(--color-border);
         border-left: 3px solid transparent;
@@ -259,7 +259,7 @@ function fmtTime(iso: string): string {
             rgba(255, 255, 255, 0.55) 0px,
             var(--color-surface-hover) 200px
           ),
-          var(--thumb, none) left center / auto 100% no-repeat,
+          var(--thumb, none) left center / 200px 100% no-repeat,
           var(--color-surface-hover);
       }
       .deal-row.selected {

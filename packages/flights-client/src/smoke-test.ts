@@ -29,9 +29,13 @@ async function main() {
     try {
       const fares = await getCheapestPerDay(origin, dest, year, month);
       const sample = fares.slice(0, 3);
-      console.log(`${origin}→${dest} (${year}-${String(month + 1).padStart(2, '0')}): ${fares.length} days with fares`);
+      console.log(
+        `${origin}→${dest} (${year}-${String(month + 1).padStart(2, '0')}): ${fares.length} days with fares`,
+      );
       for (const f of sample) {
-        console.log(`  ${f.date} dep=${f.departureTime.slice(11, 16)} arr=${f.arrivalTime.slice(11, 16)} ${f.price} ${f.currency}`);
+        console.log(
+          `  ${f.date} dep=${f.departureTime.slice(11, 16)} arr=${f.arrivalTime.slice(11, 16)} ${f.price} ${f.currency}`,
+        );
       }
     } catch (err) {
       console.error(`${origin}→${dest} ERROR:`, err);

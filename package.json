@@ -7,11 +7,14 @@
     "engine:run": "dotenv -e .env -- pnpm --filter @lotsy/engine start",
     "db:generate": "pnpm --filter @lotsy/db prisma generate",
     "db:migrate": "dotenv -e .env -- pnpm --filter @lotsy/db prisma migrate deploy",
+    "format": "prettier --write \"**/*.ts\"",
+    "format:check": "prettier --check \"**/*.ts\"",
     "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
     "dotenv-cli": "^11.0.0",
+    "prettier": "^3.8.4",
     "typescript": "^5.4.5"
   }
 }

@@ -48,12 +48,15 @@ export async function getCheapestPerDay(
  * Should be cached — call once per day.
  */
 export async function getDestinations(origin: string): Promise<string[]> {
-  const url =
-    `${BASE}/views/locate/searchWidget/routes/en/airport/${origin}`;
+  const url = `${BASE}/views/locate/searchWidget/routes/en/airport/${origin}`;
 
-  const data = await fetchJson<RyanairDestinationsResponse | RyanairDestinationsResponse['destinations']>(url);
+  const data = await fetchJson<
+    RyanairDestinationsResponse | RyanairDestinationsResponse['destinations']
+  >(url);
 
-  const destinations = Array.isArray(data) ? data : (data as RyanairDestinationsResponse).destinations;
+  const destinations = Array.isArray(data)
+    ? data
+    : (data as RyanairDestinationsResponse).destinations;
 
   return destinations
     .map((d) => {

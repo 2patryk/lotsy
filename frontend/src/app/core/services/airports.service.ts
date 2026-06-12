@@ -16,9 +16,7 @@ export class AirportsService {
     return m;
   });
 
-  polishAirports = computed(() =>
-    this.all().filter(a => a.isPolish),
-  );
+  polishAirports = computed(() => this.all().filter((a) => a.isPolish));
 
   cityName(iata: string): string {
     return this.nameMap().get(iata) ?? iata;
@@ -26,7 +24,7 @@ export class AirportsService {
 
   load() {
     this.http.get<Airport[]>(`${environment.apiUrl}/airports`).subscribe({
-      next: airports => this.all.set(airports),
+      next: (airports) => this.all.set(airports),
       error: () => {},
     });
   }

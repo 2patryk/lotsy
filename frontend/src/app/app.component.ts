@@ -10,5 +10,7 @@ import { AirportsService } from './core/services/airports.service';
 })
 export class AppComponent implements OnInit {
   private airports = inject(AirportsService);
-  ngOnInit() { this.airports.load(); }
+  ngOnInit() {
+    this.airports.load();
+  }
 }

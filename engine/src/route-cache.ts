@@ -90,7 +90,10 @@ export async function fetchAndSaveRouteCache(): Promise<RouteCache> {
       options.push({ airport: origin, level: 1 }); // placeholder; real level set in search.ts
     }
     destToReturnOptions.set(dest, options);
-    destMapArr.push({ dest, options: options.map((o) => ({ airport: o.airport, level: o.level })) });
+    destMapArr.push({
+      dest,
+      options: options.map((o) => ({ airport: o.airport, level: o.level })),
+    });
   }
 
   const savedAt = new Date();

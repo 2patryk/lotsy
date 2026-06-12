@@ -4,43 +4,105 @@ export const ORIGIN_AIRPORTS = ['WAW', 'WMI', 'KTW', 'KRK', 'GDN', 'WRO', 'POZ',
 // Target destination airports (southern Europe + nearby leisure)
 export const DEST_AIRPORTS = new Set([
   // Italy
-  'FCO', 'CIA', 'MXP', 'BGY', 'NAP', 'BLQ', 'VCE', 'TSF', 'PSA', 'BRI', 'CTA', 'PMO', 'OLB', 'CAG',
+  'FCO',
+  'CIA',
+  'MXP',
+  'BGY',
+  'NAP',
+  'BLQ',
+  'VCE',
+  'TSF',
+  'PSA',
+  'BRI',
+  'CTA',
+  'PMO',
+  'OLB',
+  'CAG',
   // Spain (mainland)
-  'BCN', 'MAD', 'AGP', 'PMI', 'ALC', 'SVQ', 'VLC', 'IBZ', 'MAH',
+  'BCN',
+  'MAD',
+  'AGP',
+  'PMI',
+  'ALC',
+  'SVQ',
+  'VLC',
+  'IBZ',
+  'MAH',
   // Spain (Canary Islands)
-  'TFS', 'LPA', 'FUE', 'ACE', 'SPC',
+  'TFS',
+  'LPA',
+  'FUE',
+  'ACE',
+  'SPC',
   // Greece
-  'ATH', 'HER', 'RHO', 'SKG', 'CFU', 'KGS', 'ZTH', 'JMK', 'MJT', 'CHQ', 'JTR',
+  'ATH',
+  'HER',
+  'RHO',
+  'SKG',
+  'CFU',
+  'KGS',
+  'ZTH',
+  'JMK',
+  'MJT',
+  'CHQ',
+  'JTR',
   // Croatia
-  'SPU', 'DBV', 'ZAD', 'PUY',
+  'SPU',
+  'DBV',
+  'ZAD',
+  'PUY',
   // Albania
   'TIA',
   // Montenegro
-  'TGD', 'TIV',
+  'TGD',
+  'TIV',
   // Portugal
-  'LIS', 'OPO', 'FAO',
+  'LIS',
+  'OPO',
+  'FAO',
   // Malta
   'MLA',
   // Cyprus
-  'LCA', 'PFO', 'ECN',
+  'LCA',
+  'PFO',
+  'ECN',
   // Turkey
-  'AYT', 'IST', 'SAW', 'ESB', 'ADB', 'DLM', 'BJV',
+  'AYT',
+  'IST',
+  'SAW',
+  'ESB',
+  'ADB',
+  'DLM',
+  'BJV',
   // Bulgaria (coast)
-  'VAR', 'BOJ',
+  'VAR',
+  'BOJ',
   // France (south + Corsica)
-  'NCE', 'MRS', 'AJA', 'FSC',
+  'NCE',
+  'MRS',
+  'AJA',
+  'FSC',
   // Morocco
-  'RAK', 'AGA', 'CMN', 'FEZ', 'TNG',
+  'RAK',
+  'AGA',
+  'CMN',
+  'FEZ',
+  'TNG',
   // Israel
   'TLV',
   // Jordan
   'AMM',
   // Tunisia
-  'TUN', 'DJE', 'MIR',
+  'TUN',
+  'DJE',
+  'MIR',
   // Serbia
   'BEG',
   // Romania
-  'OTP', 'CLJ', 'TSR', 'IAS',
+  'OTP',
+  'CLJ',
+  'TSR',
+  'IAS',
   // Bosnia & Herzegovina
   'SJJ',
   // North Macedonia
@@ -48,9 +110,17 @@ export const DEST_AIRPORTS = new Set([
   // Kosovo
   'PRN',
   // UK
-  'STN', 'LTN', 'MAN', 'EDI', 'BRS', 'BHX', 'GLA',
+  'STN',
+  'LTN',
+  'MAN',
+  'EDI',
+  'BRS',
+  'BHX',
+  'GLA',
   // Ireland
-  'DUB', 'ORK', 'KIR',
+  'DUB',
+  'ORK',
+  'KIR',
   // Iceland
   'KEF',
 ]);
@@ -82,8 +152,8 @@ export const GOOD_HOUR_BONUS = 20;
 // "Good" outbound departure: Thu ≥16:00, Fri any, Sat ≤12:00
 export const OUTBOUND_GOOD_HOURS: Record<number, { from: number; to: number }> = {
   4: { from: 16, to: 24 }, // Thursday
-  5: { from: 0,  to: 24 }, // Friday
-  6: { from: 0,  to: 12 }, // Saturday
+  5: { from: 0, to: 24 }, // Friday
+  6: { from: 0, to: 12 }, // Saturday
 };
 
 // "Good" return departure: Sun ≥16:00, Mon ≥16:00, Sat ≥14:00

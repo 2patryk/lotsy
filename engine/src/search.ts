@@ -12,7 +12,7 @@ import {
 } from './config.js';
 
 const DRY_RUN = process.argv.includes('--dry-run');
-const PURGE   = process.argv.includes('--purge');
+const PURGE = process.argv.includes('--purge');
 
 const STEP = (() => {
   const flag = process.argv.find((a: string) => a.startsWith('--step='));
@@ -90,9 +90,7 @@ async function purge() {
 async function runPrices() {
   console.log(`[engine] Step: prices (dry-run=${DRY_RUN})`);
 
-  const runRecord = DRY_RUN
-    ? null
-    : await prisma.searchRun.create({ data: { status: 'PARTIAL' } });
+  const runRecord = DRY_RUN ? null : await prisma.searchRun.create({ data: { status: 'PARTIAL' } });
 
   let dealsFound = 0;
   let routesQueried = 0;
@@ -139,7 +137,10 @@ async function runPrices() {
 
     for (const { item, result, error } of fareResults) {
       if (error) {
-        console.warn(`[engine] fetch error ${item.from}→${item.to} ${item.year}-${item.month + 1}:`, error);
+        console.warn(
+          `[engine] fetch error ${item.from}→${item.to} ${item.year}-${item.month + 1}:`,
+          error,
+        );
         continue;
       }
       const key = `${item.from}:${item.to}`;
@@ -154,7 +155,9 @@ async function runPrices() {
 
     for (const { origin, destination } of routes) {
       const outFares = faresByLeg.get(`${origin}:${destination}`) ?? [];
-      const returnOptions = destToReturnOptions.get(destination) ?? [{ airport: origin, level: 1 as const }];
+      const returnOptions = destToReturnOptions.get(destination) ?? [
+        { airport: origin, level: 1 as const },
+      ];
 
       for (const { airport: returnAirport } of returnOptions) {
         const level = getLevel(origin, returnAirport);
@@ -169,7 +172,13 @@ async function runPrices() {
         for (const pair of topPairs) {
           const departAt = new Date(pair.outbound.departureTime);
           const returnAt = new Date(pair.inbound.departureTime);
-          const bookingUrl = buildBookingUrl(origin, destination, returnAirport, pair.outbound.date, pair.inbound.date);
+          const bookingUrl = buildBookingUrl(
+            origin,
+            destination,
+            returnAirport,
+            pair.outbound.date,
+            pair.inbound.date,
+          );
 
           const dealData = {
             mixedCarrier: false,
@@ -203,8 +212,8 @@ async function runPrices() {
           if (DRY_RUN) {
             console.log(
               `[dry-run] ${origin}→${destination}→${returnAirport}` +
-              ` L${level} ${pair.outbound.date}→${pair.inbound.date}` +
-              ` ${pair.nights}n ${pair.totalPrice.toFixed(0)} PLN`,
+                ` L${level} ${pair.outbound.date}→${pair.inbound.date}` +
+                ` ${pair.nights}n ${pair.totalPrice.toFixed(0)} PLN`,
             );
             dealsFound++;
             continue;
@@ -213,15 +222,16 @@ async function runPrices() {
           try {
             await prisma.deal.upsert({
               where: {
-                originAirport_destAirport_departAt_returnAt_outboundSource_returnSource_returnAirport: {
-                  originAirport: origin,
-                  destAirport: destination,
-                  departAt,
-                  returnAt,
-                  outboundSource: pair.outbound.source,
-                  returnSource: pair.inbound.source,
-                  returnAirport,
-                },
+                originAirport_destAirport_departAt_returnAt_outboundSource_returnSource_returnAirport:
+                  {
+                    originAirport: origin,
+                    destAirport: destination,
+                    departAt,
+                    returnAt,
+                    outboundSource: pair.outbound.source,
+                    returnSource: pair.inbound.source,
+                    returnAirport,
+                  },
               },
               update: {
                 totalPrice: dealData.totalPrice,
@@ -262,7 +272,13 @@ async function runPrices() {
     if (!DRY_RUN && runRecord) {
       await prisma.searchRun.update({
         where: { id: runRecord.id },
-        data: { status: 'FAILED', finishedAt: new Date(), dealsFound, routesQueried, errorMessage: String(err) },
+        data: {
+          status: 'FAILED',
+          finishedAt: new Date(),
+          dealsFound,
+          routesQueried,
+          errorMessage: String(err),
+        },
       });
     }
     process.exit(1);
@@ -273,34 +289,100 @@ async function runPrices() {
 
 function getCountryForAirport(iata: string): string {
   const map: Record<string, string> = {
-    FCO: 'IT', CIA: 'IT', MXP: 'IT', BGY: 'IT', NAP: 'IT', BLQ: 'IT',
-    VCE: 'IT', TSF: 'IT', PSA: 'IT', BRI: 'IT', CTA: 'IT', PMO: 'IT',
-    OLB: 'IT', CAG: 'IT',
-    BCN: 'ES', MAD: 'ES', AGP: 'ES', PMI: 'ES', ALC: 'ES', SVQ: 'ES',
-    VLC: 'ES', IBZ: 'ES', MAH: 'ES',
-    TFS: 'ES', LPA: 'ES', FUE: 'ES', ACE: 'ES', SPC: 'ES',
-    ATH: 'GR', HER: 'GR', RHO: 'GR', SKG: 'GR', CFU: 'GR', KGS: 'GR',
-    ZTH: 'GR', JMK: 'GR', MJT: 'GR', CHQ: 'GR', JTR: 'GR',
-    SPU: 'HR', DBV: 'HR', ZAD: 'HR', PUY: 'HR',
+    FCO: 'IT',
+    CIA: 'IT',
+    MXP: 'IT',
+    BGY: 'IT',
+    NAP: 'IT',
+    BLQ: 'IT',
+    VCE: 'IT',
+    TSF: 'IT',
+    PSA: 'IT',
+    BRI: 'IT',
+    CTA: 'IT',
+    PMO: 'IT',
+    OLB: 'IT',
+    CAG: 'IT',
+    BCN: 'ES',
+    MAD: 'ES',
+    AGP: 'ES',
+    PMI: 'ES',
+    ALC: 'ES',
+    SVQ: 'ES',
+    VLC: 'ES',
+    IBZ: 'ES',
+    MAH: 'ES',
+    TFS: 'ES',
+    LPA: 'ES',
+    FUE: 'ES',
+    ACE: 'ES',
+    SPC: 'ES',
+    ATH: 'GR',
+    HER: 'GR',
+    RHO: 'GR',
+    SKG: 'GR',
+    CFU: 'GR',
+    KGS: 'GR',
+    ZTH: 'GR',
+    JMK: 'GR',
+    MJT: 'GR',
+    CHQ: 'GR',
+    JTR: 'GR',
+    SPU: 'HR',
+    DBV: 'HR',
+    ZAD: 'HR',
+    PUY: 'HR',
     TIA: 'AL',
-    TGD: 'ME', TIV: 'ME',
-    LIS: 'PT', OPO: 'PT', FAO: 'PT',
+    TGD: 'ME',
+    TIV: 'ME',
+    LIS: 'PT',
+    OPO: 'PT',
+    FAO: 'PT',
     MLA: 'MT',
-    LCA: 'CY', PFO: 'CY', ECN: 'CY',
-    AYT: 'TR', IST: 'TR', SAW: 'TR', ESB: 'TR', ADB: 'TR', DLM: 'TR', BJV: 'TR',
-    VAR: 'BG', BOJ: 'BG',
-    NCE: 'FR', MRS: 'FR', AJA: 'FR', FSC: 'FR',
-    RAK: 'MA', AGA: 'MA', CMN: 'MA', FEZ: 'MA', TNG: 'MA',
+    LCA: 'CY',
+    PFO: 'CY',
+    ECN: 'CY',
+    AYT: 'TR',
+    IST: 'TR',
+    SAW: 'TR',
+    ESB: 'TR',
+    ADB: 'TR',
+    DLM: 'TR',
+    BJV: 'TR',
+    VAR: 'BG',
+    BOJ: 'BG',
+    NCE: 'FR',
+    MRS: 'FR',
+    AJA: 'FR',
+    FSC: 'FR',
+    RAK: 'MA',
+    AGA: 'MA',
+    CMN: 'MA',
+    FEZ: 'MA',
+    TNG: 'MA',
     TLV: 'IL',
     AMM: 'JO',
-    TUN: 'TN', DJE: 'TN', MIR: 'TN',
+    TUN: 'TN',
+    DJE: 'TN',
+    MIR: 'TN',
     BEG: 'RS',
-    OTP: 'RO', CLJ: 'RO', TSR: 'RO', IAS: 'RO',
+    OTP: 'RO',
+    CLJ: 'RO',
+    TSR: 'RO',
+    IAS: 'RO',
     SJJ: 'BA',
     SKP: 'MK',
     PRN: 'XK',
-    STN: 'GB', LTN: 'GB', MAN: 'GB', EDI: 'GB', BRS: 'GB', BHX: 'GB', GLA: 'GB',
-    DUB: 'IE', ORK: 'IE', KIR: 'IE',
+    STN: 'GB',
+    LTN: 'GB',
+    MAN: 'GB',
+    EDI: 'GB',
+    BRS: 'GB',
+    BHX: 'GB',
+    GLA: 'GB',
+    DUB: 'IE',
+    ORK: 'IE',
+    KIR: 'IE',
     KEF: 'IS',
   };
   return map[iata] ?? 'XX';
@@ -312,7 +394,10 @@ if (PURGE) {
 } else if (STEP === 'routes') {
   fetchAndSaveRouteCache()
     .then(() => prisma.$disconnect())
-    .catch((err) => { console.error(err); process.exit(1); });
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
 } else {
   // 'prices' or 'all' — getOrFetchRouteCache() handles freshness for 'all'
   runPrices();

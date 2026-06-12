@@ -3,13 +3,13 @@
 const BROWSER_HEADERS: Record<string, string> = {
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-  'Accept': 'application/json, text/plain, */*',
+  Accept: 'application/json, text/plain, */*',
   'Accept-Language': 'pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7',
   'Accept-Encoding': 'gzip, deflate, br',
   'Cache-Control': 'no-cache',
-  'Pragma': 'no-cache',
-  'Referer': 'https://www.ryanair.com/',
-  'Origin': 'https://www.ryanair.com',
+  Pragma: 'no-cache',
+  Referer: 'https://www.ryanair.com/',
+  Origin: 'https://www.ryanair.com',
 };
 
 const MAX_RETRIES = 3;

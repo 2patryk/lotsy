@@ -6,7 +6,9 @@ const run = await prisma.searchRun.findFirst({ orderBy: { startedAt: 'desc' } })
 
 console.log('Deals in DB:', count);
 sample.forEach((d) =>
-  console.log(`  ${d.originAirport}->${d.destAirport} ${d.departAt.toISOString().slice(0, 10)} ${d.nights}n ${d.totalPrice.toFixed(0)} PLN`),
+  console.log(
+    `  ${d.originAirport}->${d.destAirport} ${d.departAt.toISOString().slice(0, 10)} ${d.nights}n ${d.totalPrice.toFixed(0)} PLN`,
+  ),
 );
 console.log('Last run:', run?.status, 'deals:', run?.dealsFound, 'routes:', run?.routesQueried);
 

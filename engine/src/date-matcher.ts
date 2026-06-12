@@ -14,8 +14,8 @@ const OUTBOUND_DAYS = new Set([4, 5, 6]);
 // Hard minimum hour for outbound flights per weekday
 const OUTBOUND_MIN_HOUR: Record<number, number> = {
   4: 14, // Thursday from 14:00
-  5: 6,  // Friday from 06:00
-  6: 6,  // Saturday from 06:00
+  5: 6, // Friday from 06:00
+  6: 6, // Saturday from 06:00
 };
 
 const OUTBOUND_MAX_HOUR: Record<number, number> = {
@@ -73,14 +73,14 @@ function scoreBonus(outbound: DailyFare, inbound: DailyFare): number {
 
   if (outDay === 4 && outHour >= 16) bonus += 20; // Thu evening
   if (outDay === 5 && outHour >= 16) bonus += 15; // Fri evening
-  if (outDay === 5 && outHour < 16)  bonus += 8;  // Fri morning/afternoon
+  if (outDay === 5 && outHour < 16) bonus += 8; // Fri morning/afternoon
   if (outDay === 6 && outHour <= 10) bonus += 10; // Sat early morning
 
   if ((retDay === 0 || retDay === 1) && retHour >= 18) bonus += 20; // Sun/Mon late evening
   if ((retDay === 0 || retDay === 1) && retHour >= 14) bonus += 10; // Sun/Mon afternoon
-  if (retDay === 2 && retHour >= 18) bonus += 8;                    // Tue evening
-  if (retDay === 2 && retHour >= 14) bonus += 4;                    // Tue afternoon
-  if (retDay === 6 && retHour >= 16) bonus += 10;                   // Sat evening
+  if (retDay === 2 && retHour >= 18) bonus += 8; // Tue evening
+  if (retDay === 2 && retHour >= 14) bonus += 4; // Tue afternoon
+  if (retDay === 6 && retHour >= 16) bonus += 10; // Sat evening
 
   return bonus;
 }

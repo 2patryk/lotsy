@@ -249,7 +249,7 @@ function fmtTime(iso: string): string {
       .deal-row.selected {
         border-left-color: var(--color-blue-600);
       }
-      .deal-row:last-child {
+      :host(:last-child) .deal-row {
         border-bottom: none;
       }
 

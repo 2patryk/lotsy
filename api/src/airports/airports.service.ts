@@ -9,9 +9,9 @@ const ROUTES_URL = (iata: string) =>
 const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 interface RyanairAirport {
-  code: string;
-  city: { name: string };
-  country: { code: string };
+  iataCode: string;
+  name: string;
+  countryCode: string;
 }
 
 interface RyanairRoute {
@@ -38,20 +38,20 @@ export class AirportsService implements OnApplicationBootstrap {
 
       await prisma.$transaction(
         airports
-          .filter((a) => a.code && a.city?.name)
+          .filter((a) => a.iataCode && a.name)
           .map((a) =>
             prisma.airport.upsert({
-              where: { iata: a.code },
+              where: { iata: a.iataCode },
               update: {
-                name: a.city.name,
-                country: a.country.code,
-                isPolish: a.country.code === 'PL',
+                name: a.name,
+                country: a.countryCode.toUpperCase(),
+                isPolish: a.countryCode.toUpperCase() === 'PL',
               },
               create: {
-                iata: a.code,
-                name: a.city.name,
-                country: a.country.code,
-                isPolish: a.country.code === 'PL',
+                iata: a.iataCode,
+                name: a.name,
+                country: a.countryCode.toUpperCase(),
+                isPolish: a.countryCode.toUpperCase() === 'PL',
               },
             }),
           ),

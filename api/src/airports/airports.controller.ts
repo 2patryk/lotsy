@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Post } from '@nestjs/common';
 import { AirportsService } from './airports.service.js';
 
 @Controller('airports')
@@ -13,5 +13,11 @@ export class AirportsController {
   @Get(':iata/routes')
   routesFrom(@Param('iata') iata: string) {
     return this.airportsService.routesFrom(iata.toUpperCase());
+  }
+
+  @Post('sync')
+  sync() {
+    void this.airportsService.sync();
+    return { status: 'sync started' };
   }
 }

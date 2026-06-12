@@ -241,11 +241,8 @@ function fmtTime(iso: string): string {
         align-items: center;
         gap: 24px;
         padding: 14px 20px;
-        background:
-          linear-gradient(to right, rgba(255, 255, 255, 0.55) 0px, var(--color-surface) 200px),
-          var(--thumb, none) left center / 200px 100% no-repeat,
-          var(--color-surface);
-        background-origin: border-box, border-box, border-box;
+        position: relative;
+        background: var(--color-surface);
         border-bottom: 1px solid var(--color-border);
         border-left: 3px solid transparent;
         cursor: pointer;
@@ -253,16 +250,19 @@ function fmtTime(iso: string): string {
           background-color 0.1s,
           border-left-color 0.15s;
       }
+      .deal-row::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        width: 220px;
+        background: var(--thumb, none) center / cover no-repeat;
+        mask-image: linear-gradient(to right, black 40%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to right, black 40%, transparent 100%);
+        opacity: 0.45;
+        pointer-events: none;
+      }
       .deal-row:hover {
-        background:
-          linear-gradient(
-            to right,
-            rgba(255, 255, 255, 0.55) 0px,
-            var(--color-surface-hover) 200px
-          ),
-          var(--thumb, none) left center / 200px 100% no-repeat,
-          var(--color-surface-hover);
-        background-origin: border-box, border-box, border-box;
+        background: var(--color-surface-hover);
       }
       .deal-row.selected {
         border-left-color: var(--color-blue-600);

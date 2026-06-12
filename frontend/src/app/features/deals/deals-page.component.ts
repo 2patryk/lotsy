@@ -283,33 +283,25 @@ const TIMES = [
 
           <div class="fg fg--nights">
             <span class="fg-label">Liczba nocy</span>
-            <div class="nights-row">
-              <div class="nights-field">
-                <span class="nights-sub">od</span>
-                <input
-                  class="range"
-                  type="range"
-                  min="1"
-                  [max]="MAX_NIGHTS"
-                  step="1"
-                  [value]="minNights()"
-                  (input)="onMinNights($event)"
-                />
-                <span class="nights-val">{{ minNights() }}</span>
-              </div>
-              <div class="nights-field">
-                <span class="nights-sub">do</span>
-                <input
-                  class="range"
-                  type="range"
-                  min="1"
-                  [max]="MAX_NIGHTS"
-                  step="1"
-                  [value]="maxNights()"
-                  (input)="onMaxNights($event)"
-                />
-                <span class="nights-val">{{ maxNights() }}</span>
-              </div>
+            <div class="nights-inputs">
+              <span class="nights-sub">od</span>
+              <input
+                class="nights-num"
+                type="number"
+                min="1"
+                [max]="MAX_NIGHTS"
+                [value]="minNights()"
+                (change)="onMinNights($event)"
+              />
+              <span class="nights-sub">do</span>
+              <input
+                class="nights-num"
+                type="number"
+                min="1"
+                [max]="MAX_NIGHTS"
+                [value]="maxNights()"
+                (change)="onMaxNights($event)"
+              />
             </div>
           </div>
         </div>
@@ -684,8 +676,8 @@ const TIMES = [
 
       /* Clear button (inline in filter-row) */
       .clear-btn {
-        align-self: flex-end;
-        margin: 12px 16px 12px 0;
+        align-self: center;
+        margin: 0 16px 0 0;
         padding: 6px 14px;
         border: 1px solid var(--color-border);
         border-radius: var(--radius-md);
@@ -719,18 +711,14 @@ const TIMES = [
       }
       .fg--nights {
         border-right: none;
-        min-width: 220px;
+        min-width: 0;
+        flex: 0 0 auto;
       }
-      .nights-row {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-top: 2px;
-      }
-      .nights-field {
+      .nights-inputs {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
+        margin-top: 2px;
       }
       .nights-sub {
         font-size: 10px;
@@ -738,16 +726,23 @@ const TIMES = [
         text-transform: uppercase;
         letter-spacing: 0.06em;
         color: var(--color-text-tertiary);
-        min-width: 14px;
-        text-align: right;
       }
-      .nights-val {
-        font-size: 12px;
-        font-weight: 700;
+      .nights-num {
+        width: 48px;
+        padding: 5px 6px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        font-weight: 600;
         color: var(--color-text-primary);
-        min-width: 18px;
-        text-align: right;
+        background: var(--color-surface);
+        text-align: center;
+        outline: none;
         font-variant-numeric: tabular-nums;
+      }
+      .nights-num:focus {
+        border-color: var(--color-blue-700);
+        box-shadow: var(--shadow-focus);
       }
       .range {
         -webkit-appearance: none;

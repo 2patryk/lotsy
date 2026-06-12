@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import type { Deal } from '../../core/models/deal.model';
 import { SavedDealsService } from '../../core/services/saved-deals.service';
 import { AirportsService } from '../../core/services/airports.service';
+import { CityImagesService } from '../../core/services/city-images.service';
 
 const COUNTRY_NAMES: Record<string, string> = {
   IT: 'Włochy',
@@ -72,7 +73,12 @@ function fmtTime(iso: string): string {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="deal-row" [class.selected]="selected()" (click)="select.emit(deal().id)">
+    <div
+      class="deal-row"
+      [class.selected]="selected()"
+      [style.--thumb]="thumbUrl() ? 'url(' + thumbUrl() + ')' : 'none'"
+      (click)="select.emit(deal().id)"
+    >
       <!-- ── Left ─────────────────────────── -->
       <div class="deal-left">
         <!-- Destination header -->
@@ -235,16 +241,22 @@ function fmtTime(iso: string): string {
         align-items: center;
         gap: 24px;
         padding: 14px 20px;
-        background: var(--color-surface);
+        background:
+          linear-gradient(to right, rgba(255, 255, 255, 0) 160px, var(--color-surface) 340px),
+          var(--thumb, none) left center / auto 100% no-repeat,
+          var(--color-surface);
         border-bottom: 1px solid var(--color-border);
         border-left: 3px solid transparent;
         cursor: pointer;
         transition:
-          background 0.1s,
+          background-color 0.1s,
           border-left-color 0.15s;
       }
       .deal-row:hover {
-        background: var(--color-surface-hover);
+        background:
+          linear-gradient(to right, rgba(255, 255, 255, 0) 160px, var(--color-surface-hover) 340px),
+          var(--thumb, none) left center / auto 100% no-repeat,
+          var(--color-surface-hover);
       }
       .deal-row.selected {
         border-left-color: var(--color-blue-600);
@@ -527,6 +539,7 @@ export class DealCardComponent {
 
   private savedService = inject(SavedDealsService);
   private airportsSvc = inject(AirportsService);
+  private cityImagesSvc = inject(CityImagesService);
   isSaved = computed(() => this.savedService.isSaved(this.deal().id));
 
   readonly fmtDate = fmtDate;
@@ -608,6 +621,8 @@ export class DealCardComponent {
   cityName(): string {
     return this.airportsSvc.cityName(this.deal().destAirport);
   }
+
+  thumbUrl = computed(() => this.cityImagesSvc.imageUrl(this.cityName()));
   countryLabel(): string {
     return COUNTRY_NAMES[this.deal().destCountry] ?? this.deal().destCountry;
   }

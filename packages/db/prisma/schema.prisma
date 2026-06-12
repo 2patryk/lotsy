@@ -80,6 +80,12 @@ model AirportSync {
   syncedAt DateTime
 }
 
+model CityImage {
+  city     String   @id // city name as returned by Ryanair API
+  imageUrl String   // Unsplash small URL
+  cachedAt DateTime
+}
+
 model RouteCache {
   id      String   @id // always "main"
   savedAt DateTime

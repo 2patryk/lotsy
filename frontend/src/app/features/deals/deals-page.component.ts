@@ -7,6 +7,7 @@ import { DealCardComponent } from './deal-card.component';
 import { DealsService, type DealsQueryParams } from '../../core/services/deals.service';
 import { SavedDealsService } from '../../core/services/saved-deals.service';
 import { AirportsService } from '../../core/services/airports.service';
+import { CityImagesService } from '../../core/services/city-images.service';
 import type { Deal } from '../../core/models/deal.model';
 
 const ALL_COUNTRIES: { code: string; name: string }[] = [
@@ -964,6 +965,7 @@ export class DealsPageComponent {
   private dealsService = inject(DealsService);
   private savedService = inject(SavedDealsService);
   private airportsSvc = inject(AirportsService);
+  cityImages = inject(CityImagesService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -1064,6 +1066,8 @@ export class DealsPageComponent {
         next: (d) => {
           this.allDeals.set(d);
           this.loading.set(false);
+          const cities = [...new Set(d.map((deal) => this.airportsSvc.cityName(deal.destAirport)))];
+          this.cityImages.fetchBatch(cities);
         },
         error: () => {
           this.error.set(true);

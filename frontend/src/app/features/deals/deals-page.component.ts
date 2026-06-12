@@ -1,8 +1,8 @@
 import { Component, inject, signal, computed, effect, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
-import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { switchMap, tap } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, switchMap } from 'rxjs';
 import { DealCardComponent } from './deal-card.component';
 import { DealsService, type DealsQueryParams } from '../../core/services/deals.service';
 import { SavedDealsService } from '../../core/services/saved-deals.service';
@@ -203,16 +203,22 @@ const MAX_NIGHTS = 14;
             <div class="range-ends"><span>200</span><span>{{ DEFAULT_MAX_PRICE }}</span></div>
           </div>
 
-          <div class="fg fg--slider">
-            <div class="slider-header">
-              <span class="fg-label">Liczba nocy</span>
-              <span class="slider-val">{{ minNights() }}–{{ maxNights() }}</span>
+          <div class="fg fg--nights">
+            <span class="fg-label">Liczba nocy</span>
+            <div class="nights-row">
+              <div class="nights-field">
+                <span class="nights-sub">od</span>
+                <input class="range" type="range" min="1" [max]="MAX_NIGHTS" step="1"
+                  [value]="minNights()" (input)="onMinNights($event)"/>
+                <span class="nights-val">{{ minNights() }}</span>
+              </div>
+              <div class="nights-field">
+                <span class="nights-sub">do</span>
+                <input class="range" type="range" min="1" [max]="MAX_NIGHTS" step="1"
+                  [value]="maxNights()" (input)="onMaxNights($event)"/>
+                <span class="nights-val">{{ maxNights() }}</span>
+              </div>
             </div>
-            <div class="range-pair">
-              <input class="range" type="range" min="1" [max]="MAX_NIGHTS" step="1" [value]="minNights()" (input)="onMinNights($event)"/>
-              <input class="range" type="range" min="1" [max]="MAX_NIGHTS" step="1" [value]="maxNights()" (input)="onMaxNights($event)"/>
-            </div>
-            <div class="range-ends"><span>1</span><span>{{ MAX_NIGHTS }}</span></div>
           </div>
 
         </div>
@@ -420,6 +426,18 @@ const MAX_NIGHTS = 14;
     .slider-header { display: flex; justify-content: space-between; align-items: center; }
     .slider-val    { font-size: 13px; font-weight: 700; color: var(--color-text-primary); }
     .range-pair    { display: flex; flex-direction: column; gap: 4px; }
+    .fg--nights { border-right: none; min-width: 220px; }
+    .nights-row { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+    .nights-field { display: flex; align-items: center; gap: 8px; }
+    .nights-sub {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--color-text-tertiary);
+      min-width: 14px; text-align: right;
+    }
+    .nights-val {
+      font-size: 12px; font-weight: 700; color: var(--color-text-primary);
+      min-width: 18px; text-align: right; font-variant-numeric: tabular-nums;
+    }
     .range {
       -webkit-appearance: none; appearance: none;
       width: 100%; height: 4px;
@@ -573,14 +591,21 @@ export class DealsPageComponent {
     if (p['minNights']) this.minNights.set(Number(p['minNights']));
     if (p['maxNights']) this.maxNights.set(Number(p['maxNights']));
 
-    toObservable(this.query).pipe(
-      tap(() => { this.loading.set(true); this.error.set(false); this.visibleCount.set(24); }),
-      switchMap(q => this.dealsService.getDeals(q)),
+    const search$ = new Subject<DealsQueryParams>();
+    search$.pipe(
+      switchMap(q => {
+        this.loading.set(true);
+        this.error.set(false);
+        this.visibleCount.set(24);
+        return this.dealsService.getDeals(q);
+      }),
       takeUntilDestroyed(),
     ).subscribe({
       next: d => { this.allDeals.set(d);  this.loading.set(false); },
       error: () => { this.error.set(true); this.loading.set(false); },
     });
+
+    effect(() => search$.next(this.query()));
 
     effect(() => {
       const c = this.selectedCountries(), o = this.selectedOrigins();

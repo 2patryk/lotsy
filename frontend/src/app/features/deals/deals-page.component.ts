@@ -1,4 +1,12 @@
-import { Component, inject, signal, computed, effect, HostListener } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  computed,
+  effect,
+  untracked,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -1080,7 +1088,7 @@ export class DealsPageComponent {
       const nameMap = this.airportsSvc.nameMap();
       if (deals.length === 0 || nameMap.size === 0) return;
       const cities = [...new Set(deals.map((d) => this.airportsSvc.cityName(d.destAirport)))];
-      this.cityImages.fetchBatch(cities);
+      untracked(() => this.cityImages.fetchBatch(cities));
     });
 
     effect(() => {

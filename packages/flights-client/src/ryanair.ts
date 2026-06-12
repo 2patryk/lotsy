@@ -32,8 +32,8 @@ export async function getCheapestPerDay(
     .filter((f) => !f.soldOut && !f.unavailable && f.price.value > 0)
     .map((f) => ({
       date: f.day,
-      departureTime: f.departureDate,
-      arrivalTime: f.arrivalDate,
+      departureTime: f.departureDate + 'Z',
+      arrivalTime: f.arrivalDate + 'Z',
       price: f.price.value,
       currency: f.price.currencyCode,
       airline: 'Ryanair',

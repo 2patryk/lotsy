@@ -12,6 +12,7 @@ import {
 } from './config.js';
 
 const DRY_RUN = process.argv.includes('--dry-run');
+const PURGE = process.argv.includes('--purge');
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -86,6 +87,13 @@ function buildBookingUrl(
     `&tpOriginIataOut=${outOrigin}&tpDestinationIataOut=${outDest}` +
     `&tpOriginIataIn=${retOrigin}&tpDestinationIataIn=${retDest}`
   );
+}
+
+async function purge() {
+  console.log('[engine] Purging all deals from database…');
+  const { count } = await prisma.deal.deleteMany({});
+  console.log(`[engine] Deleted ${count} deals.`);
+  await prisma.$disconnect();
 }
 
 async function main() {
@@ -355,4 +363,8 @@ function getCountryForAirport(iata: string): string {
   return map[iata] ?? 'XX';
 }
 
-main();
+if (PURGE) {
+  purge();
+} else {
+  main();
+}

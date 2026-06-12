@@ -37,7 +37,7 @@ const MIN_NIGHTS = 3;
 const MAX_NIGHTS = 7;
 
 function dayOfWeek(dateStr: string): number {
-  return new Date(dateStr + 'T00:00:00').getDay();
+  return new Date(dateStr + 'T12:00:00Z').getUTCDay();
 }
 
 function hourOf(dateTimeStr: string): number {

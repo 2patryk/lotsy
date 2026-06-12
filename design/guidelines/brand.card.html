@@ -1,0 +1,59 @@
+<!-- @dsCard group="Brand" viewport="700x170" name="Logo" subtitle="Wordmark · reversed · icon · clear space" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; }
+    body { background: var(--color-surface); font-family: var(--font-sans); display: flex; align-items: stretch; height: 170px; }
+    .zone { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; padding: 0 28px; border-right: 1px solid var(--color-border); }
+    .zone:last-child { border-right: none; }
+    .zone.dark { background: var(--color-text-primary); }
+    .zone-label { font-size: 10px; font-weight: 600; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.07em; }
+    .zone.dark .zone-label { color: #555; }
+  </style>
+</head>
+<body>
+  <!-- Primary -->
+  <div class="zone" style="flex:2.2;">
+    <div class="zone-label">Primary</div>
+    <svg width="122" height="36" viewBox="0 0 122 36" aria-label="Lotsy">
+      <circle cx="18" cy="18" r="16" fill="#f48120"/>
+      <g transform="translate(8.5,9.5) scale(0.85)">
+        <path fill="white" d="M23 10 L17 8 L10 1 L8 3 L13 8 L4 8 L2 6 L1 10 L2 14 L4 12 L13 12 L8 17 L10 19 L17 12 Z"/>
+      </g>
+      <text x="42" y="24" font-family="Outfit, system-ui, sans-serif" font-weight="800" font-size="20" fill="#1a1a1a" letter-spacing="-0.5">Lotsy</text>
+    </svg>
+  </div>
+  <!-- Reversed -->
+  <div class="zone dark" style="flex:2.2;">
+    <div class="zone-label">Reversed</div>
+    <svg width="122" height="36" viewBox="0 0 122 36" aria-label="Lotsy">
+      <circle cx="18" cy="18" r="16" fill="#f48120"/>
+      <g transform="translate(8.5,9.5) scale(0.85)">
+        <path fill="white" d="M23 10 L17 8 L10 1 L8 3 L13 8 L4 8 L2 6 L1 10 L2 14 L4 12 L13 12 L8 17 L10 19 L17 12 Z"/>
+      </g>
+      <text x="42" y="24" font-family="Outfit, system-ui, sans-serif" font-weight="800" font-size="20" fill="#ffffff" letter-spacing="-0.5">Lotsy</text>
+    </svg>
+  </div>
+  <!-- Icon sizes -->
+  <div class="zone" style="flex:1.6;">
+    <div class="zone-label">Mark only</div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <svg width="40" height="40" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="#f48120"/>
+        <g transform="translate(7,8) scale(0.8)">
+          <path fill="white" d="M23 10 L17 8 L10 1 L8 3 L13 8 L4 8 L2 6 L1 10 L2 14 L4 12 L13 12 L8 17 L10 19 L17 12 Z"/>
+        </g></svg>
+      <svg width="28" height="28" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="#f48120"/>
+        <g transform="translate(7,8) scale(0.8)">
+          <path fill="white" d="M23 10 L17 8 L10 1 L8 3 L13 8 L4 8 L2 6 L1 10 L2 14 L4 12 L13 12 L8 17 L10 19 L17 12 Z"/>
+        </g></svg>
+      <svg width="18" height="18" viewBox="0 0 32 32"><rect width="32" height="32" rx="9" fill="#f48120"/>
+        <g transform="translate(7,8) scale(0.8)">
+          <path fill="white" d="M23 10 L17 8 L10 1 L8 3 L13 8 L4 8 L2 6 L1 10 L2 14 L4 12 L13 12 L8 17 L10 19 L17 12 Z"/>
+        </g></svg>
+    </div>
+  </div>
+</body>
+</html>

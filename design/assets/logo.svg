@@ -1,0 +1,7 @@
+<svg width="122" height="36" viewBox="0 0 122 36" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lotsy">
+  <circle cx="18" cy="18" r="16" fill="#f48120"></circle>
+  <g transform="translate(8.5,9.5) scale(0.85)">
+    <path fill="white" d="M23 10 L17 8 L10 1 L8 3 L13 8 L4 8 L2 6 L1 10 L2 14 L4 12 L13 12 L8 17 L10 19 L17 12 Z"></path>
+  </g>
+  <text x="42" y="24" font-family="Outfit, system-ui, -apple-system, sans-serif" font-weight="800" font-size="20" fill="#1a1a1a" letter-spacing="-0.5">Lotsy</text>
+</svg>

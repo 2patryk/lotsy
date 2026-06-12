@@ -1,0 +1,73 @@
+/**
+ * Lotsy — Color tokens
+ *
+ * The palette is almost entirely achromatic (white + grays),
+ * with blue as the single functional accent and green reserved
+ * strictly for success states. Orange is used only in the logo.
+ */
+
+:root {
+  /* ── Brand ─────────────────────────────── */
+  --color-brand:          #f48120;   /* logo-only orange accent  */
+
+  /* ── Backgrounds ────────────────────────── */
+  --color-bg:             #f6f6f6;   /* page background           */
+  --color-surface:        #ffffff;   /* cards, sidebar, panels    */
+  --color-surface-hover:  #fafafa;   /* subtle hover on surface   */
+  --color-sidebar-active: #f3f4f6;   /* active nav item bg        */
+
+  /* ── Borders ────────────────────────────── */
+  --color-border:         #e5e7eb;   /* dividers, row borders     */
+  --color-border-strong:  #d1d5db;   /* stronger border           */
+
+  /* ── Text ───────────────────────────────── */
+  --color-text-primary:   #1a1a1a;   /* headings, labels          */
+  --color-text-secondary: #6b7280;   /* helper, meta text         */
+  --color-text-tertiary:  #9ca3af;   /* placeholders, disabled    */
+  --color-text-inverse:   #ffffff;   /* on dark / on-brand bg     */
+
+  /* ── Blue scale (interactive / functional) ─ */
+  --color-blue-50:        #eff6ff;
+  --color-blue-100:       #dbeafe;   /* badge bg                  */
+  --color-blue-200:       #bfdbfe;
+  --color-blue-600:       #2563eb;   /* active row left border    */
+  --color-blue-700:       #1d4ed8;   /* links, primary CTA        */
+  --color-blue-800:       #1e40af;   /* badge text                */
+  --color-blue-900:       #1e3a8a;
+
+  /* ── Green (success only) ───────────────── */
+  --color-green-50:       #f0fdf4;
+  --color-green-100:      #dcfce7;
+  --color-green-600:      #16a34a;   /* checkmarks, good deal     */
+  --color-green-700:      #15803d;
+
+  /* ── Amber (warning) ────────────────────── */
+  --color-amber-50:       #fffbeb;
+  --color-amber-100:      #fef3c7;
+  --color-amber-500:      #f59e0b;
+  --color-amber-700:      #b45309;
+
+  /* ── Red (error / danger) ───────────────── */
+  --color-red-50:         #fef2f2;
+  --color-red-100:        #fee2e2;
+  --color-red-600:        #dc2626;
+  --color-red-700:        #b91c1c;
+
+  /* ── Semantic aliases ───────────────────── */
+  --color-link:           var(--color-blue-700);
+  --color-link-hover:     var(--color-blue-800);
+  --color-focus-ring:     var(--color-blue-600);
+  --color-active-border:  var(--color-blue-600);
+
+  --color-badge-info-bg:  var(--color-blue-100);
+  --color-badge-info-fg:  var(--color-blue-800);
+
+  --color-success:        var(--color-green-600);
+  --color-success-bg:     var(--color-green-100);
+
+  --color-warning:        var(--color-amber-500);
+  --color-warning-bg:     var(--color-amber-100);
+
+  --color-error:          var(--color-red-600);
+  --color-error-bg:       var(--color-red-100);
+}

@@ -1,0 +1,43 @@
+<!-- @dsCard group="Spacing" viewport="700x170" name="Spacing Scale" subtitle="4px base · 4→96px" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--color-surface); padding: 20px; font-family: var(--font-sans); display: flex; flex-direction: column; gap: 14px; }
+    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .step { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .bar { background: var(--color-blue-600); border-radius: 2px; height: 8px; }
+    .lbl { font-size: 10px; color: var(--color-text-tertiary); font-family: monospace; white-space: nowrap; }
+    .px { font-size: 9px; color: var(--color-text-tertiary); }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <div class="step"><div class="bar" style="width: var(--space-1);"></div><div class="lbl">--1</div><div class="px">4px</div></div>
+    <div class="step"><div class="bar" style="width: var(--space-2);"></div><div class="lbl">--2</div><div class="px">8px</div></div>
+    <div class="step"><div class="bar" style="width: var(--space-3);"></div><div class="lbl">--3</div><div class="px">12px</div></div>
+    <div class="step"><div class="bar" style="width: var(--space-4);"></div><div class="lbl">--4</div><div class="px">16px</div></div>
+    <div class="step"><div class="bar" style="width: var(--space-5);"></div><div class="lbl">--5</div><div class="px">20px</div></div>
+    <div class="step"><div class="bar" style="width: var(--space-6);"></div><div class="lbl">--6</div><div class="px">24px</div></div>
+    <div class="step"><div class="bar" style="width: var(--space-8);"></div><div class="lbl">--8</div><div class="px">32px</div></div>
+    <div class="step"><div class="bar" style="width: var(--space-10);"></div><div class="lbl">--10</div><div class="px">40px</div></div>
+    <div class="step"><div class="bar" style="width: var(--space-12);"></div><div class="lbl">--12</div><div class="px">48px</div></div>
+    <div class="step"><div class="bar" style="width: var(--space-16);"></div><div class="lbl">--16</div><div class="px">64px</div></div>
+    <div class="step"><div class="bar" style="width: var(--space-24);"></div><div class="lbl">--24</div><div class="px">96px</div></div>
+  </div>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <span style="font-size: 11px; color: var(--color-text-tertiary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;">Radii</span>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <div style="width: 32px; height: 24px; background: var(--color-sidebar-active); border: 1px solid var(--color-border); border-radius: var(--radius-sm);"></div>
+      <div style="width: 32px; height: 24px; background: var(--color-sidebar-active); border: 1px solid var(--color-border); border-radius: var(--radius-md);"></div>
+      <div style="width: 32px; height: 24px; background: var(--color-sidebar-active); border: 1px solid var(--color-border); border-radius: var(--radius-lg);"></div>
+      <div style="width: 32px; height: 24px; background: var(--color-sidebar-active); border: 1px solid var(--color-border); border-radius: var(--radius-xl);"></div>
+      <div style="width: 48px; height: 24px; background: var(--color-sidebar-active); border: 1px solid var(--color-border); border-radius: var(--radius-full);"></div>
+    </div>
+    <span style="font-size: 10px; color: var(--color-text-tertiary); font-family: monospace;">sm(4) · md(6) · lg(8) · xl(12) · full</span>
+  </div>
+</body>
+</html>

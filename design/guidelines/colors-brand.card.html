@@ -1,0 +1,25 @@
+<!-- @dsCard group="Colors" viewport="700x100" name="Brand" subtitle="Orange — logo accent only" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--color-surface); padding: 20px; font-family: var(--font-sans); display: flex; gap: 20px; align-items: center; }
+    .swatch { width: 80px; height: 56px; border-radius: var(--radius-lg); flex-shrink: 0; }
+    .info { display: flex; flex-direction: column; gap: 4px; }
+    .token { font-size: 13px; font-weight: 600; color: var(--color-text-primary); font-family: var(--font-mono); }
+    .hex { font-size: 12px; color: var(--color-text-secondary); font-family: var(--font-mono); }
+    .note { font-size: 12px; color: var(--color-text-tertiary); margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="swatch" style="background: var(--color-brand);"></div>
+  <div class="info">
+    <div class="token">--color-brand</div>
+    <div class="hex">#f48120</div>
+    <div class="note">Logo accent only · Never used for interactive states or UI chrome</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!-- @dsCard group="Colors" viewport="700x240" name="Functional" subtitle="Blue (interactive) · Green (success) · Amber (warning)" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--color-surface); padding: 16px 20px; font-family: var(--font-sans); display: flex; flex-direction: column; gap: 14px; }
+    .group { display: flex; flex-direction: column; gap: 6px; }
+    .group-label { font-size: 10px; font-weight: 600; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
+    .swatches { display: flex; gap: 8px; }
+    .swatch { flex: 1; height: 40px; border-radius: var(--radius-md); }
+    .swatch-info { display: flex; flex-direction: column; gap: 2px; }
+    .swatch-token { font-size: 10px; font-family: monospace; color: var(--color-text-secondary); }
+    .swatch-hex { font-size: 10px; color: var(--color-text-tertiary); }
+    .row { display: flex; align-items: center; gap: 8px; }
+    .row .swatch { flex: 0 0 48px; }
+  </style>
+</head>
+<body>
+  <div class="group">
+    <div class="group-label">Blue — interactive / links / active states</div>
+    <div class="swatches">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+        <div class="swatch" style="background: var(--color-blue-50);"></div>
+        <div class="swatch-token">--color-blue-50</div><div class="swatch-hex">#eff6ff</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+        <div class="swatch" style="background: var(--color-blue-100);"></div>
+        <div class="swatch-token">--color-blue-100 · badge bg</div><div class="swatch-hex">#dbeafe</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+        <div class="swatch" style="background: var(--color-blue-600);"></div>
+        <div class="swatch-token">--color-blue-600 · active border</div><div class="swatch-hex">#2563eb</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+        <div class="swatch" style="background: var(--color-blue-700);"></div>
+        <div class="swatch-token">--color-blue-700 · links / CTA</div><div class="swatch-hex">#1d4ed8</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+        <div class="swatch" style="background: var(--color-blue-800);"></div>
+        <div class="swatch-token">--color-blue-800 · badge text</div><div class="swatch-hex">#1e40af</div>
+      </div>
+    </div>
+  </div>
+  <div class="group">
+    <div class="group-label">Green — success only</div>
+    <div class="swatches">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; max-width: 120px;">
+        <div class="swatch" style="background: var(--color-green-100);"></div>
+        <div class="swatch-token">--color-green-100</div><div class="swatch-hex">#dcfce7</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; max-width: 120px;">
+        <div class="swatch" style="background: var(--color-green-600);"></div>
+        <div class="swatch-token">--color-green-600</div><div class="swatch-hex">#16a34a</div>
+      </div>
+    </div>
+  </div>
+  <div class="group">
+    <div class="group-label">Amber — warning</div>
+    <div class="swatches">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; max-width: 120px;">
+        <div class="swatch" style="background: var(--color-amber-100);"></div>
+        <div class="swatch-token">--color-amber-100</div><div class="swatch-hex">#fef3c7</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; max-width: 120px;">
+        <div class="swatch" style="background: var(--color-amber-500);"></div>
+        <div class="swatch-token">--color-amber-500</div><div class="swatch-hex">#f59e0b</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,6 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lotsy icon">
+  <rect width="32" height="32" rx="9" fill="#f48120"></rect>
+  <g transform="translate(7,8) scale(0.8)">
+    <path fill="white" d="M23 10 L17 8 L10 1 L8 3 L13 8 L4 8 L2 6 L1 10 L2 14 L4 12 L13 12 L8 17 L10 19 L17 12 Z"></path>
+  </g>
+</svg>

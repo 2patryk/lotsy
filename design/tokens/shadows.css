@@ -1,0 +1,31 @@
+/**
+ * Lotsy — Shadow tokens
+ *
+ * Shadows are subtle. Cards use only a border + very faint shadow.
+ * No heavy drop shadows — the UI relies on borders and backgrounds.
+ */
+
+:root {
+  --shadow-none:  none;
+
+  /* Tight border-shadow — used for card outlines */
+  --shadow-border: 0 0 0 1px var(--color-border);
+
+  /* Subtle card lift */
+  --shadow-sm:  0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+  /* Standard card / panel shadow */
+  --shadow-md:  0 1px 3px 0 rgba(0, 0, 0, 0.07),
+                0 1px 2px -1px rgba(0, 0, 0, 0.06);
+
+  /* Dropdown / popover shadow */
+  --shadow-lg:  0 4px 6px -1px rgba(0, 0, 0, 0.07),
+                0 2px 4px -2px rgba(0, 0, 0, 0.05);
+
+  /* Modal / dialog shadow */
+  --shadow-xl:  0 10px 15px -3px rgba(0, 0, 0, 0.08),
+                0 4px 6px -4px rgba(0, 0, 0, 0.05);
+
+  /* Focus ring — blue, accessible */
+  --shadow-focus: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}

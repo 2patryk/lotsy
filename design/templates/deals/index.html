@@ -1,0 +1,425 @@
+<!-- @template name="Deals Page" description="Weekend deals listing from Polish airports — interactive prototype with filters, sorting and deal rows" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lotsy — Okazje weekendowe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-brand:          #f48120;
+      --color-bg:             #f6f6f6;
+      --color-surface:        #ffffff;
+      --color-surface-hover:  #fafafa;
+      --color-sidebar-active: #f3f4f6;
+      --color-border:         #e5e7eb;
+      --color-border-strong:  #d1d5db;
+      --color-text-primary:   #1a1a1a;
+      --color-text-secondary: #6b7280;
+      --color-text-tertiary:  #9ca3af;
+      --color-blue-50:        #eff6ff;
+      --color-blue-100:       #dbeafe;
+      --color-blue-600:       #2563eb;
+      --color-blue-700:       #1d4ed8;
+      --color-blue-800:       #1e40af;
+      --color-green-100:      #dcfce7;
+      --color-green-600:      #16a34a;
+      --color-amber-100:      #fef3c7;
+      --color-amber-700:      #b45309;
+      --radius-sm:            4px;
+      --radius-md:            6px;
+      --radius-lg:            8px;
+      --radius-full:          9999px;
+      --shadow-sm:            0 1px 2px 0 rgba(0,0,0,.05);
+      --shadow-focus:         0 0 0 3px rgba(37,99,235,.22);
+      --header-h:             56px;
+      --font-sans:            'Outfit', system-ui, -apple-system, sans-serif;
+    }
+    html { font-family: var(--font-sans); color: var(--color-text-primary); background: var(--color-bg); }
+    body { min-height: 100vh; }
+    button, select, input { font-family: inherit; }
+    select { -webkit-appearance: none; appearance: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    /* ── Mock data ──────────────────────────────────────────────────── */
+    const DEALS = [
+      { id:1,  destination:'Barcelona',  country:'Hiszpania',       type:'plaża',  origin:'WAW', dest:'BCN', price:399, dates:'15–17 sie', airline:'Ryanair',    good:true,  save:28 },
+      { id:2,  destination:'Rzym',       country:'Włochy',          type:'miasto', origin:'WAW', dest:'FCO', price:299, dates:'22–24 sie', airline:'Wizz Air',    good:true,  save:35 },
+      { id:3,  destination:'Amsterdam',  country:'Holandia',        type:'miasto', origin:'WAW', dest:'AMS', price:349, dates:'5–7 wrz',   airline:'KLM',         good:false        },
+      { id:4,  destination:'Londyn',     country:'Wielka Brytania', type:'miasto', origin:'KRK', dest:'LGW', price:199, dates:'29–31 sie', airline:'Ryanair',    good:true,  save:42 },
+      { id:5,  destination:'Kopenhaga',  country:'Dania',           type:'miasto', origin:'GDN', dest:'CPH', price:249, dates:'19–21 wrz', airline:'Norwegian',  good:false        },
+      { id:6,  destination:'Paryż',      country:'Francja',         type:'miasto', origin:'WAW', dest:'CDG', price:449, dates:'12–14 wrz', airline:'LOT',         good:false        },
+      { id:7,  destination:'Ateny',      country:'Grecja',          type:'plaża',  origin:'KTW', dest:'ATH', price:499, dates:'26–28 sie', airline:'Aegean',      good:true,  save:22 },
+      { id:8,  destination:'Praga',      country:'Czechy',          type:'miasto', origin:'WRO', dest:'PRG', price:149, dates:'5–7 paź',   airline:'SmartWings', good:true,  save:31 },
+      { id:9,  destination:'Madryt',     country:'Hiszpania',       type:'miasto', origin:'WAW', dest:'MAD', price:389, dates:'18–20 wrz', airline:'Iberia',      good:false        },
+      { id:10, destination:'Lizbona',    country:'Portugalia',      type:'plaża',  origin:'WAW', dest:'LIS', price:459, dates:'2–5 paź',   airline:'Ryanair',    good:true,  save:19 },
+      { id:11, destination:'Wiedeń',     country:'Austria',         type:'miasto', origin:'KRK', dest:'VIE', price:179, dates:'6–8 wrz',   airline:'Austrian',    good:true,  save:38 },
+      { id:12, destination:'Dubrownik',  country:'Chorwacja',       type:'plaża',  origin:'WAW', dest:'DBV', price:529, dates:'9–11 sie',  airline:'Croatia Air', good:false        },
+    ];
+
+    /* ── Primitives ─────────────────────────────────────────────────── */
+    function Badge({ variant='neutral', dot, children }) {
+      const map = {
+        neutral: { bg:'var(--color-sidebar-active)', fg:'var(--color-text-secondary)' },
+        blue:    { bg:'var(--color-blue-100)',        fg:'var(--color-blue-800)'       },
+        green:   { bg:'var(--color-green-100)',       fg:'var(--color-green-600)'      },
+        amber:   { bg:'var(--color-amber-100)',       fg:'var(--color-amber-700)'      },
+      };
+      const v = map[variant] ?? map.neutral;
+      return (
+        <span style={{ display:'inline-flex', alignItems:'center', gap:4,
+          padding:'2px 8px', borderRadius:'var(--radius-full)',
+          fontSize:11, fontWeight:500, whiteSpace:'nowrap',
+          background:v.bg, color:v.fg }}>
+          {dot && <span style={{ width:5, height:5, borderRadius:'50%', background:'currentColor', flexShrink:0 }} />}
+          {children}
+        </span>
+      );
+    }
+
+    function Btn({ variant='primary', size='md', children, onClick, disabled }) {
+      const [h, setH] = useState(false);
+      const vs = {
+        primary:   { bg: h&&!disabled ? 'var(--color-blue-800)' : 'var(--color-blue-700)', fg:'#fff', border:'none' },
+        secondary: { bg: h&&!disabled ? 'var(--color-sidebar-active)' : 'var(--color-surface)', fg:'var(--color-text-primary)', border:'1px solid var(--color-border)' },
+        ghost:     { bg: h&&!disabled ? 'var(--color-sidebar-active)' : 'transparent', fg:'var(--color-text-secondary)', border:'none' },
+      }[variant];
+      const sz = {
+        sm: { padding:'5px 10px', fontSize:12 },
+        md: { padding:'7px 14px', fontSize:14 },
+        lg: { padding:'10px 20px', fontSize:15 },
+      }[size];
+      return (
+        <button disabled={disabled} onClick={onClick}
+          onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)}
+          style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6,
+            fontFamily:'inherit', fontWeight:500, cursor:disabled?'not-allowed':'pointer',
+            outline:'none', borderRadius:'var(--radius-md)', transition:'background .12s',
+            opacity:disabled?.5:1, whiteSpace:'nowrap',
+            background:vs.bg, color:vs.fg, border:vs.border, ...sz }}>
+          {children}
+        </button>
+      );
+    }
+
+    /* ── Logo ───────────────────────────────────────────────────────── */
+    function Logo() {
+      return (
+        <svg width="122" height="36" viewBox="0 0 122 36" style={{ cursor:'pointer', userSelect:'none', flexShrink:0 }} aria-label="Lotsy">
+          <circle cx="18" cy="18" r="16" fill="#f48120"/>
+          <g transform="translate(8.5,9.5) scale(0.85)">
+            <path fill="white" d="M23 10 L17 8 L10 1 L8 3 L13 8 L4 8 L2 6 L1 10 L2 14 L4 12 L13 12 L8 17 L10 19 L17 12 Z"/>
+          </g>
+          <text x="42" y="24" fontFamily="Outfit, system-ui, sans-serif" fontWeight="800" fontSize="20" fill="#1a1a1a" letterSpacing="-0.5">Lotsy</text>
+        </svg>
+      );
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    function Header({ activeNav, setActiveNav }) {
+      const navItems = [
+        { id:'deals',  label:'Okazje'       },
+        { id:'search', label:'Wyszukiwarka' },
+        { id:'alerts', label:'Alerty'       },
+      ];
+      return (
+        <header style={{ position:'sticky', top:0, zIndex:200, height:'var(--header-h)',
+          background:'var(--color-surface)', borderBottom:'1px solid var(--color-border)',
+          display:'flex', alignItems:'center', gap:24, padding:'0 28px' }}>
+          <Logo />
+          <nav style={{ display:'flex', gap:2, marginLeft:8 }}>
+            {navItems.map(item => {
+              const active = activeNav === item.id;
+              return (
+                <button key={item.id} onClick={() => setActiveNav(item.id)}
+                  style={{ padding:'6px 12px', borderRadius:'var(--radius-md)', border:'none',
+                    fontFamily:'inherit', fontSize:14, fontWeight: active ? 600 : 400, cursor:'pointer',
+                    color: active ? 'var(--color-blue-700)' : 'var(--color-text-secondary)',
+                    background: active ? 'var(--color-blue-50)' : 'transparent',
+                    transition:'all .12s' }}>
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+          <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
+            <Btn variant="ghost" size="sm">Zaloguj się</Btn>
+            <Btn variant="secondary" size="sm">Zarejestruj</Btn>
+          </div>
+        </header>
+      );
+    }
+
+    /* ── Filter select ──────────────────────────────────────────────── */
+    function FilterSelect({ label, value, options, onChange }) {
+      const [focused, setFocused] = useState(false);
+      return (
+        <div style={{ display:'flex', flexDirection:'column', gap:5, flex:1, minWidth:130 }}>
+          <label style={{ fontSize:10, fontWeight:600, color:'var(--color-text-tertiary)',
+            textTransform:'uppercase', letterSpacing:'0.07em' }}>{label}</label>
+          <div style={{ position:'relative', display:'flex', alignItems:'center' }}>
+            <select value={value} onChange={e=>onChange(e.target.value)}
+              onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+              style={{ width:'100%', fontFamily:'inherit', fontSize:14, fontWeight:500,
+                color:'var(--color-text-primary)', background:'var(--color-surface)',
+                border:`1px solid ${focused ? 'var(--color-blue-700)' : 'var(--color-border)'}`,
+                borderRadius:'var(--radius-md)', padding:'7px 32px 7px 12px', cursor:'pointer',
+                outline:'none', boxShadow: focused ? 'var(--shadow-focus)' : 'none',
+                transition:'border-color .15s, box-shadow .15s',
+                backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ca3af' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+                backgroundRepeat:'no-repeat', backgroundPosition:'right 11px center' }}>
+              {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+      );
+    }
+
+    /* ── Filter bar ─────────────────────────────────────────────────── */
+    function FilterBar({ origin, setOrigin, type, setType, budget, setBudget, period, setPeriod }) {
+      return (
+        <div style={{ background:'var(--color-surface)', border:'1px solid var(--color-border)',
+          borderRadius:'var(--radius-lg)', padding:'16px 20px',
+          display:'flex', gap:12, alignItems:'flex-end', flexWrap:'wrap',
+          boxShadow:'var(--shadow-sm)' }}>
+          <FilterSelect label="Lotnisko wylotu" value={origin} onChange={setOrigin} options={[
+            { value:'all', label:'Wszystkie lotniska' },
+            { value:'WAW', label:'Warszawa (WAW)' },
+            { value:'KRK', label:'Kraków (KRK)' },
+            { value:'GDN', label:'Gdańsk (GDN)' },
+            { value:'WRO', label:'Wrocław (WRO)' },
+            { value:'KTW', label:'Katowice (KTW)' },
+            { value:'POZ', label:'Poznań (POZ)' },
+          ]} />
+          <FilterSelect label="Kierunek" value={type} onChange={setType} options={[
+            { value:'all',   label:'Wszystkie typy' },
+            { value:'plaża', label:'Plaża i ciepło' },
+            { value:'miasto',label:'Weekendy w mieście' },
+          ]} />
+          <FilterSelect label="Termin" value={period} onChange={setPeriod} options={[
+            { value:'any',   label:'Dowolny termin' },
+            { value:'aug',   label:'Sierpień 2026' },
+            { value:'sep',   label:'Wrzesień 2026' },
+            { value:'oct',   label:'Październik 2026' },
+          ]} />
+          <FilterSelect label="Budżet (os./rt)" value={budget} onChange={setBudget} options={[
+            { value:'any', label:'Bez limitu' },
+            { value:'200', label:'do 200 PLN' },
+            { value:'400', label:'do 400 PLN' },
+            { value:'600', label:'do 600 PLN' },
+          ]} />
+        </div>
+      );
+    }
+
+    /* ── Sort chips ─────────────────────────────────────────────────── */
+    function SortChips({ sortBy, setSortBy, count }) {
+      const opts = [
+        { id:'price', label:'Najtańsze' },
+        { id:'deal',  label:'Najlepsza okazja' },
+      ];
+      return (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'11px 20px', borderBottom:'1px solid var(--color-border)' }}>
+          <span style={{ fontSize:13, color:'var(--color-text-secondary)', fontWeight:500 }}>
+            {count} {count === 1 ? 'okazja' : count < 5 ? 'okazje' : 'okazji'}
+          </span>
+          <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+            <span style={{ fontSize:12, color:'var(--color-text-tertiary)', marginRight:4 }}>Sortuj:</span>
+            {opts.map(o => {
+              const active = sortBy === o.id;
+              return (
+                <button key={o.id} onClick={() => setSortBy(o.id)}
+                  style={{ padding:'4px 10px', borderRadius:'var(--radius-full)', border:'none',
+                    fontFamily:'inherit', fontSize:12, fontWeight:500, cursor:'pointer',
+                    background: active ? 'var(--color-blue-100)' : 'transparent',
+                    color: active ? 'var(--color-blue-800)' : 'var(--color-text-secondary)',
+                    transition:'all .12s' }}>
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    /* ── Deal row ───────────────────────────────────────────────────── */
+    function DealRow({ deal, selected, onSelect }) {
+      const [hovered, setHovered] = useState(false);
+      return (
+        <div onClick={() => onSelect(deal.id)}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          data-screen-label={`deal-${deal.id}`}
+          style={{ display:'grid', gridTemplateColumns:'1fr auto', alignItems:'center',
+            gap:16, padding:'14px 20px',
+            background: hovered ? 'var(--color-surface-hover)' : 'var(--color-surface)',
+            borderBottom:'1px solid var(--color-border)',
+            borderLeft:`3px solid ${selected ? 'var(--color-blue-600)' : 'transparent'}`,
+            cursor:'pointer', transition:'background .1s, border-left-color .15s' }}>
+          {/* Left */}
+          <div style={{ display:'flex', flexDirection:'column', gap:5, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              <span style={{ fontSize:15, fontWeight:600, color:'var(--color-text-primary)' }}>
+                {deal.destination}
+              </span>
+              <span style={{ fontSize:13, color:'var(--color-text-secondary)' }}>{deal.country}</span>
+              {deal.good && <Badge variant="green">✓ Dobra okazja</Badge>}
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:14, fontSize:13,
+              color:'var(--color-text-secondary)', flexWrap:'wrap' }}>
+              <span style={{ fontWeight:600, color:'var(--color-text-primary)', letterSpacing:'0.01em' }}>
+                {deal.origin}
+                <span style={{ color:'var(--color-text-tertiary)', margin:'0 5px' }}>→</span>
+                {deal.dest}
+              </span>
+              <span>{deal.dates}</span>
+              <Badge variant="neutral">{deal.airline}</Badge>
+            </div>
+          </div>
+          {/* Right */}
+          <div style={{ display:'flex', alignItems:'center', gap:16, flexShrink:0 }}>
+            <div style={{ textAlign:'right' }}>
+              <div style={{ fontSize:10, fontWeight:600, color:'var(--color-text-tertiary)',
+                textTransform:'uppercase', letterSpacing:'0.08em' }}>od</div>
+              <div style={{ fontSize:22, fontWeight:700, color:'var(--color-text-primary)',
+                lineHeight:1.2, fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>
+                {deal.price}
+                <span style={{ fontSize:13, fontWeight:500, color:'var(--color-text-secondary)', marginLeft:3 }}>
+                  PLN
+                </span>
+              </div>
+              {deal.save && (
+                <div style={{ fontSize:11, color:'var(--color-green-600)', fontWeight:500 }}>
+                  −{deal.save}% vs. średnia
+                </div>
+              )}
+            </div>
+            <Btn variant="primary" size="sm" onClick={e => e.stopPropagation()}>
+              Sprawdź
+            </Btn>
+          </div>
+        </div>
+      );
+    }
+
+    /* ── Empty state ────────────────────────────────────────────────── */
+    function EmptyState({ onReset }) {
+      return (
+        <div style={{ padding:'56px 20px', textAlign:'center', display:'flex',
+          flexDirection:'column', alignItems:'center', gap:12 }}>
+          <div style={{ fontSize:36, color:'var(--color-text-tertiary)', lineHeight:1 }}>✈</div>
+          <div style={{ fontSize:15, fontWeight:600, color:'var(--color-text-secondary)' }}>
+            Brak okazji dla tych filtrów
+          </div>
+          <div style={{ fontSize:13, color:'var(--color-text-tertiary)', maxWidth:280 }}>
+            Spróbuj zmienić lotnisko, kierunek lub budżet
+          </div>
+          <Btn variant="secondary" size="sm" onClick={onReset} style={{ marginTop:4 }}>
+            Wyczyść filtry
+          </Btn>
+        </div>
+      );
+    }
+
+    /* ── App ────────────────────────────────────────────────────────── */
+    function App() {
+      const [activeNav, setActiveNav] = useState('deals');
+      const [origin,    setOrigin]    = useState('all');
+      const [type,      setType]      = useState('all');
+      const [budget,    setBudget]    = useState('any');
+      const [period,    setPeriod]    = useState('any');
+      const [sortBy,    setSortBy]    = useState('price');
+      const [selected,  setSelected]  = useState(null);
+
+      const periodMap = { aug:['sie'], sep:['wrz'], oct:['paź'] };
+
+      const filtered = useMemo(() => {
+        return DEALS.filter(d => {
+          if (origin !== 'all' && d.origin !== origin) return false;
+          if (type   !== 'all' && d.type   !== type)   return false;
+          if (budget !== 'any' && d.price > parseInt(budget)) return false;
+          if (period !== 'any') {
+            const months = periodMap[period] ?? [];
+            if (!months.some(m => d.dates.includes(m))) return false;
+          }
+          return true;
+        }).sort((a, b) =>
+          sortBy === 'price'
+            ? a.price - b.price
+            : (b.good ? 1 : 0) - (a.good ? 1 : 0) || a.price - b.price
+        );
+      }, [origin, type, budget, period, sortBy]);
+
+      function resetFilters() {
+        setOrigin('all'); setType('all'); setBudget('any'); setPeriod('any');
+      }
+
+      return (
+        <div style={{ minHeight:'100vh', background:'var(--color-bg)' }}>
+          <Header activeNav={activeNav} setActiveNav={setActiveNav} />
+          <main style={{ maxWidth:1060, margin:'0 auto', padding:'28px 24px 48px',
+            display:'flex', flexDirection:'column', gap:20 }}>
+
+            {/* Page heading */}
+            <div>
+              <h1 style={{ fontSize:26, fontWeight:800, color:'var(--color-text-primary)',
+                letterSpacing:'-.025em', marginBottom:4 }}>
+                Okazje weekendowe
+              </h1>
+              <p style={{ fontSize:14, color:'var(--color-text-secondary)' }}>
+                Tanie loty z polskich lotnisk&nbsp;·&nbsp;3–4 dni&nbsp;·&nbsp;
+                <span style={{ color:'var(--color-text-tertiary)' }}>Odświeżono: dzisiaj, 14:32</span>
+              </p>
+            </div>
+
+            {/* Filters */}
+            <FilterBar
+              origin={origin} setOrigin={setOrigin}
+              type={type}     setType={setType}
+              budget={budget} setBudget={setBudget}
+              period={period} setPeriod={setPeriod}
+            />
+
+            {/* Results card */}
+            <div style={{ background:'var(--color-surface)', border:'1px solid var(--color-border)',
+              borderRadius:'var(--radius-lg)', overflow:'hidden', boxShadow:'var(--shadow-sm)' }}>
+              <SortChips count={filtered.length} sortBy={sortBy} setSortBy={setSortBy} />
+              {filtered.length > 0
+                ? filtered.map(deal => (
+                    <DealRow key={deal.id} deal={deal}
+                      selected={selected === deal.id}
+                      onSelect={setSelected} />
+                  ))
+                : <EmptyState onReset={resetFilters} />
+              }
+            </div>
+
+            {/* Footer note */}
+            <p style={{ fontSize:12, color:'var(--color-text-tertiary)', textAlign:'center' }}>
+              Ceny w obie strony za osobę · Dostępność i ceny mogą się zmienić ·
+              Kliknij „Sprawdź" aby zobaczyć aktualne ceny na stronie linii lotniczej
+            </p>
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+/**
+ * Lotsy — Font declarations
+ *
+ * ⚠️  SUBSTITUTION NOTE:
+ * The original Lotsy site appears to use a system/custom font stack.
+ * We are substituting with "Outfit" from Google Fonts — a geometric
+ * humanist sans-serif that matches the clean, modern product aesthetic.
+ * Please supply the original font files (TTF/WOFF2) and update this file
+ * to replace the CDN import with local @font-face rules.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+
+/**
+ * JetBrains Mono — used by --font-mono.
+ * Upload JetBrainsMono-Regular.woff2 (and optionally Bold/Italic weights)
+ * via the sidebar banner, then uncomment the @font-face block below.
+ *
+ * @font-face {
+ *   font-family: 'JetBrains Mono';
+ *   src: url('../fonts/JetBrainsMono-Regular.woff2') format('woff2');
+ *   font-weight: 400;
+ *   font-style: normal;
+ *   font-display: swap;
+ * }
+ * @font-face {
+ *   font-family: 'JetBrains Mono';
+ *   src: url('../fonts/JetBrainsMono-Bold.woff2') format('woff2');
+ *   font-weight: 700;
+ *   font-style: normal;
+ *   font-display: swap;
+ * }
+ */
+
+/* Temporary @font-face stub — keeps the compiler satisfied until the font file arrives.
+   The src intentionally 404s; the fallback stack in --font-mono takes over. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}

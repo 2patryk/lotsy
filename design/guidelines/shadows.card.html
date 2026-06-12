@@ -1,0 +1,37 @@
+<!-- @dsCard group="Spacing" viewport="700x130" name="Shadows" subtitle="sm · md · lg · xl — subtle elevation system" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--color-bg); padding: 24px 20px; font-family: var(--font-sans); display: flex; gap: 20px; align-items: flex-start; }
+    .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .shadow-name { font-size: 11px; font-weight: 600; color: var(--color-text-secondary); }
+    .shadow-desc { font-size: 10px; color: var(--color-text-tertiary); }
+  </style>
+</head>
+<body>
+  <div class="card" style="box-shadow: var(--shadow-border);">
+    <div class="shadow-name">--shadow-border</div>
+    <div class="shadow-desc">Border-only outline for inputs</div>
+  </div>
+  <div class="card" style="box-shadow: var(--shadow-sm);">
+    <div class="shadow-name">--shadow-sm</div>
+    <div class="shadow-desc">Cards, list items</div>
+  </div>
+  <div class="card" style="box-shadow: var(--shadow-md);">
+    <div class="shadow-name">--shadow-md</div>
+    <div class="shadow-desc">Hover state lift</div>
+  </div>
+  <div class="card" style="box-shadow: var(--shadow-lg);">
+    <div class="shadow-name">--shadow-lg</div>
+    <div class="shadow-desc">Dropdowns, popovers</div>
+  </div>
+  <div class="card" style="box-shadow: var(--shadow-xl);">
+    <div class="shadow-name">--shadow-xl</div>
+    <div class="shadow-desc">Modals, dialogs</div>
+  </div>
+</body>
+</html>

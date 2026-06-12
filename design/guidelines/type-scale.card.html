@@ -1,0 +1,52 @@
+<!-- @dsCard group="Type" viewport="700x310" name="Type Scale" subtitle="10px → 36px · Outfit" -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--color-surface); padding: 16px 20px; font-family: var(--font-sans); display: flex; flex-direction: column; gap: 0; }
+    .row { display: flex; align-items: baseline; gap: 16px; padding: 7px 0; border-bottom: 1px solid var(--color-border); }
+    .row:last-child { border-bottom: none; }
+    .meta { width: 110px; flex-shrink: 0; display: flex; gap: 8px; align-items: baseline; }
+    .size-label { font-size: 11px; color: var(--color-text-tertiary); font-family: monospace; }
+    .px-label { font-size: 10px; color: var(--color-text-tertiary); }
+    .sample { color: var(--color-text-primary); line-height: 1.2; }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <div class="meta"><span class="size-label">--text-2xs</span><span class="px-label">10px</span></div>
+    <span class="sample" style="font-size: var(--text-2xs);">Lotnisko wylotu · Ryanair · Filtr aktywny</span>
+  </div>
+  <div class="row">
+    <div class="meta"><span class="size-label">--text-xs</span><span class="px-label">12px</span></div>
+    <span class="sample" style="font-size: var(--text-xs);">WAW → BCN · 15–17 sie · od · Dobra okazja</span>
+  </div>
+  <div class="row">
+    <div class="meta"><span class="size-label">--text-sm</span><span class="px-label">14px</span></div>
+    <span class="sample" style="font-size: var(--text-sm);">Sprawdź dostępność · Tanie weekendy z Polski</span>
+  </div>
+  <div class="row">
+    <div class="meta"><span class="size-label">--text-base</span><span class="px-label">16px</span></div>
+    <span class="sample" style="font-size: var(--text-base);">Barcelona, Hiszpania</span>
+  </div>
+  <div class="row">
+    <div class="meta"><span class="size-label">--text-xl</span><span class="px-label">20px</span></div>
+    <span class="sample" style="font-size: var(--text-xl);">Barcelona</span>
+  </div>
+  <div class="row">
+    <div class="meta"><span class="size-label">--text-2xl</span><span class="px-label">24px</span></div>
+    <span class="sample" style="font-size: var(--text-2xl); font-weight: var(--weight-bold);">399 PLN</span>
+  </div>
+  <div class="row">
+    <div class="meta"><span class="size-label">--text-3xl</span><span class="px-label">30px</span></div>
+    <span class="sample" style="font-size: var(--text-3xl); font-weight: var(--weight-bold);">Okazje</span>
+  </div>
+  <div class="row">
+    <div class="meta"><span class="size-label">--text-4xl</span><span class="px-label">36px</span></div>
+    <span class="sample" style="font-size: var(--text-4xl); font-weight: var(--weight-extrabold);">Lotsy</span>
+  </div>
+</body>
+</html>

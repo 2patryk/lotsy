@@ -45,16 +45,24 @@ export class CityImagesService {
       missing.map(async (city) => {
         try {
           const term = searchTerm(city);
-          const url = `${UNSPLASH_URL}?query=${encodeURIComponent(term + ' city center landmarks')}&per_page=1&orientation=landscape`;
-          const res = await fetch(url, {
-            headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` },
-          });
-          if (!res.ok) return;
-
-          const data = (await res.json()) as {
-            results: { urls: { small: string } }[];
+          const fetchUnsplash = async (query: string, landscape: boolean) => {
+            const u = `${UNSPLASH_URL}?query=${encodeURIComponent(query)}&per_page=1${landscape ? '&orientation=landscape' : ''}`;
+            const r = await fetch(u, {
+              headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` },
+            });
+            if (!r.ok) return '';
+            const d = (await r.json()) as {
+              results: { urls: { small: string } }[];
+            };
+            return d.results[0]?.urls?.small ?? '';
           };
-          const imageUrl = data.results[0]?.urls?.small ?? '';
+
+          let imageUrl = await fetchUnsplash(
+            term + ' city center landmarks',
+            true,
+          );
+          if (!imageUrl) imageUrl = await fetchUnsplash(term + ' city', false);
+          if (!imageUrl) imageUrl = await fetchUnsplash(term, false);
 
           // store empty string as negative cache so we don't retry indefinitely
           await prisma.cityImage.upsert({

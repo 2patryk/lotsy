@@ -1,0 +1,43 @@
+name: Charter Engine
+
+on:
+  workflow_dispatch:   # manual trigger for dev/testing
+  schedule:
+    - cron: '30 */3 * * *'   # every 3 hours, offset from search engine
+
+jobs:
+  run-charters:
+    name: Fetch charter offers
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile || true
+
+      - name: Generate Prisma client
+        run: packages/db/node_modules/.bin/prisma generate --schema=packages/db/prisma/schema.prisma
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run database migrations
+        run: packages/db/node_modules/.bin/prisma migrate deploy --schema=packages/db/prisma/schema.prisma
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run charter engine
+        run: engine/node_modules/.bin/tsx engine/src/charters.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_ENV: production

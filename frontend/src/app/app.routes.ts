@@ -12,4 +12,9 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/saved/saved-deals-page.component').then((m) => m.SavedDealsPageComponent),
   },
+  {
+    path: 'czartery',
+    loadComponent: () =>
+      import('./features/charters/charters-page.component').then((m) => m.ChartersPageComponent),
+  },
 ];

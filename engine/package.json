@@ -6,6 +6,8 @@
   "scripts": {
     "start": "tsx src/search.ts",
     "smoke": "tsx src/search.ts --dry-run",
+    "start:charters": "tsx src/charters.ts",
+    "smoke:charters": "tsx src/charters.ts --dry-run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -61,6 +61,23 @@ model Deal {
   @@index([departAt])
 }
 
+// Cheapest Rainbow (r.pl) charter offer per destination, latest snapshot only
+model CharterOffer {
+  destIata         String    @id // r.pl "Klucz"
+  destName         String // e.g. "Kreta - Heraklion"
+  destNameUrl      String // r.pl URL slug, e.g. "heraklion"
+  destCountry      String // Polish country name from API, e.g. "Grecja"
+  destCountryUrl   String // r.pl URL slug, e.g. "grecja"
+  priceRoundTrip   Float? // cheapest round-trip per person (oneWay=false); null if not offered
+  priceOneWay      Float? // cheapest one-way per person (oneWay=true); null if not offered
+  nearestDeparture DateTime?
+  baggageKg        Int?
+  imageUrl         String?
+  updatedAt        DateTime  @updatedAt
+
+  @@index([priceRoundTrip])
+}
+
 model Airport {
   iata     String  @id
   name     String  // city name in Polish (from Ryanair /pl/ locale)

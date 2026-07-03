@@ -11,4 +11,4 @@ export const prisma =
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 export { PrismaClient };
-export type { Deal, SearchRun, Prisma } from '@prisma/client';
+export type { Deal, SearchRun, CharterOffer, Prisma } from '@prisma/client';

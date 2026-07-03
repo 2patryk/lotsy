@@ -102,6 +102,7 @@ const TIMES = [
         </a>
         <nav class="main-nav">
           <button class="nav-item active">Okazje</button>
+          <a class="nav-item" [routerLink]="['/czartery']">Czartery</a>
           <button class="nav-item" disabled>Wyszukiwarka</button>
           <button class="nav-item" disabled>Alerty</button>
         </nav>
@@ -459,6 +460,7 @@ const TIMES = [
         cursor: pointer;
         color: var(--color-text-secondary);
         background: transparent;
+        text-decoration: none;
         transition: all 0.12s;
       }
       .nav-item.active {

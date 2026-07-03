@@ -88,9 +88,30 @@ resztą lotsy; data urodzenia liczona dynamicznie ~30 lat wstecz).
 - [x] 6. Weryfikacja end-to-end lokalnie (engine → Neon → API → strona,
       2026-07-03: 75 destynacji, sort i przełącznik RT/OW działają).
 
-## Krok 2 (poza MVP)
+## Krok 2 — pełna lista lotów z filtrami (zrobione 2026-07-03)
 
-- Rozbicie per lotnisko wylotu (`wyszukaj-wylot`, +~61 calli): konkretne daty,
-  numery lotów, przewoźnicy.
+- [x] Model `CharterFlight` — każdy konkretny lot (oba tryby cenowe): data,
+      godziny wylotu/przylotu, lotnisko wylotu (IATA + nazwa), destynacja,
+      przewoźnik, numer lotu, bagaż, cena, `pakietId` (deep link `idWylot`).
+- [x] Engine: `wyszukaj-wylot` per destynacja × tryb (~127 calli, limit 3
+      równoległych + 300 ms przerwy) → ~15 tys. wierszy, transakcyjny replace
+      (chunkowane `createMany` po 1000).
+- [x] API: `GET /charters/flights?oneWay=&origin=&destCountry=&dateFrom=&dateTo=&days=&maxPrice=`
+      (sort cena rosnąco, cap 300; dni tygodnia filtrowane w JS) +
+      `GET /charters/meta` (domena filtrów: lotniska wylotu, kraje, zakres dat).
+      Stary `GET /charters` (per destynacja) usunięty.
+- [x] Frontend `/czartery`: lista wierszy jak w Okazjach — wyeksponowana
+      **data + godzina + lotnisko wylotu** (niebieski badge), trasa ze
+      wskazaniem lotniska przylotu, chip przewoźnika i bagażu; filtry:
+      typ biletu (RT/OW), lotnisko wylotu (multi), kraj przylotu (multi),
+      zakres dat, dni tygodnia; „Sprawdź" deep-linkuje do r.pl z
+      `data` + `idWylot`.
+- Uwaga: w trybie RT cena wiersza to część wylotowa pakietu (powrót dobierany
+  na r.pl) — oznaczone chipem w UI.
+
+## Krok 3 (pomysły)
+
 - Historia cen (append-only snapshot) i alerty spadków.
 - Parowanie wylot+powrót on-demand w UI (`wyszukaj-przylot`).
+- Kolumny `rtFlight`/`owFlight` na `CharterOffer` są już nieużywane przez UI —
+  do ewentualnego sprzątnięcia przy następnej migracji.

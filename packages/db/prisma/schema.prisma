@@ -73,9 +73,43 @@ model CharterOffer {
   nearestDeparture DateTime?
   baggageKg        Int?
   imageUrl         String?
+  // Cheapest concrete flight per mode (date, departure airport, times, airline…)
+  // Shape: engine's CheapestFlight — { date, depAirport, depIata, depTime, arrTime, airline, flightNo, price }
+  rtFlight         Json?
+  owFlight         Json?
   updatedAt        DateTime  @updatedAt
 
   @@index([priceRoundTrip])
+}
+
+// Every concrete Rainbow charter flight (both pricing modes), latest snapshot only.
+// oneWay=false rows carry the outbound price as part of a round-trip package.
+model CharterFlight {
+  id             String   @id @default(cuid())
+  oneWay         Boolean
+  destIata       String
+  destName       String
+  destNameUrl    String
+  destCountry    String
+  destCountryUrl String
+  imageUrl       String?
+  date           DateTime // departure date (UTC midnight)
+  depTime        String // HH:MM local
+  arrTime        String
+  depIata        String
+  depAirport     String
+  airline        String
+  flightNo       String?
+  flightTime     String?
+  baggageKg      Int?
+  price          Float // per person
+  pakietId       String? // r.pl package id — deep link idWylot
+  updatedAt      DateTime @updatedAt
+
+  @@index([oneWay, price])
+  @@index([destCountry])
+  @@index([depIata])
+  @@index([date])
 }
 
 model Airport {

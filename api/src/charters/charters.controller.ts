@@ -1,19 +1,42 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ChartersService, type CharterSort } from './charters.service.js';
+import { ChartersService } from './charters.service.js';
+
+function csv(value?: string): string[] | undefined {
+  return value
+    ? value
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean)
+    : undefined;
+}
 
 @Controller()
 export class ChartersController {
   constructor(private readonly chartersService: ChartersService) {}
 
-  @Get('charters')
-  async findAll(
-    @Query('sort') sort?: CharterSort,
-    @Query('country') country?: string,
+  @Get('charters/flights')
+  findFlights(
+    @Query('oneWay') oneWay?: string,
+    @Query('origin') origin?: string,
+    @Query('destCountry') destCountry?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('days') days?: string,
+    @Query('maxPrice') maxPrice?: string,
   ) {
-    const [offers, lastUpdate] = await Promise.all([
-      this.chartersService.findAll({ sort, country }),
-      this.chartersService.getLastUpdate(),
-    ]);
-    return { offers, lastUpdate };
+    return this.chartersService.findFlights({
+      oneWay: oneWay === 'true',
+      origin: csv(origin)?.map((o) => o.toUpperCase()),
+      destCountry: csv(destCountry),
+      dateFrom,
+      dateTo,
+      days: csv(days)?.map(Number),
+      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+    });
+  }
+
+  @Get('charters/meta')
+  getMeta() {
+    return this.chartersService.getMeta();
   }
 }

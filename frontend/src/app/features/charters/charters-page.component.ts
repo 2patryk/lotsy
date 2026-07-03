@@ -1,15 +1,28 @@
-import { Component, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, computed, HostListener } from '@angular/core';
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ChartersService } from '../../core/services/charters.service';
-import type { CharterOffer } from '../../core/models/charter-offer.model';
+import type { CharterFlight, ChartersMeta } from '../../core/models/charter-offer.model';
 
 type PriceMode = 'roundTrip' | 'oneWay';
+
+const WD = ['ndz', 'pon', 'wt', 'śr', 'czw', 'pt', 'sob'];
+const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+
+const DAYS = [
+  { js: 1, label: 'Pn' },
+  { js: 2, label: 'Wt' },
+  { js: 3, label: 'Śr' },
+  { js: 4, label: 'Cz' },
+  { js: 5, label: 'Pt' },
+  { js: 6, label: 'Sb' },
+  { js: 0, label: 'Nd' },
+];
 
 @Component({
   selector: 'app-charters-page',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, DecimalPipe],
   template: `
     <header class="site-header">
       <div class="header-inner">
@@ -46,79 +59,233 @@ type PriceMode = 'roundTrip' | 'oneWay';
       <div class="page-head">
         <h1>Loty czarterowe</h1>
         <p>
-          Najtańsze bilety czarterowe Rainbow · cena za osobę
+          Bilety czarterowe Rainbow · cena za osobę
           @if (lastUpdate()) {
             <span class="muted"> · Odświeżono: {{ lastUpdate() }}</span>
           }
         </p>
       </div>
 
-      <div class="toolbar">
-        <div class="mode-toggle" role="tablist">
-          <button
-            class="mode-btn"
-            role="tab"
-            [class.active]="mode() === 'roundTrip'"
-            (click)="setMode('roundTrip')"
-          >
-            W obie strony
-          </button>
-          <button
-            class="mode-btn"
-            role="tab"
-            [class.active]="mode() === 'oneWay'"
-            (click)="setMode('oneWay')"
-          >
-            W jedną stronę
-          </button>
+      <!-- ── Filters ─────────────────────────── -->
+      <div class="filter-card">
+        <div class="filter-row">
+          <!-- Mode -->
+          <div class="fg">
+            <span class="fg-label">Typ biletu</span>
+            <div class="mode-toggle" role="tablist">
+              <button
+                class="mode-btn"
+                role="tab"
+                [class.active]="mode() === 'roundTrip'"
+                (click)="setMode('roundTrip')"
+              >
+                W obie strony
+              </button>
+              <button
+                class="mode-btn"
+                role="tab"
+                [class.active]="mode() === 'oneWay'"
+                (click)="setMode('oneWay')"
+              >
+                W jedną stronę
+              </button>
+            </div>
+          </div>
+
+          <!-- Departure airport -->
+          <div class="fg" (click)="$event.stopPropagation()">
+            <span class="fg-label">Lotnisko wylotu</span>
+            <button
+              class="dd-btn"
+              [class.dd-active]="selectedOrigins().size > 0"
+              (click)="toggleDropdown('origin')"
+            >
+              <span>{{ originLabel() }}</span>
+              <svg
+                class="chevron"
+                [class.flip]="openDropdown() === 'origin'"
+                width="10"
+                height="6"
+                viewBox="0 0 10 6"
+              >
+                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" />
+              </svg>
+            </button>
+            @if (openDropdown() === 'origin') {
+              <div class="dd-panel">
+                @for (o of meta().origins; track o.iata) {
+                  <label class="dd-opt">
+                    <input
+                      type="checkbox"
+                      [checked]="selectedOrigins().has(o.iata)"
+                      (change)="toggleOrigin(o.iata)"
+                    />
+                    {{ o.name }} <span class="dd-code">({{ o.iata }})</span>
+                  </label>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Destination country -->
+          <div class="fg" (click)="$event.stopPropagation()">
+            <span class="fg-label">Kraj przylotu</span>
+            <button
+              class="dd-btn"
+              [class.dd-active]="selectedCountries().size > 0"
+              (click)="toggleDropdown('country')"
+            >
+              <span>{{ countryLabel() }}</span>
+              <svg
+                class="chevron"
+                [class.flip]="openDropdown() === 'country'"
+                width="10"
+                height="6"
+                viewBox="0 0 10 6"
+              >
+                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" />
+              </svg>
+            </button>
+            @if (openDropdown() === 'country') {
+              <div class="dd-panel">
+                @for (c of meta().countries; track c) {
+                  <label class="dd-opt">
+                    <input
+                      type="checkbox"
+                      [checked]="selectedCountries().has(c)"
+                      (change)="toggleCountry(c)"
+                    />
+                    {{ c }}
+                  </label>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Date range -->
+          <div class="fg">
+            <span class="fg-label">Wylot od</span>
+            <input
+              class="date-input"
+              type="date"
+              [value]="dateFrom()"
+              [min]="minDate()"
+              [max]="maxDate()"
+              (change)="setDateFrom($event)"
+            />
+          </div>
+          <div class="fg">
+            <span class="fg-label">Wylot do</span>
+            <input
+              class="date-input"
+              type="date"
+              [value]="dateTo()"
+              [min]="minDate()"
+              [max]="maxDate()"
+              (change)="setDateTo($event)"
+            />
+          </div>
         </div>
-        <span class="count">{{ offers().length }} kierunków</span>
+
+        <!-- Row 2: day-of-week pills + reset -->
+        <div class="filter-row filter-row--secondary">
+          <div class="fg">
+            <span class="fg-label">Dni tygodnia wylotu</span>
+            <div class="day-pills">
+              @for (d of DAYS; track d.js) {
+                <button
+                  class="day-pill"
+                  [class.on]="selectedDays().has(d.js)"
+                  (click)="toggleDay(d.js)"
+                >
+                  {{ d.label }}
+                </button>
+              }
+            </div>
+          </div>
+          @if (hasFilters()) {
+            <button class="clear-btn" (click)="clearFilters()">Wyczyść filtry</button>
+          }
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <span class="count">
+          {{ flights().length }} lotów
+          @if (flights().length === 300) {
+            <span class="muted">(pokazuję 300 najtańszych)</span>
+          }
+        </span>
       </div>
 
       @if (loading()) {
         <div class="state-info">Ładowanie…</div>
       } @else if (error()) {
         <div class="state-info error">Nie udało się pobrać ofert. Spróbuj ponownie później.</div>
-      } @else if (offers().length === 0) {
-        <div class="state-info">
-          Brak ofert w bazie — silnik czarterów jeszcze nie zebrał danych.
-        </div>
+      } @else if (flights().length === 0) {
+        <div class="state-info">Brak lotów dla wybranych filtrów.</div>
       } @else {
-        <div class="grid">
-          @for (offer of offers(); track offer.destIata) {
-            <a class="card" [href]="bookingUrl(offer)" target="_blank" rel="noopener">
-              <div class="card-img">
-                @if (offer.imageUrl) {
-                  <img [src]="offer.imageUrl" [alt]="offer.destName" loading="lazy" />
-                } @else {
-                  <div class="img-placeholder"></div>
-                }
-              </div>
-              <div class="card-body">
-                <div class="card-title-row">
-                  <span class="dest">{{ offer.destName }}</span>
-                  <span class="iata">{{ offer.destIata }}</span>
-                </div>
-                <div class="country">{{ offer.destCountry }}</div>
-                <div class="card-foot">
-                  <div class="price-block">
-                    <span class="price">od {{ price(offer) }} zł</span>
-                    <span class="price-sub">{{
-                      mode() === 'roundTrip' ? 'w obie strony' : 'w jedną stronę'
-                    }}</span>
-                  </div>
-                  @if (altPrice(offer) !== null) {
-                    <span class="alt-price">
-                      {{ mode() === 'roundTrip' ? '1 str.' : 'obie str.' }}: od
-                      {{ altPrice(offer) }} zł
-                    </span>
+        <div class="results-card">
+          @for (f of flights(); track f.id) {
+            <div
+              class="offer-row"
+              [class.has-photo]="!!f.imageUrl"
+              [style.--thumb]="f.imageUrl ? 'url(' + f.imageUrl + ')' : 'none'"
+            >
+              <!-- ── Left ─────────────────────── -->
+              <div class="offer-left">
+                <div class="dest-header">
+                  <span class="dest-city">{{ f.destName }}</span>
+                  <span class="dest-iata">({{ f.destIata }})</span>
+                  <span class="dest-sep">·</span>
+                  <span class="dest-country">{{ f.destCountry }}</span>
+                  @if (f.baggageKg) {
+                    <span class="chip chip-neutral">Bagaż {{ f.baggageKg }} kg</span>
+                  }
+                  @if (mode() === 'roundTrip') {
+                    <span class="chip chip-blue">cena za wylot, pakiet z powrotem</span>
                   }
                 </div>
-                @if (offer.baggageKg) {
-                  <div class="baggage">Bagaż {{ offer.baggageKg }} kg w cenie</div>
-                }
+
+                <div class="leg">
+                  <span class="dep-highlight">
+                    <span class="dep-date">{{ fmtDate(f.date) }}</span>
+                    <span class="dep-hour">{{ f.depTime }}</span>
+                    <span class="dep-airport"
+                      >{{ f.depAirport }} <span class="dep-code">({{ f.depIata }})</span></span
+                    >
+                  </span>
+                  <span class="leg-route">
+                    <span class="leg-arrow">→</span>
+                    <strong>{{ f.destName }}</strong>
+                    <span class="leg-code">({{ f.destIata }})</span>
+                    <span class="leg-arr">przylot {{ f.arrTime }}</span>
+                  </span>
+                  <span class="chip chip-neutral"
+                    >{{ f.airline }}
+                    @if (f.flightNo) {
+                      <span class="chip-sub">{{ f.flightNo }}</span>
+                    }
+                  </span>
+                </div>
               </div>
-            </a>
+
+              <!-- ── Right ────────────────────── -->
+              <div class="offer-right">
+                <div class="price-block">
+                  <div class="price-val">
+                    {{ f.price | number: '1.0-0' }}
+                    <span class="price-cur">PLN</span>
+                  </div>
+                  <div class="price-mode">
+                    {{ mode() === 'roundTrip' ? 'wylot w pakiecie' : 'w jedną stronę' }}
+                  </div>
+                </div>
+                <a class="btn-primary" [href]="bookingUrl(f)" target="_blank" rel="noopener"
+                  >Sprawdź</a
+                >
+              </div>
+            </div>
           }
         </div>
       }
@@ -190,14 +357,41 @@ type PriceMode = 'roundTrip' | 'oneWay';
         color: var(--color-text-tertiary);
       }
 
-      .toolbar {
+      /* ── Filter card ─────────────────────── */
+      .filter-card {
+        margin-top: 20px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: 14px 16px;
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin: 20px 0 16px;
+        flex-direction: column;
         gap: 12px;
+        box-shadow: var(--shadow-sm);
+      }
+      .filter-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 16px;
         flex-wrap: wrap;
       }
+      .filter-row--secondary {
+        justify-content: space-between;
+      }
+      .fg {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        position: relative;
+      }
+      .fg-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--color-text-tertiary);
+      }
+
       .mode-toggle {
         display: inline-flex;
         background: var(--color-sidebar-active);
@@ -208,7 +402,7 @@ type PriceMode = 'roundTrip' | 'oneWay';
       .mode-btn {
         border: none;
         background: transparent;
-        padding: 6px 14px;
+        padding: 5px 12px;
         font-size: 13px;
         font-weight: 500;
         color: var(--color-text-secondary);
@@ -221,6 +415,122 @@ type PriceMode = 'roundTrip' | 'oneWay';
         color: var(--color-blue-700);
         font-weight: 600;
         box-shadow: var(--shadow-sm);
+      }
+
+      .dd-btn {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-width: 160px;
+        padding: 7px 10px;
+        font-size: 13px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        background: var(--color-surface);
+        color: var(--color-text-primary);
+        cursor: pointer;
+        transition: border-color 0.12s;
+      }
+      .dd-btn:hover {
+        border-color: var(--color-border-strong);
+      }
+      .dd-btn.dd-active {
+        border-color: var(--color-blue-600);
+        color: var(--color-blue-700);
+        font-weight: 600;
+      }
+      .chevron {
+        transition: transform 0.15s;
+        color: var(--color-text-tertiary);
+        flex-shrink: 0;
+      }
+      .chevron.flip {
+        transform: rotate(180deg);
+      }
+      .dd-panel {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        z-index: 300;
+        min-width: 220px;
+        max-height: 280px;
+        overflow-y: auto;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
+        padding: 6px;
+      }
+      .dd-opt {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        font-size: 13px;
+        color: var(--color-text-primary);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+      }
+      .dd-opt:hover {
+        background: var(--color-surface-hover);
+      }
+      .dd-code {
+        color: var(--color-text-tertiary);
+      }
+
+      .date-input {
+        padding: 6px 10px;
+        font-size: 13px;
+        font-family: inherit;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        background: var(--color-surface);
+        color: var(--color-text-primary);
+      }
+
+      .day-pills {
+        display: flex;
+        gap: 4px;
+      }
+      .day-pill {
+        min-width: 36px;
+        padding: 5px 8px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        background: var(--color-surface);
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all 0.12s;
+      }
+      .day-pill.on {
+        background: var(--color-blue-50);
+        border-color: var(--color-blue-600);
+        color: var(--color-blue-700);
+      }
+
+      .clear-btn {
+        border: none;
+        background: transparent;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        padding: 6px 8px;
+        border-radius: var(--radius-sm);
+      }
+      .clear-btn:hover {
+        background: var(--color-surface-hover);
+        color: var(--color-text-primary);
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        margin: 14px 0 10px;
       }
       .count {
         font-size: 13px;
@@ -237,101 +547,225 @@ type PriceMode = 'roundTrip' | 'oneWay';
         color: var(--color-amber-700);
       }
 
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        gap: 16px;
-      }
-      .card {
-        display: flex;
-        flex-direction: column;
+      /* ── Results list (same look as deals) ── */
+      .results-card {
         background: var(--color-surface);
         border: 1px solid var(--color-border);
         border-radius: var(--radius-lg);
         overflow: hidden;
-        text-decoration: none;
-        color: inherit;
         box-shadow: var(--shadow-sm);
-        transition:
-          box-shadow 0.15s,
-          transform 0.15s;
       }
-      .card:hover {
-        box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1));
-        transform: translateY(-2px);
+
+      .offer-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 24px;
+        padding: 14px 20px;
+        position: relative;
+        background: var(--color-surface);
+        border-bottom: 1px solid var(--color-border);
+        transition: background-color 0.1s;
       }
-      .card-img {
-        aspect-ratio: 410 / 225;
-        background: var(--color-sidebar-active);
+      .offer-row:last-child {
+        border-bottom: none;
       }
-      .card-img img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
+      .offer-row::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 200px;
+        background: var(--thumb, none) center / cover no-repeat;
+        mask-image: linear-gradient(to right, black 0%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to right, black 0%, transparent 100%);
+        opacity: 0.46;
+        pointer-events: none;
+        z-index: 0;
       }
-      .img-placeholder {
-        width: 100%;
-        height: 100%;
+      .offer-row.has-photo {
+        padding-left: 88px;
       }
-      .card-body {
-        padding: 12px 14px 14px;
+      .offer-row:hover {
+        background: var(--color-surface-hover);
+      }
+
+      .offer-left {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 10px;
+        min-width: 0;
+        position: relative;
+        z-index: 1;
       }
-      .card-title-row {
+
+      .dest-header {
         display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 8px;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
       }
-      .dest {
+      .dest-city {
         font-size: 15px;
-        font-weight: 600;
+        font-weight: 700;
         color: var(--color-text-primary);
       }
-      .iata {
-        font-size: 11px;
-        font-weight: 600;
+      .dest-iata {
+        font-size: 13px;
+        font-weight: 500;
         color: var(--color-text-tertiary);
-        letter-spacing: 0.05em;
       }
-      .country {
+      .dest-sep {
+        color: var(--color-border-strong);
+      }
+      .dest-country {
         font-size: 13px;
         color: var(--color-text-secondary);
       }
-      .card-foot {
+
+      .leg {
         display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        font-size: 13px;
+      }
+
+      /* Emphasized: date + hour + departure airport */
+      .dep-highlight {
+        display: inline-flex;
         align-items: baseline;
-        justify-content: space-between;
         gap: 8px;
-        margin-top: 10px;
+        padding: 3px 10px;
+        border-radius: var(--radius-md);
+        background: var(--color-blue-50);
+        white-space: nowrap;
       }
-      .price-block {
-        display: flex;
-        align-items: baseline;
-        gap: 6px;
-      }
-      .price {
-        font-size: 17px;
+      .dep-date {
+        font-size: 13px;
         font-weight: 700;
         color: var(--color-blue-700);
+      }
+      .dep-hour {
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--color-blue-700);
+        font-variant-numeric: tabular-nums;
+      }
+      .dep-airport {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--color-text-primary);
+      }
+      .dep-code {
+        font-weight: 500;
+        color: var(--color-text-tertiary);
+      }
+
+      .leg-route {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+        font-size: 13px;
+        color: var(--color-text-primary);
+      }
+      .leg-route strong {
+        font-weight: 600;
+      }
+      .leg-code {
+        color: var(--color-text-tertiary);
+        font-weight: 400;
+      }
+      .leg-arrow {
+        color: var(--color-text-tertiary);
+        margin: 0 2px;
+      }
+      .leg-arr {
+        color: var(--color-text-secondary);
+        margin-left: 4px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .chip {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 999px;
         white-space: nowrap;
       }
-      .price-sub {
-        font-size: 11px;
+      .chip-neutral {
+        background: var(--color-sidebar-active);
+        color: var(--color-text-secondary);
+      }
+      .chip-blue {
+        background: var(--color-blue-50);
+        color: var(--color-blue-700);
+      }
+      .chip-sub {
+        font-weight: 400;
         color: var(--color-text-tertiary);
       }
-      .alt-price {
-        font-size: 11px;
-        color: var(--color-text-tertiary);
+
+      .offer-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 10px;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 1;
+      }
+      .price-block {
+        text-align: right;
+      }
+      .price-val {
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--color-blue-700);
+        line-height: 1.1;
         white-space: nowrap;
       }
-      .baggage {
-        margin-top: 4px;
+      .price-cur {
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .price-mode {
         font-size: 11px;
         color: var(--color-text-tertiary);
+        margin-top: 2px;
+      }
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 16px;
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        font-weight: 500;
+        background: var(--color-blue-700);
+        color: #fff;
+        text-decoration: none;
+        transition: background 0.12s;
+      }
+      .btn-primary:hover {
+        background: var(--color-blue-800);
+      }
+
+      @media (max-width: 640px) {
+        .offer-row {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        .offer-right {
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+        }
+        .price-block {
+          text-align: left;
+        }
       }
     `,
   ],
@@ -339,17 +773,29 @@ type PriceMode = 'roundTrip' | 'oneWay';
 export class ChartersPageComponent {
   private chartersService = inject(ChartersService);
 
+  readonly DAYS = DAYS;
+
   mode = signal<PriceMode>('roundTrip');
   loading = signal(true);
   error = signal(false);
-  private response = signal<{ offers: CharterOffer[]; lastUpdate: string | null }>({
-    offers: [],
+  flights = signal<CharterFlight[]>([]);
+  meta = signal<ChartersMeta>({
+    origins: [],
+    countries: [],
+    minDate: null,
+    maxDate: null,
     lastUpdate: null,
   });
 
-  offers = computed(() => this.response().offers);
+  openDropdown = signal<'origin' | 'country' | null>(null);
+  selectedOrigins = signal<Set<string>>(new Set());
+  selectedCountries = signal<Set<string>>(new Set());
+  selectedDays = signal<Set<number>>(new Set());
+  dateFrom = signal<string>('');
+  dateTo = signal<string>('');
+
   lastUpdate = computed(() => {
-    const ts = this.response().lastUpdate;
+    const ts = this.meta().lastUpdate;
     if (!ts) return null;
     return new Date(ts).toLocaleString('pl-PL', {
       day: 'numeric',
@@ -358,9 +804,38 @@ export class ChartersPageComponent {
       minute: '2-digit',
     });
   });
+  minDate = computed(() => this.meta().minDate?.slice(0, 10) ?? '');
+  maxDate = computed(() => this.meta().maxDate?.slice(0, 10) ?? '');
+
+  originLabel = computed(() => {
+    const n = this.selectedOrigins().size;
+    return n === 0 ? 'Wszystkie' : n === 1 ? [...this.selectedOrigins()][0] : `${n} lotnisk`;
+  });
+  countryLabel = computed(() => {
+    const sel = this.selectedCountries();
+    return sel.size === 0 ? 'Wszystkie' : sel.size === 1 ? [...sel][0] : `${sel.size} krajów`;
+  });
+  hasFilters = computed(
+    () =>
+      this.selectedOrigins().size > 0 ||
+      this.selectedCountries().size > 0 ||
+      this.selectedDays().size > 0 ||
+      !!this.dateFrom() ||
+      !!this.dateTo(),
+  );
 
   constructor() {
+    this.chartersService.getMeta().subscribe((m) => this.meta.set(m));
     this.load();
+  }
+
+  @HostListener('document:click')
+  closeDropdowns() {
+    this.openDropdown.set(null);
+  }
+
+  toggleDropdown(which: 'origin' | 'country') {
+    this.openDropdown.set(this.openDropdown() === which ? null : which);
   }
 
   setMode(mode: PriceMode) {
@@ -369,30 +844,85 @@ export class ChartersPageComponent {
     this.load();
   }
 
+  toggleOrigin(iata: string) {
+    const next = new Set(this.selectedOrigins());
+    if (next.has(iata)) next.delete(iata);
+    else next.add(iata);
+    this.selectedOrigins.set(next);
+    this.load();
+  }
+
+  toggleCountry(country: string) {
+    const next = new Set(this.selectedCountries());
+    if (next.has(country)) next.delete(country);
+    else next.add(country);
+    this.selectedCountries.set(next);
+    this.load();
+  }
+
+  toggleDay(js: number) {
+    const next = new Set(this.selectedDays());
+    if (next.has(js)) next.delete(js);
+    else next.add(js);
+    this.selectedDays.set(next);
+    this.load();
+  }
+
+  setDateFrom(e: Event) {
+    this.dateFrom.set((e.target as HTMLInputElement).value);
+    this.load();
+  }
+
+  setDateTo(e: Event) {
+    this.dateTo.set((e.target as HTMLInputElement).value);
+    this.load();
+  }
+
+  clearFilters() {
+    this.selectedOrigins.set(new Set());
+    this.selectedCountries.set(new Set());
+    this.selectedDays.set(new Set());
+    this.dateFrom.set('');
+    this.dateTo.set('');
+    this.load();
+  }
+
   private load() {
     this.loading.set(true);
     this.error.set(false);
-    this.chartersService.getOffers(this.mode()).subscribe({
-      next: (res) => {
-        this.response.set(res);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.error.set(true);
-        this.loading.set(false);
-      },
+    this.chartersService
+      .getFlights({
+        oneWay: this.mode() === 'oneWay',
+        origin: [...this.selectedOrigins()].join(',') || undefined,
+        destCountry: [...this.selectedCountries()].join(',') || undefined,
+        dateFrom: this.dateFrom() || undefined,
+        dateTo: this.dateTo() || undefined,
+        days: [...this.selectedDays()].join(',') || undefined,
+      })
+      .subscribe({
+        next: (flights) => {
+          this.flights.set(flights);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.error.set(true);
+          this.loading.set(false);
+        },
+      });
+  }
+
+  fmtDate(iso: string): string {
+    const d = new Date(iso);
+    return `${WD[d.getUTCDay()]} ${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  }
+
+  bookingUrl(f: CharterFlight): string {
+    const base = `https://r.pl/bilety-czarterowe/${f.destCountryUrl}/${f.destNameUrl}`;
+    const params = new URLSearchParams({
+      oneWay: String(f.oneWay),
+      data: f.date.slice(0, 10),
     });
-  }
-
-  price(offer: CharterOffer): number | null {
-    return this.mode() === 'roundTrip' ? offer.priceRoundTrip : offer.priceOneWay;
-  }
-
-  altPrice(offer: CharterOffer): number | null {
-    return this.mode() === 'roundTrip' ? offer.priceOneWay : offer.priceRoundTrip;
-  }
-
-  bookingUrl(offer: CharterOffer): string {
-    return `https://r.pl/bilety-czarterowe/${offer.destCountryUrl}/${offer.destNameUrl}`;
+    if (f.pakietId) params.set('idWylot', f.pakietId);
+    return `${base}?${params}`;
   }
 }

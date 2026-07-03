@@ -187,7 +187,7 @@ const DAYS = [
           </div>
         </div>
 
-        <!-- Row 2: day-of-week pills + reset -->
+        <!-- Row 2: day-of-week pills + price range + sort + reset -->
         <div class="filter-row filter-row--secondary">
           <div class="fg">
             <span class="fg-label">Dni tygodnia wylotu</span>
@@ -203,6 +203,35 @@ const DAYS = [
               }
             </div>
           </div>
+          <div class="fg">
+            <span class="fg-label">Cena od (zł)</span>
+            <input
+              class="price-input"
+              type="number"
+              min="0"
+              placeholder="min"
+              [value]="minPrice() ?? ''"
+              (change)="setMinPrice($event)"
+            />
+          </div>
+          <div class="fg">
+            <span class="fg-label">Cena do (zł)</span>
+            <input
+              class="price-input"
+              type="number"
+              min="0"
+              placeholder="max"
+              [value]="maxPrice() ?? ''"
+              (change)="setMaxPrice($event)"
+            />
+          </div>
+          <div class="fg">
+            <span class="fg-label">Sortowanie</span>
+            <select class="sort-select" [value]="sort()" (change)="setSort($event)">
+              <option value="price">Najtańsze najpierw</option>
+              <option value="date">Data wylotu</option>
+            </select>
+          </div>
           @if (hasFilters()) {
             <button class="clear-btn" (click)="clearFilters()">Wyczyść filtry</button>
           }
@@ -213,7 +242,7 @@ const DAYS = [
         <span class="count">
           {{ flights().length }} lotów
           @if (flights().length === 300) {
-            <span class="muted">(pokazuję 300 najtańszych)</span>
+            <span class="muted">(pokazuję pierwsze 300)</span>
           }
         </span>
       </div>
@@ -239,15 +268,16 @@ const DAYS = [
                   <span class="dest-iata">({{ f.destIata }})</span>
                   <span class="dest-sep">·</span>
                   <span class="dest-country">{{ f.destCountry }}</span>
+                  @if (f.nights != null) {
+                    <span class="chip chip-blue">{{ f.nights }} nocy</span>
+                  }
                   @if (f.baggageKg) {
                     <span class="chip chip-neutral">Bagaż {{ f.baggageKg }} kg</span>
-                  }
-                  @if (mode() === 'roundTrip') {
-                    <span class="chip chip-blue">cena za wylot, pakiet z powrotem</span>
                   }
                 </div>
 
                 <div class="leg">
+                  <span class="leg-dir out">Wylot</span>
                   <span class="dep-highlight">
                     <span class="dep-date">{{ fmtDate(f.date) }}</span>
                     <span class="dep-hour">{{ f.depTime }}</span>
@@ -268,17 +298,47 @@ const DAYS = [
                     }
                   </span>
                 </div>
+
+                @if (f.returnDate) {
+                  <div class="leg">
+                    <span class="leg-dir ret">Powrót</span>
+                    <span class="dep-highlight dep-highlight--ret">
+                      <span class="dep-date">{{ fmtDate(f.returnDate) }}</span>
+                      <span class="dep-hour">{{ f.retDepTime }}</span>
+                      <span class="dep-airport"
+                        >{{ f.destName }} <span class="dep-code">({{ f.destIata }})</span></span
+                      >
+                    </span>
+                    <span class="leg-route">
+                      <span class="leg-arrow">→</span>
+                      <strong>{{ f.retArrAirport }}</strong>
+                      <span class="leg-code">({{ f.retArrIata }})</span>
+                      <span class="leg-arr">przylot {{ f.retArrTime }}</span>
+                    </span>
+                    <span class="chip chip-neutral"
+                      >{{ f.retAirline }}
+                      @if (f.retFlightNo) {
+                        <span class="chip-sub">{{ f.retFlightNo }}</span>
+                      }
+                    </span>
+                  </div>
+                }
               </div>
 
               <!-- ── Right ────────────────────── -->
               <div class="offer-right">
                 <div class="price-block">
                   <div class="price-val">
-                    {{ f.price | number: '1.0-0' }}
+                    {{ f.totalPrice | number: '1.0-0' }}
                     <span class="price-cur">PLN</span>
                   </div>
                   <div class="price-mode">
-                    {{ mode() === 'roundTrip' ? 'wylot w pakiecie' : 'w jedną stronę' }}
+                    @if (f.returnPrice != null) {
+                      w obie strony ({{ f.price | number: '1.0-0' }} +
+                      {{ f.returnPrice | number: '1.0-0' }})
+                    } @else {
+                      w jedną stronę
+                    }
                   </div>
                 </div>
                 <a class="btn-primary" [href]="bookingUrl(f)" target="_blank" rel="noopener"
@@ -479,7 +539,9 @@ const DAYS = [
         color: var(--color-text-tertiary);
       }
 
-      .date-input {
+      .date-input,
+      .price-input,
+      .sort-select {
         padding: 6px 10px;
         font-size: 13px;
         font-family: inherit;
@@ -487,6 +549,9 @@ const DAYS = [
         border-radius: var(--radius-md);
         background: var(--color-surface);
         color: var(--color-text-primary);
+      }
+      .price-input {
+        width: 90px;
       }
 
       .day-pills {
@@ -631,6 +696,25 @@ const DAYS = [
         flex-wrap: wrap;
         font-size: 13px;
       }
+      .leg-dir {
+        flex-shrink: 0;
+        min-width: 48px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        text-align: center;
+      }
+      .leg-dir.out {
+        background: var(--color-blue-50);
+        color: var(--color-blue-700);
+      }
+      .leg-dir.ret {
+        background: var(--color-sidebar-active);
+        color: var(--color-text-secondary);
+      }
 
       /* Emphasized: date + hour + departure airport */
       .dep-highlight {
@@ -641,6 +725,13 @@ const DAYS = [
         border-radius: var(--radius-md);
         background: var(--color-blue-50);
         white-space: nowrap;
+      }
+      .dep-highlight--ret {
+        background: var(--color-sidebar-active);
+      }
+      .dep-highlight--ret .dep-date,
+      .dep-highlight--ret .dep-hour {
+        color: var(--color-text-primary);
       }
       .dep-date {
         font-size: 13px;
@@ -784,6 +875,8 @@ export class ChartersPageComponent {
     countries: [],
     minDate: null,
     maxDate: null,
+    minPrice: null,
+    maxPrice: null,
     lastUpdate: null,
   });
 
@@ -793,6 +886,9 @@ export class ChartersPageComponent {
   selectedDays = signal<Set<number>>(new Set());
   dateFrom = signal<string>('');
   dateTo = signal<string>('');
+  minPrice = signal<number | null>(null);
+  maxPrice = signal<number | null>(null);
+  sort = signal<'price' | 'date'>('price');
 
   lastUpdate = computed(() => {
     const ts = this.meta().lastUpdate;
@@ -821,7 +917,9 @@ export class ChartersPageComponent {
       this.selectedCountries().size > 0 ||
       this.selectedDays().size > 0 ||
       !!this.dateFrom() ||
-      !!this.dateTo(),
+      !!this.dateTo() ||
+      this.minPrice() != null ||
+      this.maxPrice() != null,
   );
 
   constructor() {
@@ -878,12 +976,31 @@ export class ChartersPageComponent {
     this.load();
   }
 
+  setMinPrice(e: Event) {
+    const v = (e.target as HTMLInputElement).value;
+    this.minPrice.set(v ? Number(v) : null);
+    this.load();
+  }
+
+  setMaxPrice(e: Event) {
+    const v = (e.target as HTMLInputElement).value;
+    this.maxPrice.set(v ? Number(v) : null);
+    this.load();
+  }
+
+  setSort(e: Event) {
+    this.sort.set((e.target as HTMLSelectElement).value as 'price' | 'date');
+    this.load();
+  }
+
   clearFilters() {
     this.selectedOrigins.set(new Set());
     this.selectedCountries.set(new Set());
     this.selectedDays.set(new Set());
     this.dateFrom.set('');
     this.dateTo.set('');
+    this.minPrice.set(null);
+    this.maxPrice.set(null);
     this.load();
   }
 
@@ -898,6 +1015,9 @@ export class ChartersPageComponent {
         dateFrom: this.dateFrom() || undefined,
         dateTo: this.dateTo() || undefined,
         days: [...this.selectedDays()].join(',') || undefined,
+        minPrice: this.minPrice() ?? undefined,
+        maxPrice: this.maxPrice() ?? undefined,
+        sort: this.sort(),
       })
       .subscribe({
         next: (flights) => {
@@ -923,6 +1043,7 @@ export class ChartersPageComponent {
       data: f.date.slice(0, 10),
     });
     if (f.pakietId) params.set('idWylot', f.pakietId);
+    if (f.retPakietId) params.set('idPrzylot', f.retPakietId);
     return `${base}?${params}`;
   }
 }

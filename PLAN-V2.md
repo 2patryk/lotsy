@@ -80,13 +80,13 @@ resztą lotsy; data urodzenia liczona dynamicznie ~30 lat wstecz).
 - [x] Rozpoznanie API r.pl (curl, bundle JS) — wyniki wyżej.
 - [x] 1. Prisma: model `CharterOffer` + migracja + generate.
 - [x] 2. Engine: `charters.ts` (fetch 2 calli, merge, replace) + `--dry-run`
-      (`pnpm --filter @lotsy/engine smoke:charters` / `start:charters`).
+     (`pnpm --filter @lotsy/engine smoke:charters` / `start:charters`).
 - [x] 3. Workflow GH Actions `charters.yml` (co 3h, offset :30 względem search).
 - [x] 4. API: moduł `charters` (`GET /charters?sort=roundTrip|oneWay&country=`).
 - [x] 5. Frontend: model + serwis + `charters-page.component` + route `/czartery`
-      + link „Czartery" w nav.
+     - link „Czartery" w nav.
 - [x] 6. Weryfikacja end-to-end lokalnie (engine → Neon → API → strona,
-      2026-07-03: 75 destynacji, sort i przełącznik RT/OW działają).
+     2026-07-03: 75 destynacji, sort i przełącznik RT/OW działają).
 
 ## Krok 2 — pełna lista lotów z filtrami (zrobione 2026-07-03)
 
@@ -106,12 +106,20 @@ resztą lotsy; data urodzenia liczona dynamicznie ~30 lat wstecz).
       typ biletu (RT/OW), lotnisko wylotu (multi), kraj przylotu (multi),
       zakres dat, dni tygodnia; „Sprawdź" deep-linkuje do r.pl z
       `data` + `idWylot`.
-- Uwaga: w trybie RT cena wiersza to część wylotowa pakietu (powrót dobierany
-  na r.pl) — oznaczone chipem w UI.
+- [x] Parowanie powrotów (2026-07-03): pakiety czarterowe mają dokładnie
+      **jeden dzień powrotu per wylot** (stała długość turnusu), więc
+      `wyszukaj-przylot?pakietId=` per bilet wylotowy (~5 tys. calli, limit 5
+      równoległych) daje kompletny round-trip: obie nogi z datami/godzinami,
+      `totalPrice` = wylot + powrót, liczba nocy. Wiersze RT bez sparowanego
+      powrotu są ukrywane (`totalPrice IS NULL`). Workflow zwolniony do co 6h,
+      timeout 40 min.
+- [x] Sortowanie (`sort=price|date`) i filtr `minPrice`/`maxPrice`
+      (po `totalPrice`) w API i UI.
+- Deep link „Sprawdź": `?data=&idWylot=&idPrzylot=` — otwiera r.pl z wybranym
+  wylotem i powrotem.
 
 ## Krok 3 (pomysły)
 
 - Historia cen (append-only snapshot) i alerty spadków.
-- Parowanie wylot+powrót on-demand w UI (`wyszukaj-przylot`).
 - Kolumny `rtFlight`/`owFlight` na `CharterOffer` są już nieużywane przez UI —
   do ewentualnego sprzątnięcia przy następnej migracji.

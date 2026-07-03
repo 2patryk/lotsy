@@ -6,14 +6,20 @@ import { prisma, type Prisma } from '@lotsy/db';
 // Detail: wyszukaj-wylot accepts an arbitrarily wide date range, so one call
 // per destination per mode returns every concrete flight (date, departure
 // airport, times, airline, flight number, price, package id).
+// Return pairing: charter packages have exactly one return day per outbound
+// (fixed tour length), so wyszukaj-przylot per outbound package turns a row
+// into a complete round trip with a real total price.
 const OVERVIEW_URL = 'https://r.pl/api/czartery/wyszukiwanie/v4.1/wyszukaj';
 const FLIGHTS_URL = 'https://r.pl/api/czartery/destynacja/v4.1/wyszukaj-wylot';
+const RETURNS_URL = 'https://r.pl/api/czartery/destynacja/v4.1/wyszukaj-przylot';
 
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36';
 
 const MAX_CONCURRENT = 3;
 const BATCH_DELAY_MS = 300;
+const RETURNS_CONCURRENT = 5;
+const RETURNS_DELAY_MS = 200;
 const HORIZON_MONTHS = 12;
 const INSERT_CHUNK = 1000;
 
@@ -130,10 +136,67 @@ async function fetchFlights(
         baggageKg: t.BagazRejestrowany,
         price: t.Cena,
         pakietId: t.Pakiety?.[0] ?? null,
+        totalPrice: oneWay ? t.Cena : null,
       });
     }
   }
   return rows;
+}
+
+// Attach the return leg to a round-trip outbound row; a failure leaves
+// totalPrice null (row is then hidden from the RT list by the API).
+async function pairReturn(row: CharterFlightRow): Promise<void> {
+  if (!row.pakietId) return;
+  const days = await rainbowGet<RainbowFlightDay[]>(
+    RETURNS_URL,
+    new URLSearchParams({ pakietId: row.pakietId, dataUrodzenia: adultBirthDate() }),
+  );
+  if (!Array.isArray(days)) return;
+
+  let best: { date: string; ticket: RainbowTicket } | null = null;
+  for (const day of days) {
+    for (const t of day.Bilety ?? []) {
+      if (t.Cena == null) continue;
+      if (!best || t.Cena < best.ticket.Cena) best = { date: day.Data.slice(0, 10), ticket: t };
+    }
+  }
+  if (!best) return;
+
+  const outDate = new Date(row.date as Date);
+  const retDate = new Date(`${best.date}T00:00:00Z`);
+  row.returnDate = retDate;
+  row.retDepTime = best.ticket.Wylot.Godzina;
+  row.retArrTime = best.ticket.Przylot.Godzina;
+  row.retArrIata = best.ticket.Przylot.Iata;
+  row.retArrAirport = best.ticket.Przylot.Przystanek;
+  row.retAirline = best.ticket.NazwaPrzewoznika;
+  row.retFlightNo = best.ticket.NumerLotu;
+  row.returnPrice = best.ticket.Cena;
+  row.retPakietId = best.ticket.Pakiety?.[0] ?? null;
+  row.nights = Math.round((retDate.getTime() - outDate.getTime()) / 86_400_000);
+  row.totalPrice = row.price + best.ticket.Cena;
+}
+
+async function pairAllReturns(rows: CharterFlightRow[]): Promise<void> {
+  const rtRows = rows.filter((r) => !r.oneWay);
+  let failures = 0;
+  for (let i = 0; i < rtRows.length; i += RETURNS_CONCURRENT) {
+    const batch = rtRows.slice(i, i + RETURNS_CONCURRENT);
+    await Promise.all(
+      batch.map(async (row) => {
+        try {
+          await pairReturn(row);
+        } catch {
+          failures++;
+        }
+      }),
+    );
+    if (i + RETURNS_CONCURRENT < rtRows.length) await sleep(RETURNS_DELAY_MS);
+  }
+  const paired = rtRows.filter((r) => r.totalPrice != null).length;
+  console.log(
+    `[charters] returns: ${rtRows.length} lookups, ${paired} paired, ${failures} failures`,
+  );
 }
 
 interface MergedOffer {
@@ -221,18 +284,19 @@ async function main() {
 
   if (DRY_RUN) {
     // Sample a few destinations end-to-end without writing to the DB.
-    const sample = roundTrip.filter((d) => d.Cena != null).slice(0, 2);
-    const rows = await fetchAllFlights(sample, []);
-    const cheapest = [...rows].sort((a, b) => a.price - b.price).slice(0, 5);
-    for (const f of cheapest) {
+    const sample = roundTrip.filter((d) => d.Cena != null).slice(0, 1);
+    const rows = (await fetchAllFlights(sample, [])).slice(0, 5);
+    await pairAllReturns(rows);
+    for (const f of rows) {
       console.log(
-        `  ${(f.date as Date).toISOString().slice(0, 10)} ${f.depTime} ${f.depAirport} (${f.depIata}) → ${f.destName} (${f.destIata}) przylot ${f.arrTime} | ${f.airline} ${f.flightNo ?? ''} | ${f.price} zł | pakiet ${f.pakietId}`,
+        `  ${(f.date as Date).toISOString().slice(0, 10)} ${f.depTime} ${f.depAirport} (${f.depIata}) → ${f.destName} (${f.destIata}) | wylot ${f.price} + powrót ${f.returnPrice ?? '?'} = ${f.totalPrice ?? '?'} zł | powrót ${f.returnDate ? (f.returnDate as Date).toISOString().slice(0, 10) : '?'} ${f.retDepTime ?? ''} (${f.nights ?? '?'} nocy)`,
       );
     }
     return;
   }
 
   const flights = await fetchAllFlights(roundTrip, oneWay);
+  await pairAllReturns(flights);
 
   // Latest snapshot only: replace table contents atomically so flights that
   // disappeared from r.pl don't linger. createMany is chunked to stay under

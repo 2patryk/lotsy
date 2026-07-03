@@ -102,10 +102,26 @@ model CharterFlight {
   flightNo       String?
   flightTime     String?
   baggageKg      Int?
-  price          Float // per person
+  price          Float // per person; oneWay=false → outbound part of the package
   pakietId       String? // r.pl package id — deep link idWylot
-  updatedAt      DateTime @updatedAt
 
+  // Return leg (oneWay=false only) — charter packages have exactly one return
+  // day per outbound, so a row is a complete round trip.
+  returnDate    DateTime?
+  retDepTime    String? // departure from destination, HH:MM
+  retArrTime    String?
+  retArrIata    String?
+  retArrAirport String?
+  retAirline    String?
+  retFlightNo   String?
+  returnPrice   Float?
+  retPakietId   String? // deep link idPrzylot
+  nights        Int?
+  totalPrice    Float? // oneWay=true → price; oneWay=false → price + returnPrice (null if pairing failed)
+
+  updatedAt DateTime @updatedAt
+
+  @@index([oneWay, totalPrice])
   @@index([oneWay, price])
   @@index([destCountry])
   @@index([depIata])

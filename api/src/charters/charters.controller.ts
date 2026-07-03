@@ -1,5 +1,8 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ChartersService } from './charters.service.js';
+import {
+  ChartersService,
+  type CharterFlightsSort,
+} from './charters.service.js';
 
 function csv(value?: string): string[] | undefined {
   return value
@@ -22,7 +25,9 @@ export class ChartersController {
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
     @Query('days') days?: string,
+    @Query('minPrice') minPrice?: string,
     @Query('maxPrice') maxPrice?: string,
+    @Query('sort') sort?: CharterFlightsSort,
   ) {
     return this.chartersService.findFlights({
       oneWay: oneWay === 'true',
@@ -31,7 +36,9 @@ export class ChartersController {
       dateFrom,
       dateTo,
       days: csv(days)?.map(Number),
+      minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      sort,
     });
   }
 

@@ -3,13 +3,13 @@ name: Charter Engine
 on:
   workflow_dispatch:   # manual trigger for dev/testing
   schedule:
-    - cron: '30 */3 * * *'   # every 3 hours, offset from search engine
+    - cron: '30 */6 * * *'   # every 6 hours (return pairing = ~5k API calls per run)
 
 jobs:
   run-charters:
     name: Fetch charter offers
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@v4

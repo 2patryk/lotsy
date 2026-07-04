@@ -128,6 +128,30 @@ model CharterFlight {
   @@index([date])
 }
 
+// Cheapest Ryanair one-way fare per route and day within the rolling
+// last-minute window (today → +10 days), both directions, latest snapshot only.
+model OneWayFare {
+  id            String   @id @default(cuid())
+  direction     String // "OUT" = from Poland | "IN" = to Poland
+  origin        String // IATA
+  originCity    String
+  originCountry String // Polish country name, e.g. "Hiszpania"
+  destination   String // IATA
+  destCity      String
+  destCountry   String
+  date          DateTime // flight day (UTC midnight)
+  departureTime DateTime // local wall-clock stored as-is
+  arrivalTime   DateTime
+  flightNumber  String?
+  price         Float // per person, PLN
+  currency      String   @default("PLN")
+  updatedAt     DateTime @updatedAt
+
+  @@unique([origin, destination, date])
+  @@index([direction, price])
+  @@index([direction, date])
+}
+
 model Airport {
   iata     String  @id
   name     String  // city name in Polish (from Ryanair /pl/ locale)

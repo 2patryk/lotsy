@@ -1,4 +1,4 @@
-import { getCheapestPerDay, getDestinations } from './index.js';
+import { getCheapestPerDay, getDestinations, getOneWayFaresList } from './index.js';
 
 const ROUTES = [
   { origin: 'WMI', dest: 'CIA' },
@@ -41,6 +41,48 @@ async function main() {
       console.error(`${origin}→${dest} ERROR:`, err);
     }
     await new Promise((r) => setTimeout(r, 400));
+  }
+
+  console.log('\n=== Smoke test: getOneWayFaresList ===\n');
+
+  const today = new Date();
+  const to = new Date(today.getTime() + 10 * 86_400_000);
+  const dateFrom = today.toISOString().slice(0, 10);
+  const dateTo = to.toISOString().slice(0, 10);
+
+  try {
+    const outFares = await getOneWayFaresList({
+      departureAirportIataCode: 'WAW',
+      outboundDepartureDateFrom: dateFrom,
+      outboundDepartureDateTo: dateTo,
+    });
+    console.log(`WAW→ (OUT): ${outFares.length} active routes`);
+    for (const f of outFares.slice(0, 3)) {
+      console.log(
+        `  ${f.origin}→${f.destination} (${f.destCity}, ${f.destCountry}) ${f.date} ${f.departureTime.slice(11, 16)} ${f.price} ${f.currency}`,
+      );
+    }
+  } catch (err) {
+    console.error('getOneWayFaresList (OUT) ERROR:', err);
+  }
+
+  await new Promise((r) => setTimeout(r, 400));
+
+  try {
+    const inFares = await getOneWayFaresList({
+      arrivalCountryCode: 'pl',
+      departureCountryCode: 'it',
+      outboundDepartureDateFrom: dateFrom,
+      outboundDepartureDateTo: dateTo,
+    });
+    console.log(`IT→PL (IN): ${inFares.length} active routes`);
+    for (const f of inFares.slice(0, 3)) {
+      console.log(
+        `  ${f.origin}→${f.destination} (${f.originCity} → ${f.destCity}) ${f.date} ${f.departureTime.slice(11, 16)} ${f.price} ${f.currency}`,
+      );
+    }
+  } catch (err) {
+    console.error('getOneWayFaresList (IN) ERROR:', err);
   }
 }
 

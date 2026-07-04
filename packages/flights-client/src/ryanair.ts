@@ -2,6 +2,9 @@ import { fetchJson } from './http.js';
 import type {
   RyanairCheapestPerDayResponse,
   RyanairDestinationsResponse,
+  RyanairOneWayFaresListResponse,
+  OneWayFaresListParams,
+  OneWayFareListItem,
   DailyFare,
 } from './types.js';
 
@@ -65,4 +68,72 @@ export async function getDestinations(origin: string): Promise<string[]> {
       return (any['iataCode'] as string) ?? (any['code'] as string) ?? '';
     })
     .filter(Boolean);
+}
+
+/**
+ * Returns the cheapest one-way fare per active route within a date window
+ * (one row per route, not per day — used for discovery of active routes).
+ *
+ * Two mutually-exclusive filter variants, matching Ryanair's API:
+ *  - outbound from Poland: pass `departureAirportIataCode`.
+ *  - inbound to Poland: pass `arrivalCountryCode: 'pl'` + `departureCountryCode`.
+ */
+export async function getOneWayFaresList(
+  params: OneWayFaresListParams,
+): Promise<OneWayFareListItem[]> {
+  const {
+    outboundDepartureDateFrom,
+    outboundDepartureDateTo,
+    currency = 'PLN',
+    market = 'pl-pl',
+    limit = 300,
+    offset = 0,
+    departureAirportIataCode,
+    arrivalCountryCode,
+    departureCountryCode,
+  } = params;
+
+  const hasOutboundVariant = Boolean(departureAirportIataCode);
+  const hasInboundVariant = Boolean(arrivalCountryCode && departureCountryCode);
+  if (!hasOutboundVariant && !hasInboundVariant) {
+    throw new Error(
+      'getOneWayFaresList: must provide either departureAirportIataCode, ' +
+        'or both arrivalCountryCode and departureCountryCode',
+    );
+  }
+
+  const qs = new URLSearchParams({
+    outboundDepartureDateFrom,
+    outboundDepartureDateTo,
+    market,
+    currency,
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (departureAirportIataCode) qs.set('departureAirportIataCode', departureAirportIataCode);
+  if (arrivalCountryCode) qs.set('arrivalCountryCode', arrivalCountryCode);
+  if (departureCountryCode) qs.set('departureCountryCode', departureCountryCode);
+
+  const url = `${BASE}/farfnd/v4/oneWayFares?${qs}`;
+  const data = await fetchJson<RyanairOneWayFaresListResponse>(url);
+
+  return (data.fares ?? []).map((f) => {
+    const { departureAirport, arrivalAirport, departureDate, arrivalDate, price, flightNumber } =
+      f.outbound;
+    return {
+      origin: departureAirport.iataCode,
+      originCity: departureAirport.city.name,
+      originCountry: departureAirport.countryName,
+      destination: arrivalAirport.iataCode,
+      destCity: arrivalAirport.city.name,
+      destCountry: arrivalAirport.countryName,
+      destCountryCode: arrivalAirport.city.countryCode,
+      date: departureDate.slice(0, 10),
+      departureTime: departureDate,
+      arrivalTime: arrivalDate,
+      price: price.value,
+      currency: price.currencyCode,
+      flightNumber,
+    };
+  });
 }

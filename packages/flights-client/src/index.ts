@@ -1,2 +1,8 @@
-export { getCheapestPerDay, getDestinations } from './ryanair.js';
-export type { DailyFare, RyanairFare, RouteMap } from './types.js';
+export { getCheapestPerDay, getDestinations, getOneWayFaresList } from './ryanair.js';
+export type {
+  DailyFare,
+  RyanairFare,
+  RouteMap,
+  OneWayFaresListParams,
+  OneWayFareListItem,
+} from './types.js';

@@ -8,6 +8,8 @@
     "smoke": "tsx src/search.ts --dry-run",
     "start:charters": "tsx src/charters.ts",
     "smoke:charters": "tsx src/charters.ts --dry-run",
+    "start:oneway": "tsx src/oneway.ts",
+    "smoke:oneway": "tsx src/oneway.ts --dry-run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -134,6 +134,9 @@ export const TOP_N_PER_ROUTE = 3;
 // Rolling search horizon in weeks
 export const HORIZON_WEEKS = 6;
 
+// Rolling one-way last-minute window, in days (today → today + N)
+export const ONEWAY_HORIZON_DAYS = 10;
+
 // Max concurrent HTTP requests to Ryanair API
 export const MAX_CONCURRENT = 3;
 

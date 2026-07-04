@@ -398,6 +398,37 @@ const DAYS = [
         cursor: default;
       }
 
+      @media (max-width: 768px) {
+        .header-inner {
+          padding: 0 12px;
+          gap: 10px;
+        }
+        .logo-link svg {
+          width: 84px;
+          height: 26px;
+        }
+        .main-nav {
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow-x: auto;
+          flex-wrap: nowrap;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .main-nav::-webkit-scrollbar {
+          display: none;
+        }
+        .nav-item {
+          flex-shrink: 0;
+          white-space: nowrap;
+          display: inline-flex;
+          align-items: center;
+          min-height: 40px;
+          padding: 0 12px;
+          box-sizing: border-box;
+        }
+      }
+
       .page {
         max-width: 1060px;
         margin: 0 auto;
@@ -590,6 +621,25 @@ const DAYS = [
       .clear-btn:hover {
         background: var(--color-surface-hover);
         color: var(--color-text-primary);
+      }
+
+      /* Cheap, low-risk fix so the filter bar doesn't force horizontal page scroll
+         on mobile. Not a redesign — same controls, just allowed to wrap/grow. */
+      @media (max-width: 768px) {
+        .filter-row {
+          flex-wrap: wrap;
+        }
+        .fg {
+          flex: 1 1 140px;
+          min-width: 140px;
+        }
+        .date-input,
+        .price-input,
+        .sort-select,
+        .dd-btn {
+          width: 100%;
+          box-sizing: border-box;
+        }
       }
 
       .toolbar {

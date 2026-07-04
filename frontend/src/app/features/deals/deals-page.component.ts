@@ -474,6 +474,46 @@ const TIMES = [
         cursor: default;
       }
 
+      @media (max-width: 768px) {
+        .header-inner {
+          padding: 0 12px;
+          gap: 8px;
+        }
+        .logo-link svg {
+          width: 84px;
+          height: 26px;
+        }
+        .main-nav {
+          display: flex;
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow-x: auto;
+          flex-wrap: nowrap;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .main-nav::-webkit-scrollbar {
+          display: none;
+        }
+        .nav-item {
+          flex-shrink: 0;
+          white-space: nowrap;
+          display: inline-flex;
+          align-items: center;
+          min-height: 40px;
+          padding: 0 10px;
+          box-sizing: border-box;
+        }
+        .header-right {
+          flex-shrink: 0;
+        }
+        .saved-link {
+          padding: 5px 8px;
+          min-height: 40px;
+          box-sizing: border-box;
+        }
+      }
+
       .header-right {
         margin-left: auto;
       }
@@ -971,13 +1011,6 @@ const TIMES = [
       }
 
       @media (max-width: 600px) {
-        .header-inner {
-          padding: 0 14px;
-          gap: 10px;
-        }
-        .main-nav {
-          display: none;
-        }
         .page {
           padding: 16px 0 40px;
           gap: 14px;

@@ -3,6 +3,7 @@ import {
   inject,
   signal,
   computed,
+  effect,
   HostListener,
   ViewChild,
   ElementRef,
@@ -27,10 +28,14 @@ const DAYS = [
 
 // Diacritic- and case-insensitive normalization, e.g. "wlochy" matches "Włochy".
 function normalize(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+  return (
+    s
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      // NFD does not decompose stroked letters, so map Polish l-stroke by hand.
+      .replace(/[łŁ]/g, 'l')
+      .toLowerCase()
+  );
 }
 
 interface DestSuggestion {
@@ -96,204 +101,234 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
         </p>
       </div>
 
+      <!-- Mobile-only filters trigger; the filter card itself becomes a full-screen
+           overlay on mobile via the filter-card--open class (see media queries). -->
+      <button type="button" class="filters-trigger" (click)="filtersOpen.set(true)">
+        <span>Filtry</span>
+        @if (filterCount() > 0) {
+          <span class="filters-badge">{{ filterCount() }}</span>
+        }
+      </button>
+
       <!-- ── Filters ─────────────────────────── -->
-      <div class="filter-card">
-        <div class="filter-row">
-          <!-- Direction -->
-          <div class="fg">
-            <span class="fg-label">Kierunek</span>
-            <div class="mode-toggle" role="tablist">
-              <button
-                class="mode-btn"
-                role="tab"
-                [class.active]="direction() === 'OUT'"
-                (click)="setDirection('OUT')"
-              >
-                Z Polski
-              </button>
-              <button
-                class="mode-btn"
-                role="tab"
-                [class.active]="direction() === 'IN'"
-                (click)="setDirection('IN')"
-              >
-                Do Polski
-              </button>
+      <div class="filter-card" [class.filter-card--open]="filtersOpen()">
+        <div class="filter-card-head">
+          <span class="filter-card-title">Filtry</span>
+          <button
+            type="button"
+            class="filter-card-close"
+            (click)="closeFilters()"
+            aria-label="Zamknij"
+          >
+            ×
+          </button>
+        </div>
+        <div class="filter-card-body">
+          <div class="filter-row">
+            <!-- Direction -->
+            <div class="fg">
+              <span class="fg-label">Kierunek</span>
+              <div class="mode-toggle" role="tablist">
+                <button
+                  class="mode-btn"
+                  role="tab"
+                  [class.active]="direction() === 'OUT'"
+                  (click)="setDirection('OUT')"
+                >
+                  Z Polski
+                </button>
+                <button
+                  class="mode-btn"
+                  role="tab"
+                  [class.active]="direction() === 'IN'"
+                  (click)="setDirection('IN')"
+                >
+                  Do Polski
+                </button>
+              </div>
             </div>
-          </div>
 
-          <!-- PL airport autocomplete -->
-          <div class="fg fg-dest" (click)="$event.stopPropagation()">
-            <span class="fg-label">Lotnisko polskie</span>
-            <div class="dest-box" [class.dd-active]="selectedPlAirports().length > 0">
-              @if (selectedPlAirports().length) {
-                <div class="dest-chips">
-                  @for (a of selectedPlAirports(); track a.iata) {
-                    <span class="dest-chip">
-                      {{ a.city }} ({{ a.iata }})
-                      <button
-                        type="button"
-                        class="dest-chip-x"
-                        (click)="removePlAirportItem(a)"
-                        aria-label="Usuń"
-                      >
-                        ×
-                      </button>
-                    </span>
+            <!-- PL airport autocomplete -->
+            <div class="fg fg-dest" (click)="$event.stopPropagation()">
+              <span class="fg-label">Lotnisko polskie</span>
+              <div class="dest-box" [class.dd-active]="selectedPlAirports().length > 0">
+                @if (selectedPlAirports().length) {
+                  <div class="dest-chips">
+                    @for (a of selectedPlAirports(); track a.iata) {
+                      <span class="dest-chip">
+                        {{ a.city }} ({{ a.iata }})
+                        <button
+                          type="button"
+                          class="dest-chip-x"
+                          (click)="removePlAirportItem(a)"
+                          aria-label="Usuń"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    }
+                  </div>
+                }
+                <input
+                  #plAirportInputEl
+                  class="dest-input"
+                  type="text"
+                  placeholder="Miasto lub kod…"
+                  [value]="plAirportInput()"
+                  (input)="onPlAirportInput($event)"
+                  (focus)="onPlAirportFocus()"
+                  (keydown)="onPlAirportKeydown($event)"
+                />
+              </div>
+              @if (plAirportPanelOpen() && plAirportSuggestions().length) {
+                <div class="dd-panel dest-panel">
+                  @for (a of plAirportSuggestions(); track a.iata; let i = $index) {
+                    <div
+                      class="dd-opt dest-opt"
+                      [class.dest-opt-active]="i === plAirportHighlight()"
+                      (mouseenter)="plAirportHighlight.set(i)"
+                      (mousedown)="$event.preventDefault()"
+                      (click)="selectPlAirportSuggestion(a)"
+                    >
+                      <span class="dest-opt-name">{{ a.city }} ({{ a.iata }})</span>
+                    </div>
                   }
                 </div>
               }
-              <input
-                #plAirportInputEl
-                class="dest-input"
-                type="text"
-                placeholder="Miasto lub kod…"
-                [value]="plAirportInput()"
-                (input)="onPlAirportInput($event)"
-                (focus)="onPlAirportFocus()"
-                (keydown)="onPlAirportKeydown($event)"
-              />
             </div>
-            @if (plAirportPanelOpen() && plAirportSuggestions().length) {
-              <div class="dd-panel dest-panel">
-                @for (a of plAirportSuggestions(); track a.iata; let i = $index) {
-                  <div
-                    class="dd-opt dest-opt"
-                    [class.dest-opt-active]="i === plAirportHighlight()"
-                    (mouseenter)="plAirportHighlight.set(i)"
-                    (mousedown)="$event.preventDefault()"
-                    (click)="selectPlAirportSuggestion(a)"
-                  >
-                    <span class="dest-opt-name">{{ a.city }} ({{ a.iata }})</span>
+
+            <!-- Country / city autocomplete -->
+            <div class="fg fg-dest" (click)="$event.stopPropagation()">
+              <span class="fg-label">{{ direction() === 'OUT' ? 'Dokąd' : 'Skąd' }}</span>
+              <div class="dest-box" [class.dd-active]="hasDestSelection()">
+                @if (selectedDest().length) {
+                  <div class="dest-chips">
+                    @for (s of selectedDest(); track s.kind + '|' + s.name + '|' + (s.iata ?? '')) {
+                      <span class="dest-chip">
+                        {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
+                        <button
+                          type="button"
+                          class="dest-chip-x"
+                          (click)="removeDestItem(s)"
+                          aria-label="Usuń"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    }
                   </div>
                 }
+                <input
+                  #destInputEl
+                  class="dest-input"
+                  type="text"
+                  placeholder="Kraj lub miasto…"
+                  [value]="destInput()"
+                  (input)="onDestInput($event)"
+                  (focus)="onDestFocus()"
+                  (keydown)="onDestKeydown($event)"
+                />
               </div>
-            }
-          </div>
-
-          <!-- Country / city autocomplete -->
-          <div class="fg fg-dest" (click)="$event.stopPropagation()">
-            <span class="fg-label">{{ direction() === 'OUT' ? 'Dokąd' : 'Skąd' }}</span>
-            <div class="dest-box" [class.dd-active]="hasDestSelection()">
-              @if (selectedDest().length) {
-                <div class="dest-chips">
-                  @for (s of selectedDest(); track s.kind + '|' + s.name + '|' + (s.iata ?? '')) {
-                    <span class="dest-chip">
-                      {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
-                      <button
-                        type="button"
-                        class="dest-chip-x"
-                        (click)="removeDestItem(s)"
-                        aria-label="Usuń"
-                      >
-                        ×
-                      </button>
-                    </span>
+              @if (destPanelOpen() && destSuggestions().length) {
+                <div class="dd-panel dest-panel">
+                  @for (
+                    s of destSuggestions();
+                    track s.kind + '|' + s.name + '|' + (s.iata ?? '');
+                    let i = $index
+                  ) {
+                    <div
+                      class="dd-opt dest-opt"
+                      [class.dest-opt-active]="i === destHighlight()"
+                      (mouseenter)="destHighlight.set(i)"
+                      (mousedown)="$event.preventDefault()"
+                      (click)="selectDestSuggestion(s)"
+                    >
+                      <span class="dest-opt-name">
+                        {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
+                        @if (s.kind === 'city' || s.kind === 'airport') {
+                          <span class="dest-opt-country">({{ s.country }})</span>
+                        }
+                      </span>
+                      <span class="dest-opt-tag">{{
+                        s.kind === 'country' ? 'kraj' : s.kind === 'city' ? 'miasto' : 'lotnisko'
+                      }}</span>
+                    </div>
                   }
                 </div>
               }
+            </div>
+
+            <!-- Date range -->
+            <div class="fg">
+              <span class="fg-label">Wylot od</span>
               <input
-                #destInputEl
-                class="dest-input"
-                type="text"
-                placeholder="Kraj lub miasto…"
-                [value]="destInput()"
-                (input)="onDestInput($event)"
-                (focus)="onDestFocus()"
-                (keydown)="onDestKeydown($event)"
+                class="date-input"
+                type="date"
+                [value]="dateFrom()"
+                [min]="minDate()"
+                [max]="maxDate()"
+                (change)="setDateFrom($event)"
               />
             </div>
-            @if (destPanelOpen() && destSuggestions().length) {
-              <div class="dd-panel dest-panel">
-                @for (
-                  s of destSuggestions();
-                  track s.kind + '|' + s.name + '|' + (s.iata ?? '');
-                  let i = $index
-                ) {
-                  <div
-                    class="dd-opt dest-opt"
-                    [class.dest-opt-active]="i === destHighlight()"
-                    (mouseenter)="destHighlight.set(i)"
-                    (mousedown)="$event.preventDefault()"
-                    (click)="selectDestSuggestion(s)"
-                  >
-                    <span class="dest-opt-name">
-                      {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
-                      @if (s.kind === 'city' || s.kind === 'airport') {
-                        <span class="dest-opt-country">({{ s.country }})</span>
-                      }
-                    </span>
-                    <span class="dest-opt-tag">{{
-                      s.kind === 'country' ? 'kraj' : s.kind === 'city' ? 'miasto' : 'lotnisko'
-                    }}</span>
-                  </div>
-                }
-              </div>
-            }
+            <div class="fg">
+              <span class="fg-label">Wylot do</span>
+              <input
+                class="date-input"
+                type="date"
+                [value]="dateTo()"
+                [min]="minDate()"
+                [max]="maxDate()"
+                (change)="setDateTo($event)"
+              />
+            </div>
           </div>
 
-          <!-- Date range -->
-          <div class="fg">
-            <span class="fg-label">Wylot od</span>
-            <input
-              class="date-input"
-              type="date"
-              [value]="dateFrom()"
-              [min]="minDate()"
-              [max]="maxDate()"
-              (change)="setDateFrom($event)"
-            />
-          </div>
-          <div class="fg">
-            <span class="fg-label">Wylot do</span>
-            <input
-              class="date-input"
-              type="date"
-              [value]="dateTo()"
-              [min]="minDate()"
-              [max]="maxDate()"
-              (change)="setDateTo($event)"
-            />
+          <!-- Row 2: day-of-week pills + price range + sort + reset -->
+          <div class="filter-row filter-row--secondary">
+            <div class="fg">
+              <span class="fg-label">Dni tygodnia wylotu</span>
+              <div class="day-pills">
+                @for (d of DAYS; track d.js) {
+                  <button
+                    class="day-pill"
+                    [class.on]="selectedDays().has(d.js)"
+                    (click)="toggleDay(d.js)"
+                  >
+                    {{ d.label }}
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="fg">
+              <span class="fg-label">Maks. cena (zł)</span>
+              <input
+                class="price-input"
+                type="number"
+                min="0"
+                placeholder="max"
+                [value]="maxPrice() ?? ''"
+                (change)="setMaxPrice($event)"
+              />
+            </div>
+            <div class="fg">
+              <span class="fg-label">Sortowanie</span>
+              <select class="sort-select" [value]="sort()" (change)="setSort($event)">
+                <option value="price">Najtańsze najpierw</option>
+                <option value="date">Data wylotu</option>
+              </select>
+            </div>
+            @if (hasFilters()) {
+              <button class="clear-btn" (click)="clearFilters()">Wyczyść filtry</button>
+            }
           </div>
         </div>
-
-        <!-- Row 2: day-of-week pills + price range + sort + reset -->
-        <div class="filter-row filter-row--secondary">
-          <div class="fg">
-            <span class="fg-label">Dni tygodnia wylotu</span>
-            <div class="day-pills">
-              @for (d of DAYS; track d.js) {
-                <button
-                  class="day-pill"
-                  [class.on]="selectedDays().has(d.js)"
-                  (click)="toggleDay(d.js)"
-                >
-                  {{ d.label }}
-                </button>
-              }
-            </div>
-          </div>
-          <div class="fg">
-            <span class="fg-label">Maks. cena (zł)</span>
-            <input
-              class="price-input"
-              type="number"
-              min="0"
-              placeholder="max"
-              [value]="maxPrice() ?? ''"
-              (change)="setMaxPrice($event)"
-            />
-          </div>
-          <div class="fg">
-            <span class="fg-label">Sortowanie</span>
-            <select class="sort-select" [value]="sort()" (change)="setSort($event)">
-              <option value="price">Najtańsze najpierw</option>
-              <option value="date">Data wylotu</option>
-            </select>
-          </div>
+        <div class="filter-card-foot">
           @if (hasFilters()) {
-            <button class="clear-btn" (click)="clearFilters()">Wyczyść filtry</button>
+            <button class="filter-foot-clear" (click)="clearFilters()">Wyczyść</button>
           }
+          <button type="button" class="filter-foot-show" (click)="closeFilters()">
+            Pokaż wyniki ({{ fares().length }})
+          </button>
         </div>
       </div>
 
@@ -416,6 +451,37 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
         cursor: default;
       }
 
+      @media (max-width: 768px) {
+        .header-inner {
+          padding: 0 12px;
+          gap: 10px;
+        }
+        .logo-link svg {
+          width: 84px;
+          height: 26px;
+        }
+        .main-nav {
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow-x: auto;
+          flex-wrap: nowrap;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .main-nav::-webkit-scrollbar {
+          display: none;
+        }
+        .nav-item {
+          flex-shrink: 0;
+          white-space: nowrap;
+          display: inline-flex;
+          align-items: center;
+          min-height: 40px;
+          padding: 0 12px;
+          box-sizing: border-box;
+        }
+      }
+
       .page {
         max-width: 1060px;
         margin: 0 auto;
@@ -436,6 +502,11 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
         color: var(--color-text-tertiary);
       }
 
+      /* ── Mobile filters trigger (hidden on desktop) ─── */
+      .filters-trigger {
+        display: none;
+      }
+
       /* ── Filter card ─────────────────────── */
       .filter-card {
         margin-top: 20px;
@@ -447,6 +518,16 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
         flex-direction: column;
         gap: 12px;
         box-shadow: var(--shadow-sm);
+      }
+      /* Header/footer of the filter card only render as an overlay chrome on mobile. */
+      .filter-card-head,
+      .filter-card-foot {
+        display: none;
+      }
+      .filter-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
       .filter-row {
         display: flex;
@@ -706,6 +787,171 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
         color: var(--color-text-primary);
       }
 
+      /* ── Mobile filters: sticky trigger + full-screen overlay ─── */
+      @media (max-width: 768px) {
+        .filters-trigger {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          width: 100%;
+          margin-top: 16px;
+          padding: 12px 16px;
+          min-height: 44px;
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-lg);
+          background: var(--color-surface);
+          color: var(--color-text-primary);
+          font-size: 14px;
+          font-weight: 600;
+          box-shadow: var(--shadow-sm);
+          box-sizing: border-box;
+          position: sticky;
+          top: calc(var(--header-h) + 8px);
+          z-index: 150;
+        }
+        .filters-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 18px;
+          height: 18px;
+          padding: 0 5px;
+          border-radius: 999px;
+          background: var(--color-blue-700);
+          color: #fff;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        /* Filter card is hidden inline; it becomes a full-screen overlay when open. */
+        .filter-card {
+          display: none;
+          margin-top: 0;
+        }
+        .filter-card.filter-card--open {
+          display: flex;
+          position: fixed;
+          inset: 0;
+          z-index: 500;
+          border-radius: 0;
+          border: none;
+          box-shadow: none;
+          padding: 0;
+          gap: 0;
+        }
+        .filter-card-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-shrink: 0;
+          padding: 14px 16px;
+          border-bottom: 1px solid var(--color-border);
+        }
+        .filter-card-title {
+          font-size: 16px;
+          font-weight: 700;
+          color: var(--color-text-primary);
+        }
+        .filter-card-close {
+          border: none;
+          background: transparent;
+          font-size: 26px;
+          line-height: 1;
+          color: var(--color-text-secondary);
+          cursor: pointer;
+          min-width: 40px;
+          min-height: 40px;
+        }
+        .filter-card-body {
+          flex: 1 1 auto;
+          overflow-y: auto;
+          padding: 16px;
+          gap: 20px;
+        }
+        .filter-card-foot {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-shrink: 0;
+          padding: 12px 16px;
+          border-top: 1px solid var(--color-border);
+          background: var(--color-surface);
+        }
+        .filter-foot-clear {
+          flex-shrink: 0;
+          border: 1px solid var(--color-border);
+          background: var(--color-surface);
+          color: var(--color-text-secondary);
+          font-size: 13px;
+          font-weight: 600;
+          padding: 12px 14px;
+          border-radius: var(--radius-md);
+          cursor: pointer;
+          min-height: 44px;
+        }
+        .filter-foot-show {
+          flex: 1 1 auto;
+          border: none;
+          background: var(--color-blue-700);
+          color: #fff;
+          font-size: 14px;
+          font-weight: 700;
+          padding: 12px 14px;
+          border-radius: var(--radius-md);
+          cursor: pointer;
+          min-height: 44px;
+        }
+
+        /* Stack all controls full-width and comfortably sized inside the overlay. */
+        .filter-row,
+        .filter-row--secondary {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 16px;
+        }
+        .fg {
+          width: 100%;
+        }
+        .fg-dest {
+          max-width: none;
+        }
+        .dest-box {
+          max-width: none;
+          min-height: 44px;
+          box-sizing: border-box;
+        }
+        .mode-toggle {
+          width: 100%;
+        }
+        .mode-btn {
+          flex: 1 1 0;
+          padding: 10px 12px;
+        }
+        .date-input,
+        .price-input,
+        .sort-select {
+          width: 100%;
+          min-height: 44px;
+          box-sizing: border-box;
+        }
+        .day-pills {
+          flex-wrap: wrap;
+        }
+        .day-pill {
+          min-height: 36px;
+        }
+
+        /* Suggestion panels render in normal flow below the field instead of being
+           absolutely positioned, so they can't get clipped by the overlay. */
+        .dd-panel {
+          position: static;
+          margin-top: 8px;
+          min-width: 0;
+          box-shadow: none;
+        }
+      }
+
       .toolbar {
         display: flex;
         align-items: center;
@@ -906,19 +1152,36 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
         background: var(--color-blue-800);
       }
 
-      @media (max-width: 640px) {
+      @media (max-width: 768px) {
         .offer-row {
           grid-template-columns: 1fr;
-          gap: 10px;
+          gap: 12px;
+          padding: 14px 16px;
+        }
+        .dest-header,
+        .leg {
+          flex-wrap: wrap;
+        }
+        .dep-highlight {
+          white-space: normal;
+          flex-wrap: wrap;
         }
         .offer-right {
-          flex-direction: row;
-          align-items: center;
-          justify-content: space-between;
+          flex-direction: column;
+          align-items: stretch;
           width: 100%;
+          gap: 10px;
         }
         .price-block {
           text-align: left;
+        }
+        .btn-primary {
+          width: 100%;
+          justify-content: center;
+          padding: 12px 16px;
+          font-size: 14px;
+          min-height: 44px;
+          box-sizing: border-box;
         }
       }
     `,
@@ -964,6 +1227,9 @@ export class OneWayPageComponent {
   maxPrice = signal<number | null>(null);
   sort = signal<'price' | 'date'>('price');
 
+  // Mobile-only filters overlay (CSS-driven; see `.filter-card--open` media queries).
+  filtersOpen = signal(false);
+
   lastUpdate = computed(() => {
     const ts = this.meta().lastUpdated;
     if (!ts) return null;
@@ -987,6 +1253,16 @@ export class OneWayPageComponent {
       !!this.dateTo() ||
       this.maxPrice() != null,
   );
+  // Count of active filter categories, shown as a badge on the mobile "Filtry" button.
+  filterCount = computed(() => {
+    let n = 0;
+    if (this.selectedPlAirports().length > 0) n++;
+    if (this.selectedDest().length > 0) n++;
+    if (this.selectedDays().size > 0) n++;
+    if (this.dateFrom() || this.dateTo()) n++;
+    if (this.maxPrice() != null) n++;
+    return n;
+  });
 
   // Countries first, then cities, then airports, prefix/substring matched, diacritic- and
   // case-insensitive. Excludes already-selected items. Airports only surface when the query
@@ -1043,12 +1319,20 @@ export class OneWayPageComponent {
   constructor() {
     this.loadMeta();
     this.load();
+    // Lock body scroll while the mobile filters overlay is open.
+    effect(() => {
+      document.body.style.overflow = this.filtersOpen() ? 'hidden' : '';
+    });
   }
 
   @HostListener('document:click')
   closeDropdowns() {
     this.destPanelOpen.set(false);
     this.plAirportPanelOpen.set(false);
+  }
+
+  closeFilters() {
+    this.filtersOpen.set(false);
   }
 
   setDirection(direction: OneWayDirection) {

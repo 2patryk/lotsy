@@ -127,3 +127,9 @@ Notatki z realizacji:
 - Tryb „tania wycieczka": parowanie taniego PL→ z tanim →PL na tej samej
   trasie (de facto round-trip z dwóch one-way — silnik dealów robi to już
   dla wzorca weekendowego; tu byłoby bez wzorca).
+
+## Ulepszenia po MVP
+
+- [x] Autocomplete „Dokąd/Skąd" — jedno pole z podpowiedziami krajów i miast
+      (diakrytyki-insensitive), chipsy, miks kraj+miasto (API: `city=` OR
+      `country=`, `cities` w meta) (✅ 2026-07-04).

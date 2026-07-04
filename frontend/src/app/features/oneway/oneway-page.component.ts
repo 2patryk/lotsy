@@ -1,4 +1,12 @@
-import { Component, inject, signal, computed, HostListener } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  computed,
+  HostListener,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { OneWayService } from '../../core/services/oneway.service';
@@ -16,6 +24,22 @@ const DAYS = [
   { js: 6, label: 'Sb' },
   { js: 0, label: 'Nd' },
 ];
+
+// Diacritic- and case-insensitive normalization, e.g. "wlochy" matches "Włochy".
+function normalize(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+interface DestSuggestion {
+  kind: 'country' | 'city';
+  name: string;
+  country?: string;
+}
+
+const MAX_DEST_SUGGESTIONS = 12;
 
 @Component({
   selector: 'app-oneway-page',
@@ -126,36 +150,56 @@ const DAYS = [
             }
           </div>
 
-          <!-- Country -->
-          <div class="fg" (click)="$event.stopPropagation()">
-            <span class="fg-label">Kraj</span>
-            <button
-              class="dd-btn"
-              [class.dd-active]="selectedCountries().size > 0"
-              (click)="toggleDropdown('country')"
-            >
-              <span>{{ countryLabel() }}</span>
-              <svg
-                class="chevron"
-                [class.flip]="openDropdown() === 'country'"
-                width="10"
-                height="6"
-                viewBox="0 0 10 6"
-              >
-                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" />
-              </svg>
-            </button>
-            @if (openDropdown() === 'country') {
-              <div class="dd-panel">
-                @for (c of meta().countries; track c) {
-                  <label class="dd-opt">
-                    <input
-                      type="checkbox"
-                      [checked]="selectedCountries().has(c)"
-                      (change)="toggleCountry(c)"
-                    />
-                    {{ c }}
-                  </label>
+          <!-- Country / city autocomplete -->
+          <div class="fg fg-dest" (click)="$event.stopPropagation()">
+            <span class="fg-label">{{ direction() === 'OUT' ? 'Dokąd' : 'Skąd' }}</span>
+            <div class="dest-box" [class.dd-active]="hasDestSelection()">
+              @if (selectedDest().length) {
+                <div class="dest-chips">
+                  @for (s of selectedDest(); track s.kind + '|' + s.name) {
+                    <span class="dest-chip">
+                      {{ s.name }}
+                      <button
+                        type="button"
+                        class="dest-chip-x"
+                        (click)="removeDestItem(s)"
+                        aria-label="Usuń"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  }
+                </div>
+              }
+              <input
+                #destInputEl
+                class="dest-input"
+                type="text"
+                placeholder="Kraj lub miasto…"
+                [value]="destInput()"
+                (input)="onDestInput($event)"
+                (focus)="onDestFocus()"
+                (keydown)="onDestKeydown($event)"
+              />
+            </div>
+            @if (destPanelOpen() && destSuggestions().length) {
+              <div class="dd-panel dest-panel">
+                @for (s of destSuggestions(); track s.kind + '|' + s.name; let i = $index) {
+                  <div
+                    class="dd-opt dest-opt"
+                    [class.dest-opt-active]="i === destHighlight()"
+                    (mouseenter)="destHighlight.set(i)"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="selectDestSuggestion(s)"
+                  >
+                    <span class="dest-opt-name">
+                      {{ s.name }}
+                      @if (s.kind === 'city') {
+                        <span class="dest-opt-country">({{ s.country }})</span>
+                      }
+                    </span>
+                    <span class="dest-opt-tag">{{ s.kind === 'country' ? 'kraj' : 'miasto' }}</span>
+                  </div>
                 }
               </div>
             }
@@ -487,6 +531,102 @@ const DAYS = [
         color: var(--color-text-tertiary);
       }
 
+      /* ── Country/city autocomplete ───────── */
+      .dest-box {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        min-width: 220px;
+        max-width: 340px;
+        padding: 5px 8px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        background: var(--color-surface);
+        cursor: text;
+        transition: border-color 0.12s;
+      }
+      .dest-box:hover {
+        border-color: var(--color-border-strong);
+      }
+      .dest-box:focus-within,
+      .dest-box.dd-active {
+        border-color: var(--color-blue-600);
+      }
+      .dest-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .dest-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 4px 3px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 999px;
+        background: var(--color-blue-50);
+        color: var(--color-blue-700);
+        white-space: nowrap;
+      }
+      .dest-chip-x {
+        border: none;
+        background: transparent;
+        color: inherit;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 3px;
+      }
+      .dest-chip-x:hover {
+        opacity: 0.7;
+      }
+      .dest-input {
+        flex: 1 1 80px;
+        min-width: 80px;
+        border: none;
+        outline: none;
+        background: transparent;
+        font-size: 13px;
+        font-family: inherit;
+        color: var(--color-text-primary);
+        padding: 2px 0;
+      }
+      .dest-panel {
+        min-width: 280px;
+        max-height: 280px;
+      }
+      .dest-opt {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .dd-opt.dest-opt-active {
+        background: var(--color-surface-hover);
+      }
+      .dest-opt-name {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+      }
+      .dest-opt-country {
+        font-size: 11px;
+        color: var(--color-text-tertiary);
+      }
+      .dest-opt-tag {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--color-text-tertiary);
+        background: var(--color-sidebar-active);
+        padding: 2px 6px;
+        border-radius: 999px;
+        flex-shrink: 0;
+      }
+
       .date-input,
       .price-input,
       .sort-select {
@@ -760,6 +900,8 @@ const DAYS = [
 export class OneWayPageComponent {
   private oneWayService = inject(OneWayService);
 
+  @ViewChild('destInputEl') destInputEl?: ElementRef<HTMLInputElement>;
+
   readonly DAYS = DAYS;
 
   direction = signal<OneWayDirection>('OUT');
@@ -769,14 +911,19 @@ export class OneWayPageComponent {
   meta = signal<OneWayMeta>({
     plAirports: [],
     countries: [],
+    cities: [],
     dateMin: null,
     dateMax: null,
     lastUpdated: null,
   });
 
-  openDropdown = signal<'airport' | 'country' | null>(null);
+  openDropdown = signal<'airport' | null>(null);
   selectedAirports = signal<Set<string>>(new Set());
-  selectedCountries = signal<Set<string>>(new Set());
+  // Ordered list of selected country/city chips (order preserved for backspace removal).
+  selectedDest = signal<DestSuggestion[]>([]);
+  destInput = signal('');
+  destPanelOpen = signal(false);
+  destHighlight = signal(0);
   selectedDays = signal<Set<number>>(new Set());
   dateFrom = signal<string>('');
   dateTo = signal<string>('');
@@ -800,19 +947,41 @@ export class OneWayPageComponent {
     const n = this.selectedAirports().size;
     return n === 0 ? 'Wszystkie' : n === 1 ? [...this.selectedAirports()][0] : `${n} lotnisk`;
   });
-  countryLabel = computed(() => {
-    const sel = this.selectedCountries();
-    return sel.size === 0 ? 'Wszystkie' : sel.size === 1 ? [...sel][0] : `${sel.size} krajów`;
-  });
+  hasDestSelection = computed(() => this.selectedDest().length > 0);
   hasFilters = computed(
     () =>
       this.selectedAirports().size > 0 ||
-      this.selectedCountries().size > 0 ||
+      this.selectedDest().length > 0 ||
       this.selectedDays().size > 0 ||
       !!this.dateFrom() ||
       !!this.dateTo() ||
       this.maxPrice() != null,
   );
+
+  // Countries first, then cities, prefix/substring matched, diacritic- and case-insensitive.
+  // Excludes already-selected items. Shows the full list (countries first) when input is empty.
+  destSuggestions = computed<DestSuggestion[]>(() => {
+    const query = normalize(this.destInput().trim());
+    const selected = this.selectedDest();
+    const selectedCountries = new Set(
+      selected.filter((s) => s.kind === 'country').map((s) => s.name),
+    );
+    const selectedCities = new Set(selected.filter((s) => s.kind === 'city').map((s) => s.name));
+
+    const countries: DestSuggestion[] = this.meta()
+      .countries.filter(
+        (c) => !selectedCountries.has(c) && (!query || normalize(c).includes(query)),
+      )
+      .map((name) => ({ kind: 'country', name }));
+
+    const cities: DestSuggestion[] = this.meta()
+      .cities.filter(
+        (c) => !selectedCities.has(c.name) && (!query || normalize(c.name).includes(query)),
+      )
+      .map((c) => ({ kind: 'city', name: c.name, country: c.country }));
+
+    return [...countries, ...cities].slice(0, MAX_DEST_SUGGESTIONS);
+  });
 
   constructor() {
     this.loadMeta();
@@ -822,18 +991,21 @@ export class OneWayPageComponent {
   @HostListener('document:click')
   closeDropdowns() {
     this.openDropdown.set(null);
+    this.destPanelOpen.set(false);
   }
 
-  toggleDropdown(which: 'airport' | 'country') {
+  toggleDropdown(which: 'airport') {
     this.openDropdown.set(this.openDropdown() === which ? null : which);
   }
 
   setDirection(direction: OneWayDirection) {
     if (this.direction() === direction) return;
     this.direction.set(direction);
-    // Filters depend on direction-specific meta (airports/countries/date range).
+    // Filters depend on direction-specific meta (airports/countries/cities/date range).
     this.selectedAirports.set(new Set());
-    this.selectedCountries.set(new Set());
+    this.selectedDest.set([]);
+    this.destInput.set('');
+    this.destPanelOpen.set(false);
     this.selectedDays.set(new Set());
     this.dateFrom.set('');
     this.dateTo.set('');
@@ -850,11 +1022,55 @@ export class OneWayPageComponent {
     this.load();
   }
 
-  toggleCountry(country: string) {
-    const next = new Set(this.selectedCountries());
-    if (next.has(country)) next.delete(country);
-    else next.add(country);
-    this.selectedCountries.set(next);
+  onDestInput(e: Event) {
+    this.destInput.set((e.target as HTMLInputElement).value);
+    this.destPanelOpen.set(true);
+    this.destHighlight.set(0);
+  }
+
+  onDestFocus() {
+    this.destPanelOpen.set(true);
+    this.destHighlight.set(0);
+  }
+
+  onDestKeydown(e: KeyboardEvent) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.destPanelOpen.set(true);
+      const max = this.destSuggestions().length - 1;
+      this.destHighlight.set(Math.min(this.destHighlight() + 1, Math.max(max, 0)));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.destHighlight.set(Math.max(this.destHighlight() - 1, 0));
+    } else if (e.key === 'Enter') {
+      const suggestions = this.destSuggestions();
+      const item = suggestions[this.destHighlight()];
+      if (this.destPanelOpen() && item) {
+        e.preventDefault();
+        this.selectDestSuggestion(item);
+      }
+    } else if (e.key === 'Escape') {
+      this.destPanelOpen.set(false);
+    } else if (e.key === 'Backspace' && this.destInput() === '') {
+      const next = this.selectedDest().slice(0, -1);
+      this.selectedDest.set(next);
+      this.load();
+    }
+  }
+
+  selectDestSuggestion(s: DestSuggestion) {
+    this.selectedDest.set([...this.selectedDest(), s]);
+    this.destInput.set('');
+    this.destHighlight.set(0);
+    this.load();
+    // Keep focus in the input so the user can keep typing/selecting.
+    queueMicrotask(() => this.destInputEl?.nativeElement.focus());
+  }
+
+  removeDestItem(item: DestSuggestion) {
+    this.selectedDest.set(
+      this.selectedDest().filter((s) => !(s.kind === item.kind && s.name === item.name)),
+    );
     this.load();
   }
 
@@ -889,7 +1105,9 @@ export class OneWayPageComponent {
 
   clearFilters() {
     this.selectedAirports.set(new Set());
-    this.selectedCountries.set(new Set());
+    this.selectedDest.set([]);
+    this.destInput.set('');
+    this.destPanelOpen.set(false);
     this.selectedDays.set(new Set());
     this.dateFrom.set('');
     this.dateTo.set('');
@@ -908,7 +1126,16 @@ export class OneWayPageComponent {
       .getFares({
         direction: this.direction(),
         plAirport: [...this.selectedAirports()].join(',') || undefined,
-        country: [...this.selectedCountries()].join(',') || undefined,
+        country:
+          this.selectedDest()
+            .filter((s) => s.kind === 'country')
+            .map((s) => s.name)
+            .join(',') || undefined,
+        city:
+          this.selectedDest()
+            .filter((s) => s.kind === 'city')
+            .map((s) => s.name)
+            .join(',') || undefined,
         dateFrom: this.dateFrom() || undefined,
         dateTo: this.dateTo() || undefined,
         days: [...this.selectedDays()].join(',') || undefined,

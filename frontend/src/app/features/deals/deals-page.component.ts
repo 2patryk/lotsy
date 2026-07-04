@@ -103,6 +103,7 @@ const TIMES = [
         <nav class="main-nav">
           <button class="nav-item active">Okazje</button>
           <a class="nav-item" [routerLink]="['/czartery']">Czartery</a>
+          <a class="nav-item" [routerLink]="['/jedna-strona']">W jedną stronę</a>
           <button class="nav-item" disabled>Wyszukiwarka</button>
           <button class="nav-item" disabled>Alerty</button>
         </nav>

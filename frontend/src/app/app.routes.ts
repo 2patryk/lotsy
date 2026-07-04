@@ -17,4 +17,9 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/charters/charters-page.component').then((m) => m.ChartersPageComponent),
   },
+  {
+    path: 'jedna-strona',
+    loadComponent: () =>
+      import('./features/oneway/oneway-page.component').then((m) => m.OneWayPageComponent),
+  },
 ];

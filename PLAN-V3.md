@@ -98,15 +98,16 @@ rosnąco. Okno stałe: dziś → +10 dni (`ONEWAY_HORIZON_DAYS = 10` w configu,
 
 ## Kroki
 
-- [ ] 1. Prisma: model `OneWayFare` + migracja + generate.
-- [ ] 2. flights-client: `getOneWayFaresList` (endpoint listowy, oba warianty
-      filtrów) + typy + smoke test.
-- [ ] 3. Engine: `oneway.ts` (discovery → cheapestPerDay oba kierunki →
-      okno 10 dni → replace) + `--dry-run`; log do `SearchRun`.
-- [ ] 4. Workflow GH Actions `oneway.yml` (co 3 h, offset :45).
-- [ ] 5. API: moduł `oneway` (`GET /oneway/fares`, `GET /oneway/meta`).
-- [ ] 6. Frontend: model + serwis + strona `/jedna-strona` + przełącznik
-      kierunku + filtry + deep link Ryanair + link w nav.
+- [x] 1. Prisma: model `OneWayFare` + migracja + generate (✅ 2026-07-04).
+- [~] 2. flights-client: `getOneWayFaresList` (endpoint listowy, oba warianty
+      filtrów) + typy + smoke test (🚧 w toku).
+- [~] 3. Engine: `oneway.ts` (discovery → cheapestPerDay oba kierunki →
+      okno 10 dni → replace) + `--dry-run`; log do `SearchRun` (🚧 w toku).
+- [~] 4. Workflow GH Actions `oneway.yml` (co 3 h, offset :45) (🚧 w toku).
+- [~] 5. API: moduł `oneway` (`GET /oneway/fares`, `GET /oneway/meta`)
+      (🚧 w toku).
+- [~] 6. Frontend: model + serwis + strona `/jedna-strona` + przełącznik
+      kierunku + filtry + deep link Ryanair + link w nav (🚧 w toku).
 - [ ] 7. Weryfikacja end-to-end lokalnie (engine → Neon → API → strona).
 
 ## Poza zakresem (pomysły na później)

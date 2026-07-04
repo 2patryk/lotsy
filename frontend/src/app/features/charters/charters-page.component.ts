@@ -51,6 +51,7 @@ const DAYS = [
         <nav class="main-nav">
           <a class="nav-item" [routerLink]="['/deals']">Okazje</a>
           <span class="nav-item active">Czartery</span>
+          <a class="nav-item" [routerLink]="['/jedna-strona']">W jedną stronę</a>
         </nav>
       </div>
     </header>

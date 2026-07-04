@@ -16,6 +16,7 @@ export interface OneWayFaresQuery {
   plAirport?: string[]; // Polish-side IATA codes (origin when OUT, destination when IN)
   country?: string[]; // Foreign-side Polish country names (destCountry when OUT, originCountry when IN)
   city?: string[]; // Foreign-side city names; a row matches when its country OR city is selected
+  airport?: string[]; // Foreign-side IATA codes, OR-ed with country/city
   dateFrom?: string; // YYYY-MM-DD
   dateTo?: string;
   days?: number[]; // JS day numbers: 0=Sun … 6=Sat
@@ -53,16 +54,19 @@ export class OneWayService {
 
     // Country and city selections are OR-ed: "Hiszpania" + "Praga" means
     // any Spanish airport plus Prague specifically.
-    if (query.country?.length || query.city?.length) {
+    if (query.country?.length || query.city?.length || query.airport?.length) {
       const or: Prisma.OneWayFareWhereInput[] = [];
       if (query.direction === 'in') {
         if (query.country?.length)
           or.push({ originCountry: { in: query.country } });
         if (query.city?.length) or.push({ originCity: { in: query.city } });
+        if (query.airport?.length) or.push({ origin: { in: query.airport } });
       } else {
         if (query.country?.length)
           or.push({ destCountry: { in: query.country } });
         if (query.city?.length) or.push({ destCity: { in: query.city } });
+        if (query.airport?.length)
+          or.push({ destination: { in: query.airport } });
       }
       where.OR = or;
     }
@@ -93,7 +97,7 @@ export class OneWayService {
   async getMeta(direction: OneWayDirection) {
     const dbDirection = toDbDirection(direction);
 
-    const [plAirports, countries, cities, dateRange, latest] =
+    const [plAirports, countries, cities, airports, dateRange, latest] =
       await Promise.all([
         direction === 'in'
           ? prisma.oneWayFare.groupBy({
@@ -127,6 +131,17 @@ export class OneWayService {
               by: ['destCity', 'destCountry'],
               where: { direction: dbDirection },
               orderBy: { destCity: 'asc' },
+            }),
+        direction === 'in'
+          ? prisma.oneWayFare.groupBy({
+              by: ['origin', 'originCity', 'originCountry'],
+              where: { direction: dbDirection },
+              orderBy: { origin: 'asc' },
+            })
+          : prisma.oneWayFare.groupBy({
+              by: ['destination', 'destCity', 'destCountry'],
+              where: { direction: dbDirection },
+              orderBy: { destination: 'asc' },
             }),
         prisma.oneWayFare.aggregate({
           where: { direction: dbDirection },
@@ -168,10 +183,36 @@ export class OneWayService {
             country: c.destCountry,
           }));
 
+    const airportList =
+      direction === 'in'
+        ? (
+            airports as {
+              origin: string;
+              originCity: string;
+              originCountry: string;
+            }[]
+          ).map((a) => ({
+            iata: a.origin,
+            city: a.originCity,
+            country: a.originCountry,
+          }))
+        : (
+            airports as {
+              destination: string;
+              destCity: string;
+              destCountry: string;
+            }[]
+          ).map((a) => ({
+            iata: a.destination,
+            city: a.destCity,
+            country: a.destCountry,
+          }));
+
     return {
       plAirports: plAirportList,
       countries: countryList,
       cities: cityList,
+      airports: airportList,
       dateMin: dateRange._min.date,
       dateMax: dateRange._max.date,
       lastUpdated: latest?.updatedAt ?? null,

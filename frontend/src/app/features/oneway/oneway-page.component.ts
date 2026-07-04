@@ -34,12 +34,19 @@ function normalize(s: string): string {
 }
 
 interface DestSuggestion {
-  kind: 'country' | 'city';
+  kind: 'country' | 'city' | 'airport';
   name: string;
   country?: string;
+  iata?: string;
+}
+
+interface PlAirportSuggestion {
+  iata: string;
+  city: string;
 }
 
 const MAX_DEST_SUGGESTIONS = 12;
+const MAX_PL_AIRPORT_SUGGESTIONS = 12;
 
 @Component({
   selector: 'app-oneway-page',
@@ -115,36 +122,50 @@ const MAX_DEST_SUGGESTIONS = 12;
             </div>
           </div>
 
-          <!-- PL airport -->
-          <div class="fg" (click)="$event.stopPropagation()">
+          <!-- PL airport autocomplete -->
+          <div class="fg fg-dest" (click)="$event.stopPropagation()">
             <span class="fg-label">Lotnisko polskie</span>
-            <button
-              class="dd-btn"
-              [class.dd-active]="selectedAirports().size > 0"
-              (click)="toggleDropdown('airport')"
-            >
-              <span>{{ airportLabel() }}</span>
-              <svg
-                class="chevron"
-                [class.flip]="openDropdown() === 'airport'"
-                width="10"
-                height="6"
-                viewBox="0 0 10 6"
-              >
-                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" />
-              </svg>
-            </button>
-            @if (openDropdown() === 'airport') {
-              <div class="dd-panel">
-                @for (a of meta().plAirports; track a.iata) {
-                  <label class="dd-opt">
-                    <input
-                      type="checkbox"
-                      [checked]="selectedAirports().has(a.iata)"
-                      (change)="toggleAirport(a.iata)"
-                    />
-                    {{ a.city }} <span class="dd-code">({{ a.iata }})</span>
-                  </label>
+            <div class="dest-box" [class.dd-active]="selectedPlAirports().length > 0">
+              @if (selectedPlAirports().length) {
+                <div class="dest-chips">
+                  @for (a of selectedPlAirports(); track a.iata) {
+                    <span class="dest-chip">
+                      {{ a.city }} ({{ a.iata }})
+                      <button
+                        type="button"
+                        class="dest-chip-x"
+                        (click)="removePlAirportItem(a)"
+                        aria-label="Usuń"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  }
+                </div>
+              }
+              <input
+                #plAirportInputEl
+                class="dest-input"
+                type="text"
+                placeholder="Miasto lub kod…"
+                [value]="plAirportInput()"
+                (input)="onPlAirportInput($event)"
+                (focus)="onPlAirportFocus()"
+                (keydown)="onPlAirportKeydown($event)"
+              />
+            </div>
+            @if (plAirportPanelOpen() && plAirportSuggestions().length) {
+              <div class="dd-panel dest-panel">
+                @for (a of plAirportSuggestions(); track a.iata; let i = $index) {
+                  <div
+                    class="dd-opt dest-opt"
+                    [class.dest-opt-active]="i === plAirportHighlight()"
+                    (mouseenter)="plAirportHighlight.set(i)"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="selectPlAirportSuggestion(a)"
+                  >
+                    <span class="dest-opt-name">{{ a.city }} ({{ a.iata }})</span>
+                  </div>
                 }
               </div>
             }
@@ -156,9 +177,9 @@ const MAX_DEST_SUGGESTIONS = 12;
             <div class="dest-box" [class.dd-active]="hasDestSelection()">
               @if (selectedDest().length) {
                 <div class="dest-chips">
-                  @for (s of selectedDest(); track s.kind + '|' + s.name) {
+                  @for (s of selectedDest(); track s.kind + '|' + s.name + '|' + (s.iata ?? '')) {
                     <span class="dest-chip">
-                      {{ s.name }}
+                      {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
                       <button
                         type="button"
                         class="dest-chip-x"
@@ -184,7 +205,11 @@ const MAX_DEST_SUGGESTIONS = 12;
             </div>
             @if (destPanelOpen() && destSuggestions().length) {
               <div class="dd-panel dest-panel">
-                @for (s of destSuggestions(); track s.kind + '|' + s.name; let i = $index) {
+                @for (
+                  s of destSuggestions();
+                  track s.kind + '|' + s.name + '|' + (s.iata ?? '');
+                  let i = $index
+                ) {
                   <div
                     class="dd-opt dest-opt"
                     [class.dest-opt-active]="i === destHighlight()"
@@ -193,12 +218,14 @@ const MAX_DEST_SUGGESTIONS = 12;
                     (click)="selectDestSuggestion(s)"
                   >
                     <span class="dest-opt-name">
-                      {{ s.name }}
-                      @if (s.kind === 'city') {
+                      {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
+                      @if (s.kind === 'city' || s.kind === 'airport') {
                         <span class="dest-opt-country">({{ s.country }})</span>
                       }
                     </span>
-                    <span class="dest-opt-tag">{{ s.kind === 'country' ? 'kraj' : 'miasto' }}</span>
+                    <span class="dest-opt-tag">{{
+                      s.kind === 'country' ? 'kraj' : s.kind === 'city' ? 'miasto' : 'lotnisko'
+                    }}</span>
                   </div>
                 }
               </div>
@@ -901,6 +928,7 @@ export class OneWayPageComponent {
   private oneWayService = inject(OneWayService);
 
   @ViewChild('destInputEl') destInputEl?: ElementRef<HTMLInputElement>;
+  @ViewChild('plAirportInputEl') plAirportInputEl?: ElementRef<HTMLInputElement>;
 
   readonly DAYS = DAYS;
 
@@ -912,18 +940,24 @@ export class OneWayPageComponent {
     plAirports: [],
     countries: [],
     cities: [],
+    airports: [],
     dateMin: null,
     dateMax: null,
     lastUpdated: null,
   });
 
-  openDropdown = signal<'airport' | null>(null);
-  selectedAirports = signal<Set<string>>(new Set());
-  // Ordered list of selected country/city chips (order preserved for backspace removal).
+  // Ordered list of selected country/city/airport chips (order preserved for backspace removal).
   selectedDest = signal<DestSuggestion[]>([]);
   destInput = signal('');
   destPanelOpen = signal(false);
   destHighlight = signal(0);
+
+  // Ordered list of selected Polish-airport chips.
+  selectedPlAirports = signal<PlAirportSuggestion[]>([]);
+  plAirportInput = signal('');
+  plAirportPanelOpen = signal(false);
+  plAirportHighlight = signal(0);
+
   selectedDays = signal<Set<number>>(new Set());
   dateFrom = signal<string>('');
   dateTo = signal<string>('');
@@ -943,14 +977,10 @@ export class OneWayPageComponent {
   minDate = computed(() => this.meta().dateMin?.slice(0, 10) ?? '');
   maxDate = computed(() => this.meta().dateMax?.slice(0, 10) ?? '');
 
-  airportLabel = computed(() => {
-    const n = this.selectedAirports().size;
-    return n === 0 ? 'Wszystkie' : n === 1 ? [...this.selectedAirports()][0] : `${n} lotnisk`;
-  });
   hasDestSelection = computed(() => this.selectedDest().length > 0);
   hasFilters = computed(
     () =>
-      this.selectedAirports().size > 0 ||
+      this.selectedPlAirports().length > 0 ||
       this.selectedDest().length > 0 ||
       this.selectedDays().size > 0 ||
       !!this.dateFrom() ||
@@ -958,8 +988,11 @@ export class OneWayPageComponent {
       this.maxPrice() != null,
   );
 
-  // Countries first, then cities, prefix/substring matched, diacritic- and case-insensitive.
-  // Excludes already-selected items. Shows the full list (countries first) when input is empty.
+  // Countries first, then cities, then airports, prefix/substring matched, diacritic- and
+  // case-insensitive. Excludes already-selected items. Airports only surface when the query
+  // matches their IATA code (city queries are already covered by the city suggestions, so
+  // matching airports by city name too would duplicate every city with its airports).
+  // Shows the full list (countries + cities, no airports) when input is empty.
   destSuggestions = computed<DestSuggestion[]>(() => {
     const query = normalize(this.destInput().trim());
     const selected = this.selectedDest();
@@ -967,6 +1000,9 @@ export class OneWayPageComponent {
       selected.filter((s) => s.kind === 'country').map((s) => s.name),
     );
     const selectedCities = new Set(selected.filter((s) => s.kind === 'city').map((s) => s.name));
+    const selectedAirports = new Set(
+      selected.filter((s) => s.kind === 'airport').map((s) => s.iata),
+    );
 
     const countries: DestSuggestion[] = this.meta()
       .countries.filter(
@@ -980,7 +1016,28 @@ export class OneWayPageComponent {
       )
       .map((c) => ({ kind: 'city', name: c.name, country: c.country }));
 
-    return [...countries, ...cities].slice(0, MAX_DEST_SUGGESTIONS);
+    const airports: DestSuggestion[] = query
+      ? this.meta()
+          .airports.filter(
+            (a) => !selectedAirports.has(a.iata) && normalize(a.iata).includes(query),
+          )
+          .map((a) => ({ kind: 'airport', name: a.city, country: a.country, iata: a.iata }))
+      : [];
+
+    return [...countries, ...cities, ...airports].slice(0, MAX_DEST_SUGGESTIONS);
+  });
+
+  // Polish-side airport suggestions: match by city name or IATA code, diacritic-insensitive.
+  plAirportSuggestions = computed<PlAirportSuggestion[]>(() => {
+    const query = normalize(this.plAirportInput().trim());
+    const selected = new Set(this.selectedPlAirports().map((a) => a.iata));
+    return this.meta()
+      .plAirports.filter(
+        (a) =>
+          !selected.has(a.iata) &&
+          (!query || normalize(a.city).includes(query) || normalize(a.iata).includes(query)),
+      )
+      .slice(0, MAX_PL_AIRPORT_SUGGESTIONS);
   });
 
   constructor() {
@@ -990,19 +1047,17 @@ export class OneWayPageComponent {
 
   @HostListener('document:click')
   closeDropdowns() {
-    this.openDropdown.set(null);
     this.destPanelOpen.set(false);
-  }
-
-  toggleDropdown(which: 'airport') {
-    this.openDropdown.set(this.openDropdown() === which ? null : which);
+    this.plAirportPanelOpen.set(false);
   }
 
   setDirection(direction: OneWayDirection) {
     if (this.direction() === direction) return;
     this.direction.set(direction);
     // Filters depend on direction-specific meta (airports/countries/cities/date range).
-    this.selectedAirports.set(new Set());
+    this.selectedPlAirports.set([]);
+    this.plAirportInput.set('');
+    this.plAirportPanelOpen.set(false);
     this.selectedDest.set([]);
     this.destInput.set('');
     this.destPanelOpen.set(false);
@@ -1014,11 +1069,53 @@ export class OneWayPageComponent {
     this.load();
   }
 
-  toggleAirport(iata: string) {
-    const next = new Set(this.selectedAirports());
-    if (next.has(iata)) next.delete(iata);
-    else next.add(iata);
-    this.selectedAirports.set(next);
+  onPlAirportInput(e: Event) {
+    this.plAirportInput.set((e.target as HTMLInputElement).value);
+    this.plAirportPanelOpen.set(true);
+    this.plAirportHighlight.set(0);
+  }
+
+  onPlAirportFocus() {
+    this.plAirportPanelOpen.set(true);
+    this.plAirportHighlight.set(0);
+  }
+
+  onPlAirportKeydown(e: KeyboardEvent) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.plAirportPanelOpen.set(true);
+      const max = this.plAirportSuggestions().length - 1;
+      this.plAirportHighlight.set(Math.min(this.plAirportHighlight() + 1, Math.max(max, 0)));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.plAirportHighlight.set(Math.max(this.plAirportHighlight() - 1, 0));
+    } else if (e.key === 'Enter') {
+      const suggestions = this.plAirportSuggestions();
+      const item = suggestions[this.plAirportHighlight()];
+      if (this.plAirportPanelOpen() && item) {
+        e.preventDefault();
+        this.selectPlAirportSuggestion(item);
+      }
+    } else if (e.key === 'Escape') {
+      this.plAirportPanelOpen.set(false);
+    } else if (e.key === 'Backspace' && this.plAirportInput() === '') {
+      const next = this.selectedPlAirports().slice(0, -1);
+      this.selectedPlAirports.set(next);
+      this.load();
+    }
+  }
+
+  selectPlAirportSuggestion(a: PlAirportSuggestion) {
+    this.selectedPlAirports.set([...this.selectedPlAirports(), a]);
+    this.plAirportInput.set('');
+    this.plAirportHighlight.set(0);
+    this.load();
+    // Keep focus in the input so the user can keep typing/selecting.
+    queueMicrotask(() => this.plAirportInputEl?.nativeElement.focus());
+  }
+
+  removePlAirportItem(item: PlAirportSuggestion) {
+    this.selectedPlAirports.set(this.selectedPlAirports().filter((a) => a.iata !== item.iata));
     this.load();
   }
 
@@ -1069,7 +1166,9 @@ export class OneWayPageComponent {
 
   removeDestItem(item: DestSuggestion) {
     this.selectedDest.set(
-      this.selectedDest().filter((s) => !(s.kind === item.kind && s.name === item.name)),
+      this.selectedDest().filter(
+        (s) => !(s.kind === item.kind && s.name === item.name && s.iata === item.iata),
+      ),
     );
     this.load();
   }
@@ -1104,7 +1203,9 @@ export class OneWayPageComponent {
   }
 
   clearFilters() {
-    this.selectedAirports.set(new Set());
+    this.selectedPlAirports.set([]);
+    this.plAirportInput.set('');
+    this.plAirportPanelOpen.set(false);
     this.selectedDest.set([]);
     this.destInput.set('');
     this.destPanelOpen.set(false);
@@ -1125,7 +1226,10 @@ export class OneWayPageComponent {
     this.oneWayService
       .getFares({
         direction: this.direction(),
-        plAirport: [...this.selectedAirports()].join(',') || undefined,
+        plAirport:
+          this.selectedPlAirports()
+            .map((a) => a.iata)
+            .join(',') || undefined,
         country:
           this.selectedDest()
             .filter((s) => s.kind === 'country')
@@ -1135,6 +1239,11 @@ export class OneWayPageComponent {
           this.selectedDest()
             .filter((s) => s.kind === 'city')
             .map((s) => s.name)
+            .join(',') || undefined,
+        airport:
+          this.selectedDest()
+            .filter((s) => s.kind === 'airport')
+            .map((s) => s.iata)
             .join(',') || undefined,
         dateFrom: this.dateFrom() || undefined,
         dateTo: this.dateTo() || undefined,

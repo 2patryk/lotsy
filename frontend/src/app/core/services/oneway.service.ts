@@ -8,6 +8,7 @@ export interface OneWayFaresQueryParams {
   plAirport?: string; // comma-separated IATA
   country?: string; // comma-separated country names
   city?: string; // comma-separated city names
+  airport?: string; // comma-separated foreign-side IATA codes
   dateFrom?: string; // YYYY-MM-DD
   dateTo?: string;
   days?: string; // comma-separated JS day numbers: "1,2,3" (0=Sun)
@@ -25,6 +26,7 @@ export class OneWayService {
     if (query.plAirport) params = params.set('plAirport', query.plAirport);
     if (query.country) params = params.set('country', query.country);
     if (query.city) params = params.set('city', query.city);
+    if (query.airport) params = params.set('airport', query.airport);
     if (query.dateFrom) params = params.set('dateFrom', query.dateFrom);
     if (query.dateTo) params = params.set('dateTo', query.dateTo);
     if (query.days) params = params.set('days', query.days);

@@ -22,6 +22,7 @@ export interface OneWayMeta {
   plAirports: { iata: string; city: string }[];
   countries: string[];
   cities: { name: string; country: string }[];
+  airports: { iata: string; city: string; country: string }[];
   dateMin: string | null;
   dateMax: string | null;
   lastUpdated: string | null;

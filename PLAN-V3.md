@@ -99,16 +99,25 @@ rosnąco. Okno stałe: dziś → +10 dni (`ONEWAY_HORIZON_DAYS = 10` w configu,
 ## Kroki
 
 - [x] 1. Prisma: model `OneWayFare` + migracja + generate (✅ 2026-07-04).
-- [~] 2. flights-client: `getOneWayFaresList` (endpoint listowy, oba warianty
-      filtrów) + typy + smoke test (🚧 w toku).
-- [~] 3. Engine: `oneway.ts` (discovery → cheapestPerDay oba kierunki →
-      okno 10 dni → replace) + `--dry-run`; log do `SearchRun` (🚧 w toku).
-- [~] 4. Workflow GH Actions `oneway.yml` (co 3 h, offset :45) (🚧 w toku).
-- [~] 5. API: moduł `oneway` (`GET /oneway/fares`, `GET /oneway/meta`)
-      (🚧 w toku).
-- [~] 6. Frontend: model + serwis + strona `/jedna-strona` + przełącznik
-      kierunku + filtry + deep link Ryanair + link w nav (🚧 w toku).
-- [ ] 7. Weryfikacja end-to-end lokalnie (engine → Neon → API → strona).
+- [x] 2. flights-client: `getOneWayFaresList` (endpoint listowy, oba warianty
+      filtrów) + typy + smoke test (✅ 2026-07-04).
+- [x] 3. Engine: `oneway.ts` (discovery → cheapestPerDay oba kierunki →
+      okno 10 dni → replace) + `--dry-run`; log do `SearchRun` (✅ 2026-07-04).
+- [x] 4. Workflow GH Actions `oneway.yml` (co 3 h, offset :45) (✅ 2026-07-04).
+- [x] 5. API: moduł `oneway` (`GET /oneway/fares`, `GET /oneway/meta`)
+      (✅ 2026-07-04).
+- [x] 6. Frontend: model + serwis + strona `/jedna-strona` + przełącznik
+      kierunku + filtry + deep link Ryanair + link w nav (✅ 2026-07-04).
+- [x] 7. Weryfikacja end-to-end lokalnie (engine → Neon → API → strona;
+      2026-07-04: 3689 wierszy z 640 tras, okno 04–14.07, oba kierunki
+      i filtry działają, deep linki OK) (✅ 2026-07-04).
+
+Notatki z realizacji:
+- Kierunek →PL łapie też polskie lotniska spoza ósemki wylotowej (np. BZG,
+  SZZ…), bo discovery po `arrivalCountryCode=pl` zwraca wszystkie porty —
+  zostawione celowo jako feature.
+- Realna skala: 640 aktywnych tras kierunkowych (310 OUT + 330 IN),
+  ~650 calli/run — zgodnie z szacunkiem.
 
 ## Poza zakresem (pomysły na później)
 

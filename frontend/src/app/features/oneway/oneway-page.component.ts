@@ -250,7 +250,11 @@ const DAYS = [
                 <div class="dest-header">
                   <span class="dest-city">{{ f.originCity }} → {{ f.destCity }}</span>
                   <span class="dest-sep">·</span>
-                  <span class="dest-country">{{ f.destCountry }}</span>
+                  <!-- Show the foreign-side country: destination when flying
+                       out of Poland, origin when flying back in. -->
+                  <span class="dest-country">{{
+                    direction() === 'IN' ? f.originCountry : f.destCountry
+                  }}</span>
                 </div>
 
                 <div class="leg">

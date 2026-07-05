@@ -71,10 +71,12 @@ export class OneWayService {
       where.OR = or;
     }
 
+    // departureTime carries the flight's day and hour, so sorting by it alone
+    // orders "by date" including the time of day.
     const orderBy: Prisma.OneWayFareOrderByWithRelationInput[] =
       query.sort === 'date'
-        ? [{ date: 'asc' }, { price: 'asc' }]
-        : [{ price: 'asc' }, { date: 'asc' }];
+        ? [{ departureTime: 'asc' }, { price: 'asc' }]
+        : [{ price: 'asc' }, { departureTime: 'asc' }];
 
     const fares = await prisma.oneWayFare.findMany({
       where,

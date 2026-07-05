@@ -325,12 +325,21 @@ async function fetchDetails(
   // normalize every fare to PLN before comparing or storing.
   const rates = await getPlnRates();
   let droppedFx = 0;
+  let droppedUnknownRoute = 0;
 
   // Cheapest fare seen so far per (origin, destination, day). Ties keep the
   // first carrier (Ryanair, since it runs first) — good enough, both are valid.
   const best = new Map<string, DailyFare>();
   const consider = (f: DailyFare) => {
     if (f.date < fromKey || f.date > toKey) return;
+    // Wizz sometimes answers with flights for a nearby station instead of the
+    // one requested (e.g. BBU for OTP). Such fares have no route entry, and
+    // guessing a direction would leak foreign airports into the Polish-side
+    // filter list — drop them instead.
+    if (!dirOf.has(`${f.origin}:${f.destination}`)) {
+      droppedUnknownRoute++;
+      return;
+    }
     const pln = toPln(f.price, f.currency, rates);
     if (pln == null) {
       droppedFx++;
@@ -406,7 +415,9 @@ async function fetchDetails(
       continue;
     }
     rows.push({
-      direction: dirOf.get(`${f.origin}:${f.destination}`) ?? 'OUT',
+      // consider() already rejected fares without a route entry, so this is
+      // always defined.
+      direction: dirOf.get(`${f.origin}:${f.destination}`)!,
       origin: f.origin,
       originCity: '', // filled in by caller once airport names are known
       originCountry: '',
@@ -429,6 +440,9 @@ async function fetchDetails(
   }
   if (droppedNonPln > 0) {
     console.warn(`[oneway] dropped ${droppedNonPln} non-PLN rows before insert (conversion bug?)`);
+  }
+  if (droppedUnknownRoute > 0) {
+    console.warn(`[oneway] dropped ${droppedUnknownRoute} fares for stations we did not ask about`);
   }
 
   return { rows, ryanairFailures, wizzFailures };

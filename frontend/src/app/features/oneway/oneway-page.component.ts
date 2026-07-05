@@ -3,7 +3,6 @@ import {
   inject,
   signal,
   computed,
-  effect,
   HostListener,
   ViewChild,
   ElementRef,
@@ -17,6 +16,7 @@ import { OneWayService } from '../../core/services/oneway.service';
 import type { OneWayDirection, OneWayFare, OneWayMeta } from '../../core/models/oneway-fare.model';
 import { SegmentedToggleComponent } from '../../shared/filters/segmented-toggle.component';
 import { DayPillsComponent } from '../../shared/filters/day-pills.component';
+import { FilterCardComponent } from '../../shared/filters/filter-card.component';
 import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
 
 const WD = ['ndz', 'pon', 'wt', 'śr', 'czw', 'pt', 'sob'];
@@ -62,6 +62,7 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
     SegmentedToggleComponent,
     DayPillsComponent,
     SortSelectComponent,
+    FilterCardComponent,
   ],
   template: `
     <main class="mx-auto flex w-full max-w-[1100px] flex-col gap-5 px-3 py-7 sm:px-6">
@@ -75,249 +76,207 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
         </p>
       </div>
 
-      <!-- Mobile-only filters trigger; the filter card itself becomes a full-screen
-           overlay on mobile via the "open" class (see styles). -->
-      <button
-        hlmBtn
-        variant="outline"
-        class="sticky top-16 z-40 w-full gap-2 shadow-xs sm:hidden"
-        type="button"
-        (click)="filtersOpen.set(true)"
-      >
-        <span>Filtry</span>
-        @if (filterCount() > 0) {
-          <span hlmBadge class="px-1.5">{{ filterCount() }}</span>
-        }
-      </button>
-
       <!-- ── Filters ─────────────────────────── -->
-      <div
-        class="filter-card flex-col overflow-visible rounded-xl border border-border bg-card shadow-xs max-sm:hidden sm:flex"
-        [class.open]="filtersOpen()"
+      <app-filter-card
+        [filterCount]="filterCount()"
+        [resultsCount]="fares().length"
+        (cleared)="clearFilters()"
       >
-        <div
-          class="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 sm:hidden"
-        >
-          <span class="text-base font-bold">Filtry</span>
-          <button
-            hlmBtn
-            variant="ghost"
-            size="icon-sm"
-            type="button"
-            class="text-xl"
-            (click)="closeFilters()"
-            aria-label="Zamknij"
+        <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
+          <!-- Direction -->
+          <app-segmented-toggle
+            label="Kierunek"
+            [options]="directionOptions"
+            [value]="direction()"
+            (changed)="setDirectionValue($event)"
+          />
+
+          <!-- PL airport autocomplete -->
+          <div
+            class="relative flex min-w-44 flex-1 flex-col gap-1.5"
+            (click)="$event.stopPropagation()"
           >
-            ×
-          </button>
-        </div>
-        <div class="flex flex-1 flex-col gap-4 p-4 max-sm:overflow-y-auto">
-          <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
-            <!-- Direction -->
-            <app-segmented-toggle
-              label="Kierunek"
-              [options]="directionOptions"
-              [value]="direction()"
-              (changed)="setDirectionValue($event)"
-            />
-
-            <!-- PL airport autocomplete -->
+            <label class="text-xs font-medium text-muted-foreground">Lotnisko polskie</label>
             <div
-              class="relative flex min-w-44 flex-1 flex-col gap-1.5"
-              (click)="$event.stopPropagation()"
+              class="flex min-h-8 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm transition-shadow focus-within:ring-[3px] focus-within:ring-ring/50"
+              [class.border-primary]="selectedPlAirports().length > 0"
             >
-              <label class="text-xs font-medium text-muted-foreground">Lotnisko polskie</label>
-              <div
-                class="flex min-h-8 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm transition-shadow focus-within:ring-[3px] focus-within:ring-ring/50"
-                [class.border-primary]="selectedPlAirports().length > 0"
-              >
-                @if (selectedPlAirports().length) {
-                  @for (a of selectedPlAirports(); track a.iata) {
-                    <span hlmBadge variant="secondary" class="gap-1 border-transparent pr-1">
-                      {{ a.city }} ({{ a.iata }})
-                      <button
-                        type="button"
-                        class="flex size-4 items-center justify-center rounded-full hover:bg-foreground/10"
-                        (click)="removePlAirportItem(a)"
-                        aria-label="Usuń"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  }
-                }
-                <input
-                  #plAirportInputEl
-                  class="min-w-20 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                  type="text"
-                  placeholder="Miasto lub kod…"
-                  [value]="plAirportInput()"
-                  (input)="onPlAirportInput($event)"
-                  (focus)="onPlAirportFocus()"
-                  (keydown)="onPlAirportKeydown($event)"
-                />
-              </div>
-              @if (plAirportPanelOpen() && plAirportSuggestions().length) {
-                <div
-                  class="absolute top-full left-0 z-50 mt-1 max-h-64 w-full min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-                >
-                  @for (a of plAirportSuggestions(); track a.iata; let i = $index) {
-                    <div
-                      class="flex cursor-pointer items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm"
-                      [class.bg-accent]="i === plAirportHighlight()"
-                      (mouseenter)="plAirportHighlight.set(i)"
-                      (mousedown)="$event.preventDefault()"
-                      (click)="selectPlAirportSuggestion(a)"
+              @if (selectedPlAirports().length) {
+                @for (a of selectedPlAirports(); track a.iata) {
+                  <span hlmBadge variant="secondary" class="gap-1 border-transparent pr-1">
+                    {{ a.city }} ({{ a.iata }})
+                    <button
+                      type="button"
+                      class="flex size-4 items-center justify-center rounded-full hover:bg-foreground/10"
+                      (click)="removePlAirportItem(a)"
+                      aria-label="Usuń"
                     >
-                      <span>{{ a.city }} ({{ a.iata }})</span>
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-
-            <!-- Country / city autocomplete -->
-            <div
-              class="relative flex min-w-44 flex-1 flex-col gap-1.5"
-              (click)="$event.stopPropagation()"
-            >
-              <label class="text-xs font-medium text-muted-foreground">{{
-                direction() === 'OUT' ? 'Dokąd' : 'Skąd'
-              }}</label>
-              <div
-                class="flex min-h-8 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm transition-shadow focus-within:ring-[3px] focus-within:ring-ring/50"
-                [class.border-primary]="hasDestSelection()"
-              >
-                @if (selectedDest().length) {
-                  @for (s of selectedDest(); track s.kind + '|' + s.name + '|' + (s.iata ?? '')) {
-                    <span hlmBadge variant="secondary" class="gap-1 border-transparent pr-1">
-                      {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
-                      <button
-                        type="button"
-                        class="flex size-4 items-center justify-center rounded-full hover:bg-foreground/10"
-                        (click)="removeDestItem(s)"
-                        aria-label="Usuń"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  }
+                      ×
+                    </button>
+                  </span>
                 }
-                <input
-                  #destInputEl
-                  class="min-w-20 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                  type="text"
-                  placeholder="Kraj lub miasto…"
-                  [value]="destInput()"
-                  (input)="onDestInput($event)"
-                  (focus)="onDestFocus()"
-                  (keydown)="onDestKeydown($event)"
-                />
-              </div>
-              @if (destPanelOpen() && destSuggestions().length) {
-                <div
-                  class="absolute top-full left-0 z-50 mt-1 max-h-64 w-full min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-                >
-                  @for (
-                    s of destSuggestions();
-                    track s.kind + '|' + s.name + '|' + (s.iata ?? '');
-                    let i = $index
-                  ) {
-                    <div
-                      class="flex cursor-pointer items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm"
-                      [class.bg-accent]="i === destHighlight()"
-                      (mouseenter)="destHighlight.set(i)"
-                      (mousedown)="$event.preventDefault()"
-                      (click)="selectDestSuggestion(s)"
-                    >
-                      <span>
-                        {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
-                        @if (s.kind === 'city' || s.kind === 'airport') {
-                          <span class="text-muted-foreground">({{ s.country }})</span>
-                        }
-                      </span>
-                      <span
-                        hlmBadge
-                        variant="outline"
-                        class="shrink-0 font-normal text-muted-foreground"
-                        >{{
-                          s.kind === 'country' ? 'kraj' : s.kind === 'city' ? 'miasto' : 'lotnisko'
-                        }}</span
-                      >
-                    </div>
-                  }
-                </div>
               }
-            </div>
-
-            <!-- Date range -->
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-muted-foreground">Wylot od</label>
               <input
-                hlmInput
-                class="h-8 w-36"
-                type="date"
-                [value]="dateFrom()"
-                [min]="minDate()"
-                [max]="maxDate()"
-                (change)="setDateFrom($event)"
+                #plAirportInputEl
+                class="min-w-20 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                type="text"
+                placeholder="Miasto lub kod…"
+                [value]="plAirportInput()"
+                (input)="onPlAirportInput($event)"
+                (focus)="onPlAirportFocus()"
+                (keydown)="onPlAirportKeydown($event)"
               />
             </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-muted-foreground">Wylot do</label>
-              <input
-                hlmInput
-                class="h-8 w-36"
-                type="date"
-                [value]="dateTo()"
-                [min]="minDate()"
-                [max]="maxDate()"
-                (change)="setDateTo($event)"
-              />
-            </div>
-          </div>
-
-          <!-- Row 2: day-of-week pills + price + sort + reset -->
-          <div class="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-border pt-4">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-muted-foreground">Dni tygodnia wylotu</label>
-              <app-day-pills [selected]="selectedDaysArray()" (toggled)="toggleDay($event)" />
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-muted-foreground">Maks. cena (zł)</label>
-              <input
-                hlmInput
-                class="h-8 w-24"
-                type="number"
-                min="0"
-                placeholder="max"
-                [value]="maxPrice() ?? ''"
-                (change)="setMaxPrice($event)"
-              />
-            </div>
-            <app-sort-select
-              [options]="sortOptions"
-              [value]="sort()"
-              (changed)="setSortValue($event)"
-            />
-            @if (hasFilters()) {
-              <button hlmBtn variant="outline" size="sm" (click)="clearFilters()">
-                Wyczyść filtry
-              </button>
+            @if (plAirportPanelOpen() && plAirportSuggestions().length) {
+              <div
+                class="absolute top-full left-0 z-50 mt-1 max-h-64 w-full min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+              >
+                @for (a of plAirportSuggestions(); track a.iata; let i = $index) {
+                  <div
+                    class="flex cursor-pointer items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm"
+                    [class.bg-accent]="i === plAirportHighlight()"
+                    (mouseenter)="plAirportHighlight.set(i)"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="selectPlAirportSuggestion(a)"
+                  >
+                    <span>{{ a.city }} ({{ a.iata }})</span>
+                  </div>
+                }
+              </div>
             }
           </div>
+
+          <!-- Country / city autocomplete -->
+          <div
+            class="relative flex min-w-44 flex-1 flex-col gap-1.5"
+            (click)="$event.stopPropagation()"
+          >
+            <label class="text-xs font-medium text-muted-foreground">{{
+              direction() === 'OUT' ? 'Dokąd' : 'Skąd'
+            }}</label>
+            <div
+              class="flex min-h-8 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm transition-shadow focus-within:ring-[3px] focus-within:ring-ring/50"
+              [class.border-primary]="hasDestSelection()"
+            >
+              @if (selectedDest().length) {
+                @for (s of selectedDest(); track s.kind + '|' + s.name + '|' + (s.iata ?? '')) {
+                  <span hlmBadge variant="secondary" class="gap-1 border-transparent pr-1">
+                    {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
+                    <button
+                      type="button"
+                      class="flex size-4 items-center justify-center rounded-full hover:bg-foreground/10"
+                      (click)="removeDestItem(s)"
+                      aria-label="Usuń"
+                    >
+                      ×
+                    </button>
+                  </span>
+                }
+              }
+              <input
+                #destInputEl
+                class="min-w-20 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                type="text"
+                placeholder="Kraj lub miasto…"
+                [value]="destInput()"
+                (input)="onDestInput($event)"
+                (focus)="onDestFocus()"
+                (keydown)="onDestKeydown($event)"
+              />
+            </div>
+            @if (destPanelOpen() && destSuggestions().length) {
+              <div
+                class="absolute top-full left-0 z-50 mt-1 max-h-64 w-full min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+              >
+                @for (
+                  s of destSuggestions();
+                  track s.kind + '|' + s.name + '|' + (s.iata ?? '');
+                  let i = $index
+                ) {
+                  <div
+                    class="flex cursor-pointer items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm"
+                    [class.bg-accent]="i === destHighlight()"
+                    (mouseenter)="destHighlight.set(i)"
+                    (mousedown)="$event.preventDefault()"
+                    (click)="selectDestSuggestion(s)"
+                  >
+                    <span>
+                      {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
+                      @if (s.kind === 'city' || s.kind === 'airport') {
+                        <span class="text-muted-foreground">({{ s.country }})</span>
+                      }
+                    </span>
+                    <span
+                      hlmBadge
+                      variant="outline"
+                      class="shrink-0 font-normal text-muted-foreground"
+                      >{{
+                        s.kind === 'country' ? 'kraj' : s.kind === 'city' ? 'miasto' : 'lotnisko'
+                      }}</span
+                    >
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Date range -->
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-muted-foreground">Wylot od</label>
+            <input
+              hlmInput
+              class="h-8 w-36"
+              type="date"
+              [value]="dateFrom()"
+              [min]="minDate()"
+              [max]="maxDate()"
+              (change)="setDateFrom($event)"
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-muted-foreground">Wylot do</label>
+            <input
+              hlmInput
+              class="h-8 w-36"
+              type="date"
+              [value]="dateTo()"
+              [min]="minDate()"
+              [max]="maxDate()"
+              (change)="setDateTo($event)"
+            />
+          </div>
         </div>
-        <div class="flex shrink-0 items-center gap-2 border-t border-border p-3 sm:hidden">
+
+        <!-- Row 2: day-of-week pills + price + sort + reset -->
+        <div class="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-border pt-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-muted-foreground">Dni tygodnia wylotu</label>
+            <app-day-pills [selected]="selectedDaysArray()" (toggled)="toggleDay($event)" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-muted-foreground">Maks. cena (zł)</label>
+            <input
+              hlmInput
+              class="h-8 w-24"
+              type="number"
+              min="0"
+              placeholder="max"
+              [value]="maxPrice() ?? ''"
+              (change)="setMaxPrice($event)"
+            />
+          </div>
+          <app-sort-select
+            [options]="sortOptions"
+            [value]="sort()"
+            (changed)="setSortValue($event)"
+          />
           @if (hasFilters()) {
-            <button hlmBtn variant="outline" class="flex-1" (click)="clearFilters()">
-              Wyczyść
+            <button hlmBtn variant="outline" size="sm" (click)="clearFilters()">
+              Wyczyść filtry
             </button>
           }
-          <button hlmBtn class="flex-1" type="button" (click)="closeFilters()">
-            Pokaż wyniki ({{ fares().length }})
-          </button>
         </div>
-      </div>
+      </app-filter-card>
 
       <div class="flex items-center">
         <span class="text-sm font-medium text-muted-foreground">
@@ -427,23 +386,6 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
       }
     </main>
   `,
-  styles: [
-    `
-      /* Mobile: the filter card becomes a full-screen overlay. Structural rules
-         only — colors come from the theme tokens used in the template. */
-      @media (max-width: 639.98px) {
-        .filter-card.open {
-          display: flex;
-          position: fixed;
-          inset: 0;
-          z-index: 60;
-          border-radius: 0;
-          border: none;
-          box-shadow: none;
-        }
-      }
-    `,
-  ],
 })
 export class OneWayPageComponent {
   private oneWayService = inject(OneWayService);
@@ -491,9 +433,6 @@ export class OneWayPageComponent {
   dateTo = signal<string>('');
   maxPrice = signal<number | null>(null);
   sort = signal<'price' | 'date'>('price');
-
-  // Mobile-only filters overlay (CSS-driven; see `.filter-card--open` media queries).
-  filtersOpen = signal(false);
 
   lastUpdate = computed(() => {
     const ts = this.meta().lastUpdated;
@@ -587,20 +526,12 @@ export class OneWayPageComponent {
   constructor() {
     this.loadMeta();
     this.load();
-    // Lock body scroll while the mobile filters overlay is open.
-    effect(() => {
-      document.body.style.overflow = this.filtersOpen() ? 'hidden' : '';
-    });
   }
 
   @HostListener('document:click')
   closeDropdowns() {
     this.destPanelOpen.set(false);
     this.plAirportPanelOpen.set(false);
-  }
-
-  closeFilters() {
-    this.filtersOpen.set(false);
   }
 
   // app-segmented-toggle emits a plain string; narrow it to the direction union here.

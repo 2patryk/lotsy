@@ -10,6 +10,7 @@ import {
 } from '../../shared/filters/multi-select-dropdown.component';
 import { DayPillsComponent } from '../../shared/filters/day-pills.component';
 import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
+import { FilterCardComponent } from '../../shared/filters/filter-card.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, switchMap } from 'rxjs';
 import { DealCardComponent } from './deal-card.component';
@@ -83,6 +84,7 @@ const TIMES = [
     MultiSelectDropdownComponent,
     DayPillsComponent,
     SortSelectComponent,
+    FilterCardComponent,
   ],
   template: `
     <main class="mx-auto flex w-full max-w-[1100px] flex-col gap-5 px-3 py-7 sm:px-6">
@@ -97,7 +99,11 @@ const TIMES = [
       </div>
 
       <!-- ── Filter card ───────────────────── -->
-      <section class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-xs">
+      <app-filter-card
+        [filterCount]="activeFilterCount()"
+        [resultsCount]="allDeals().length"
+        (cleared)="clearFilters()"
+      >
         <!-- Row 1: dropdowns -->
         <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
           <app-multi-select-dropdown
@@ -242,7 +248,7 @@ const TIMES = [
             </div>
           </div>
         </div>
-      </section>
+      </app-filter-card>
 
       <!-- ── Results ───────────────────────── -->
       @if (loading()) {

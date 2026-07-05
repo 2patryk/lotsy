@@ -14,6 +14,7 @@ import {
 } from '../../shared/filters/segmented-toggle.component';
 import { DayPillsComponent } from '../../shared/filters/day-pills.component';
 import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
+import { FilterCardComponent } from '../../shared/filters/filter-card.component';
 import { ChartersService } from '../../core/services/charters.service';
 import type { CharterFlight, ChartersMeta } from '../../core/models/charter-offer.model';
 
@@ -36,6 +37,7 @@ const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'pa�
     SegmentedToggleComponent,
     DayPillsComponent,
     SortSelectComponent,
+    FilterCardComponent,
   ],
   template: `
     <main class="mx-auto flex w-full max-w-[1100px] flex-col gap-5 px-3 py-7 sm:px-6">
@@ -50,7 +52,11 @@ const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'pa�
       </div>
 
       <!-- ── Filter card ───────────────────── -->
-      <section class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-xs">
+      <app-filter-card
+        [filterCount]="activeFilterCount()"
+        [resultsCount]="flights().length"
+        (cleared)="clearFilters()"
+      >
         <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
           <!-- Mode -->
           <app-segmented-toggle
@@ -146,7 +152,7 @@ const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'pa�
             </button>
           }
         </div>
-      </section>
+      </app-filter-card>
 
       <div class="flex items-center">
         <span class="text-sm font-medium text-muted-foreground">
@@ -408,6 +414,19 @@ export class ChartersPageComponent {
       this.minPrice() != null ||
       this.maxPrice() != null,
   );
+  // Count of active filter categories, shown as a badge on the mobile "Filtry" button.
+  activeFilterCount = computed(() => {
+    let n = 0;
+    if (this.selectedOrigins().size > 0) n++;
+    if (this.selectedCountries().size > 0) n++;
+    if (this.dateFrom()) n++;
+    if (this.dateTo()) n++;
+    if (this.selectedDays().size > 0) n++;
+    if (this.minPrice() != null) n++;
+    if (this.maxPrice() != null) n++;
+    if (this.mode() !== 'roundTrip') n++;
+    return n;
+  });
 
   constructor() {
     this.chartersService.getMeta().subscribe((m) => this.meta.set(m));

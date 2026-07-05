@@ -34,13 +34,13 @@ export interface OnwardFlight {
   arrivalTime: string;
   price: number; // PLN
   currency: 'PLN';
-  source: 'RYANAIR' | 'WIZZAIR';
+  source: 'RYANAIR' | 'WIZZAIR' | 'GOOGLE';
   airline: string;
   flightNumber: string | null;
 }
 
 export type OnwardMode = 'departures' | 'arrivals';
-export type OnwardCarrier = 'ryanair' | 'wizz';
+export type OnwardCarrier = 'ryanair' | 'wizz' | 'google';
 
 export interface OneWayMeta {
   plAirports: { iata: string; city: string }[];

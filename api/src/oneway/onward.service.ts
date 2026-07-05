@@ -48,8 +48,8 @@ const RYAN_CONCURRENCY = 3;
 const RYAN_BATCH_DELAY_MS = 300;
 const WIZZ_CONCURRENCY = 2;
 const WIZZ_BATCH_DELAY_MS = 350;
-const GOOGLE_CONCURRENCY = 4;
-const GOOGLE_BATCH_DELAY_MS = 200;
+const GOOGLE_CONCURRENCY = 6;
+const GOOGLE_BATCH_DELAY_MS = 150;
 
 // Carriers already covered by their dedicated fetchers — dropped from Google
 // results to avoid duplicates (Buzz/Lauda/Malta Air are Ryanair-group).

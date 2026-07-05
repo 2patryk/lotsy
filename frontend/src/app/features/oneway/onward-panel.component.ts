@@ -59,7 +59,7 @@ function dayLabel(date: string): string {
               przylot min. 2 h przed wylotem ({{ fmtTime(fare().departureTime) }})
             }
           } @else {
-            Ryanair + Wizz Air · ceny w PLN za osobę
+            Ryanair + Wizz Air + inne linie · ceny w PLN za osobę
           }
         </span>
       </div>
@@ -79,12 +79,37 @@ function dayLabel(date: string): string {
         }
       </div>
 
-      @if (wizzLoading()) {
-        <div class="flex items-center gap-2 text-xs text-muted-foreground">
-          <hlm-spinner class="size-3.5" />
-          <span>Ładowanie Wizz Air… wyniki Ryanaira już na liście</span>
-        </div>
-      }
+      <!-- Google Flights is fetched only on demand (unofficial API, can be
+           flaky/slow) — one button per selected day. -->
+      <div class="flex flex-wrap items-center gap-2">
+        @if (loadingSources().length) {
+          <div class="flex items-center gap-2 text-xs text-muted-foreground">
+            <hlm-spinner class="size-3.5" />
+            <span>Dociągam: {{ loadingSources().join(', ') }}…</span>
+          </div>
+        }
+        @if (!googleLoading() && !googleLoaded()) {
+          <button
+            hlmBtn
+            variant="outline"
+            size="sm"
+            class="h-7 px-2.5 text-xs"
+            (click)="loadGoogle()"
+          >
+            {{
+              googleError()
+                ? 'Inne linie — spróbuj ponownie'
+                : 'Szukaj innych linii (easyJet, Vueling…)'
+            }}
+          </button>
+          @if (googleError()) {
+            <span class="text-xs text-destructive">Nie udało się pobrać innych linii.</span>
+          }
+        }
+        @if (googleLoaded() && !googleFlights().length) {
+          <span class="text-xs text-muted-foreground">Inne linie: brak lotów tego dnia.</span>
+        }
+      </div>
 
       @if (ryanLoading() && !flights().length) {
         <div class="flex items-center gap-2 py-6 text-sm text-muted-foreground">
@@ -95,7 +120,7 @@ function dayLabel(date: string): string {
         <div class="py-3 text-sm text-destructive">
           Nie udało się pobrać połączeń. Spróbuj ponownie później.
         </div>
-      } @else if (!flights().length && !ryanLoading() && !wizzLoading()) {
+      } @else if (!flights().length && !anyLoading()) {
         <div class="py-3 text-sm text-muted-foreground">
           Brak połączeń tego dnia{{ isBaseDay() ? ' (min. 2 h na przesiadkę)' : '' }}.
         </div>
@@ -197,18 +222,33 @@ export class OnwardPanelComponent {
 
   ryanFlights = signal<OnwardFlight[]>([]);
   wizzFlights = signal<OnwardFlight[]>([]);
+  googleFlights = signal<OnwardFlight[]>([]);
   ryanLoading = signal(false);
   wizzLoading = signal(false);
+  googleLoading = signal(false);
   ryanError = signal(false);
   wizzError = signal(false);
+  googleError = signal(false);
+  // Google results delivered for the currently selected day (opt-in fetch).
+  googleLoaded = signal(false);
 
   private ryanSub?: Subscription;
   private wizzSub?: Subscription;
+  private googleSub?: Subscription;
+
+  // Slow sources still being fetched while Ryanair results already render.
+  loadingSources = computed(() => {
+    const out: string[] = [];
+    if (this.wizzLoading()) out.push('Wizz Air');
+    if (this.googleLoading()) out.push('inne linie (Google Flights)');
+    return out;
+  });
+  anyLoading = computed(() => this.ryanLoading() || this.wizzLoading() || this.googleLoading());
 
   // Merged, price-sorted list with the 2h transfer buffer applied on the
   // fare's own day (other days need no time constraint).
   flights = computed<OnwardFlight[]>(() => {
-    let all = [...this.ryanFlights(), ...this.wizzFlights()];
+    let all = [...this.ryanFlights(), ...this.wizzFlights(), ...this.googleFlights()];
     if (this.isBaseDay()) {
       const f = this.fare();
       all =
@@ -281,6 +321,38 @@ export class OnwardPanelComponent {
         this.wizzLoading.set(false);
       },
     });
+
+    // Google is opt-in per day — just reset whatever the previous day loaded.
+    this.googleSub?.unsubscribe();
+    this.googleLoading.set(false);
+    this.googleError.set(false);
+    this.googleLoaded.set(false);
+    this.googleFlights.set([]);
+  }
+
+  loadGoogle() {
+    this.googleSub?.unsubscribe();
+    this.googleLoading.set(true);
+    this.googleError.set(false);
+    this.googleSub = this.oneWayService
+      .getOnward({
+        airport: this.airport(),
+        date: this.selectedDate(),
+        mode: this.mode(),
+        windowStart: this.windowStart(),
+        carrier: 'google',
+      })
+      .subscribe({
+        next: (flights) => {
+          this.googleFlights.set(flights);
+          this.googleLoaded.set(true);
+          this.googleLoading.set(false);
+        },
+        error: () => {
+          this.googleError.set(true);
+          this.googleLoading.set(false);
+        },
+      });
   }
 
   trackFlight(f: OnwardFlight): string {
@@ -295,6 +367,11 @@ export class OnwardPanelComponent {
   }
 
   bookingUrl(f: OnwardFlight): string {
+    if (f.source === 'GOOGLE') {
+      // Other carriers have no uniform deep link — hand off to Google Flights.
+      const q = `Flights from ${f.origin} to ${f.destination} on ${f.date}`;
+      return `https://www.google.com/travel/flights?q=${encodeURIComponent(q)}&curr=PLN&hl=pl`;
+    }
     if (f.source === 'WIZZAIR') {
       return `https://wizzair.com/pl-pl/booking/select-flight/${f.origin}/${f.destination}/${f.date}/null/1/0/0/null`;
     }

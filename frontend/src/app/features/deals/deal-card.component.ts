@@ -1,5 +1,7 @@
 import { Component, input, output, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmBadge } from '@spartan-ng/helm/badge';
 import type { Deal } from '../../core/models/deal.model';
 import { SavedDealsService } from '../../core/services/saved-deals.service';
 import { AirportsService } from '../../core/services/airports.service';
@@ -71,49 +73,57 @@ function fmtTime(iso: string): string {
 @Component({
   selector: 'app-deal-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, HlmButton, HlmBadge],
   template: `
     <div
-      class="deal-row"
-      [class.selected]="selected()"
+      class="deal-row relative grid cursor-pointer grid-cols-[1fr_auto] items-center gap-3 border-b border-b-border border-l-[3px] border-l-transparent bg-card px-3.5 py-3 transition-colors hover:bg-accent/40 sm:gap-6 sm:px-5 sm:py-3.5"
+      [class.border-l-primary!]="selected()"
       [class.has-photo]="!!thumbUrl()"
       [style.--thumb]="thumbUrl() ? 'url(' + thumbUrl() + ')' : 'none'"
       (click)="select.emit(deal().id)"
     >
       <!-- ── Left ─────────────────────────── -->
-      <div class="deal-left">
+      <div class="relative z-10 flex min-w-0 flex-col gap-2.5">
         <!-- Destination header -->
-        <div class="dest-header">
-          <span class="dest-city">{{ cityName() }}</span>
-          <span class="dest-iata">({{ deal().destAirport }})</span>
-          <span class="dest-sep">·</span>
-          <span class="dest-country">{{ countryLabel() }}</span>
+        <div class="flex flex-wrap items-center gap-1.5">
+          <span class="text-[15px] font-bold">{{ cityName() }}</span>
+          <span class="text-[13px] font-medium text-muted-foreground max-sm:hidden"
+            >({{ deal().destAirport }})</span
+          >
+          <span class="text-border max-sm:hidden">·</span>
+          <span class="text-[13px] text-muted-foreground">{{ countryLabel() }}</span>
           @if (deal().mixedCarrier) {
-            <span class="chip chip-amber">2 bilety</span>
+            <span hlmBadge class="border-transparent bg-brand/15 text-brand">2 bilety</span>
           }
           @if (deal().openJaw) {
-            <span class="chip chip-blue">Open-jaw</span>
+            <span hlmBadge class="border-transparent bg-primary/10 text-primary">Open-jaw</span>
           }
         </div>
 
         <!-- Flight legs -->
-        <div class="legs">
+        <div class="flex flex-col gap-1">
           <!-- Departure leg -->
-          <div class="leg">
-            <span class="leg-dir out">Wylot</span>
-            <span class="leg-route">
-              <strong>{{ city(deal().originAirport) }}</strong>
-              <span class="leg-code">({{ deal().originAirport }})</span>
-              <span class="leg-arrow">→</span>
-              <strong>{{ cityName() }}</strong>
-              <span class="leg-code">({{ deal().destAirport }})</span>
+          <div class="flex flex-wrap items-center gap-1.5 text-[13px] sm:gap-2.5">
+            <span
+              class="min-w-12 shrink-0 rounded-sm bg-primary/10 px-1.5 py-0.5 text-center text-[10px] font-bold tracking-wide text-primary uppercase"
+              >Wylot</span
+            >
+            <span class="flex flex-wrap items-center gap-1 max-sm:hidden">
+              <strong class="font-semibold">{{ city(deal().originAirport) }}</strong>
+              <span class="font-normal text-muted-foreground">({{ deal().originAirport }})</span>
+              <span class="mx-0.5 text-muted-foreground">→</span>
+              <strong class="font-semibold">{{ cityName() }}</strong>
+              <span class="font-normal text-muted-foreground">({{ deal().destAirport }})</span>
             </span>
-            <span class="leg-time-group">
+            <span class="flex shrink-0 items-center gap-2.5 sm:ml-auto">
               @if (spansTwo()) {
-                <span class="week-dots week-dots--two">
-                  <span class="wd-row">
+                <span class="flex flex-col items-start gap-[3px] max-sm:hidden">
+                  <span class="flex items-end gap-1">
                     @for (d of WEEK; track d.js) {
-                      <span class="wd wd--{{ dayKindRow(d.js, 1) }}" [title]="d.label">
+                      <span
+                        class="wd wd--{{ dayKindRow(d.js, 1) }} flex flex-col items-center"
+                        [title]="d.label"
+                      >
                         @if (dayKindRow(d.js, 1) === 'depart') {
                           <svg class="wd-shape" viewBox="0 0 6 8" fill="currentColor">
                             <polygon points="0,0 6,4 0,8" />
@@ -124,9 +134,12 @@ function fmtTime(iso: string): string {
                       </span>
                     }
                   </span>
-                  <span class="wd-row">
+                  <span class="flex items-end gap-1">
                     @for (d of WEEK; track d.js) {
-                      <span class="wd wd--{{ dayKindRow(d.js, 2) }}" [title]="d.label">
+                      <span
+                        class="wd wd--{{ dayKindRow(d.js, 2) }} flex flex-col items-center"
+                        [title]="d.label"
+                      >
                         @if (dayKindRow(d.js, 2) === 'return') {
                           <svg class="wd-shape" viewBox="0 0 6 8" fill="currentColor">
                             <polygon points="6,0 0,4 6,8" />
@@ -139,12 +152,19 @@ function fmtTime(iso: string): string {
                   </span>
                 </span>
               } @else {
-                <span class="week-dots">
+                <span class="flex items-end gap-1 max-sm:hidden">
                   @for (d of WEEK; track d.js) {
-                    <span class="wd wd--{{ dayKind(d.js) }}" [title]="d.label">
+                    <span
+                      class="wd wd--{{ dayKind(d.js) }} flex flex-col items-center"
+                      [title]="d.label"
+                    >
                       @switch (dayKind(d.js)) {
                         @case ('both') {
-                          <svg class="wd-shape" viewBox="0 0 8 8" fill="currentColor">
+                          <svg
+                            class="wd-shape wd-shape--wide"
+                            viewBox="0 0 8 8"
+                            fill="currentColor"
+                          >
                             <polygon points="4,0 8,4 4,8 0,4" />
                           </svg>
                         }
@@ -166,64 +186,80 @@ function fmtTime(iso: string): string {
                   }
                 </span>
               }
-              <span class="leg-time">
-                <span class="leg-date">{{ fmtDate(deal().departAt) }}</span>
-                <span class="leg-hour">{{ fmtTime(deal().departAt) }}</span>
+              <span class="flex shrink-0 items-center gap-1.5">
+                <span class="text-xs text-muted-foreground">{{ fmtDate(deal().departAt) }}</span>
+                <span class="text-sm font-bold tabular-nums">{{ fmtTime(deal().departAt) }}</span>
               </span>
             </span>
-            <span class="chip chip-neutral">{{ deal().outboundAirline }}</span>
+            <span hlmBadge variant="secondary" class="border-transparent font-medium">{{
+              deal().outboundAirline
+            }}</span>
           </div>
 
           <!-- Return leg -->
-          <div class="leg">
-            <span class="leg-dir ret">Powrót</span>
-            <span class="leg-route">
-              <strong>{{ cityName() }}</strong>
-              <span class="leg-code">({{ deal().destAirport }})</span>
-              <span class="leg-arrow">→</span>
-              <strong>{{
+          <div class="flex flex-wrap items-center gap-1.5 text-[13px] sm:gap-2.5">
+            <span
+              class="min-w-12 shrink-0 rounded-sm bg-secondary px-1.5 py-0.5 text-center text-[10px] font-bold tracking-wide text-muted-foreground uppercase"
+              >Powrót</span
+            >
+            <span class="flex flex-wrap items-center gap-1 max-sm:hidden">
+              <strong class="font-semibold">{{ cityName() }}</strong>
+              <span class="font-normal text-muted-foreground">({{ deal().destAirport }})</span>
+              <span class="mx-0.5 text-muted-foreground">→</span>
+              <strong class="font-semibold">{{
                 city(deal().openJaw ? deal().returnAirport : deal().originAirport)
               }}</strong>
-              <span class="leg-code"
+              <span class="font-normal text-muted-foreground"
                 >({{ deal().openJaw ? deal().returnAirport : deal().originAirport }})</span
               >
             </span>
-            <span class="leg-time leg-time--ret">
-              <span class="leg-date">{{ fmtDate(deal().returnAt) }}</span>
-              <span class="leg-hour">{{ fmtTime(deal().returnAt) }}</span>
+            <span class="flex shrink-0 items-center gap-1.5 sm:ml-auto">
+              <span class="text-xs text-muted-foreground">{{ fmtDate(deal().returnAt) }}</span>
+              <span class="text-sm font-bold tabular-nums">{{ fmtTime(deal().returnAt) }}</span>
             </span>
-            <span class="chip chip-neutral">{{ deal().returnAirline }}</span>
+            <span hlmBadge variant="secondary" class="border-transparent font-medium">{{
+              deal().returnAirline
+            }}</span>
           </div>
         </div>
       </div>
 
       <!-- ── Right ────────────────────────── -->
-      <div class="deal-right">
-        <div class="price-block">
-          <span class="price-from">od</span>
-          <div class="price-val">
+      <div class="relative z-10 flex shrink-0 flex-col items-end gap-2.5">
+        <div class="text-right">
+          <span
+            class="block text-[10px] font-semibold tracking-widest text-muted-foreground uppercase"
+            >od</span
+          >
+          <div
+            class="text-xl leading-tight font-extrabold whitespace-nowrap tabular-nums sm:text-2xl"
+          >
             {{ deal().totalPrice | number: '1.0-0' }}
-            <span class="price-cur">PLN</span>
+            <span class="text-sm font-medium text-muted-foreground">PLN</span>
           </div>
           @if (deal().mixedCarrier) {
-            <div class="price-split">
+            <div class="text-[11px] text-muted-foreground">
               {{ deal().outboundPrice | number: '1.0-0' }}+{{
                 deal().returnPrice | number: '1.0-0'
               }}
             </div>
           }
         </div>
-        <div class="cta-row">
+        <div class="flex items-center gap-1.5">
           <button
-            class="save-btn"
-            [class.saved]="isSaved()"
+            hlmBtn
+            variant="ghost"
+            size="icon-sm"
+            class="text-base text-muted-foreground hover:text-destructive"
+            [class.text-destructive]="isSaved()"
             [attr.title]="isSaved() ? 'Usuń z zapisanych' : 'Zapisz'"
             (click)="onSave($event)"
           >
             {{ isSaved() ? '♥' : '♡' }}
           </button>
           <a
-            class="btn-primary"
+            hlmBtn
+            size="sm"
             [href]="bookingUrl()"
             target="_blank"
             rel="noopener"
@@ -236,21 +272,8 @@ function fmtTime(iso: string): string {
   `,
   styles: [
     `
-      .deal-row {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
-        gap: 24px;
-        padding: 14px 20px;
-        position: relative;
-        background: var(--color-surface);
-        border-bottom: 1px solid var(--color-border);
-        border-left: 3px solid transparent;
-        cursor: pointer;
-        transition:
-          background-color 0.1s,
-          border-left-color 0.15s;
-      }
+      /* City-photo backdrop and week-dot glyphs are custom visuals with no
+         utility-class equivalent; everything else lives in the template. */
       .deal-row::before {
         content: '';
         position: absolute;
@@ -265,325 +288,40 @@ function fmtTime(iso: string): string {
         pointer-events: none;
         z-index: 0;
       }
-      .deal-row.has-photo {
-        padding-left: 88px;
+      @media (min-width: 640px) {
+        .deal-row.has-photo {
+          padding-left: 88px;
+        }
       }
-      .deal-row:hover {
-        background: var(--color-surface-hover);
-      }
-      .deal-row.selected {
-        border-left-color: var(--color-blue-600);
+      @media (max-width: 639.98px) {
+        .deal-row::before {
+          display: none;
+        }
       }
       :host(:last-child) .deal-row {
         border-bottom: none;
       }
 
-      /* Left */
-      .deal-left {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        min-width: 0;
-        position: relative;
-        z-index: 1;
-      }
-
-      /* Dest header */
-      .dest-header {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-      .dest-city {
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--color-text-primary);
-      }
-      .dest-iata {
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--color-text-tertiary);
-      }
-      .dest-sep {
-        color: var(--color-border-strong);
-      }
-      .dest-country {
-        font-size: 13px;
-        color: var(--color-text-secondary);
-      }
-
-      .leg-time-group {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-left: auto;
-        flex-shrink: 0;
-      }
-      .week-dots {
-        display: flex;
-        gap: 4px;
-        align-items: flex-end;
-      }
-      .week-dots--two {
-        flex-direction: column;
-        gap: 3px;
-        align-items: flex-start;
-      }
-      .wd-row {
-        display: flex;
-        gap: 4px;
-        align-items: flex-end;
-      }
-      .wd {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-      }
       .wd-dot {
         width: 6px;
         height: 6px;
         border-radius: 50%;
-        background: var(--color-border-strong);
-        transition: background 0.15s;
+        background: var(--border);
       }
       .wd-shape {
         width: 6px;
         height: 7px;
         flex-shrink: 0;
-        color: var(--color-border-strong);
-        transition: color 0.15s;
+        color: var(--border);
       }
-      /* full-color: departure, return, both */
       .wd--depart .wd-shape,
       .wd--return .wd-shape,
       .wd--both .wd-shape {
-        color: var(--color-blue-600);
+        color: var(--primary);
       }
-      /* mid: days between — medium blue */
       .wd--mid .wd-dot {
-        background: #60a5fa;
-      }
-
-      /* Chips / badges */
-      .chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 8px;
-        border-radius: var(--radius-full);
-        font-size: 11px;
-        font-weight: 500;
-        white-space: nowrap;
-      }
-      .chip-green {
-        background: var(--color-green-100);
-        color: var(--color-green-600);
-      }
-      .chip-amber {
-        background: var(--color-amber-100);
-        color: var(--color-amber-700);
-      }
-      .chip-blue {
-        background: var(--color-blue-100);
-        color: var(--color-blue-800);
-      }
-      .chip-neutral {
-        background: var(--color-sidebar-active);
-        color: var(--color-text-secondary);
-      }
-
-      /* Legs */
-      .legs {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-      }
-
-      .leg {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        font-size: 13px;
-      }
-
-      .leg-dir {
-        flex-shrink: 0;
-        min-width: 48px;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        padding: 2px 6px;
-        border-radius: var(--radius-sm);
-      }
-      .leg-dir.out {
-        background: var(--color-blue-50);
-        color: var(--color-blue-700);
-      }
-      .leg-dir.ret {
-        background: var(--color-sidebar-active);
-        color: var(--color-text-secondary);
-      }
-
-      .leg-route {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        flex-wrap: wrap;
-        font-size: 13px;
-        color: var(--color-text-primary);
-      }
-      .leg-route strong {
-        font-weight: 600;
-      }
-      .leg-code {
-        color: var(--color-text-tertiary);
-        font-weight: 400;
-      }
-      .leg-arrow {
-        color: var(--color-text-tertiary);
-        margin: 0 2px;
-      }
-
-      .leg-time {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-shrink: 0;
-      }
-      .leg-time--ret {
-        margin-left: auto;
-      }
-      .leg-date {
-        font-size: 12px;
-        color: var(--color-text-secondary);
-      }
-      .leg-hour {
-        font-size: 14px;
-        font-weight: 700;
-        color: var(--color-text-primary);
-        font-variant-numeric: tabular-nums;
-      }
-
-      /* Right */
-      .deal-right {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 10px;
-        flex-shrink: 0;
-        position: relative;
-        z-index: 1;
-      }
-
-      .price-block {
-        text-align: right;
-      }
-      .price-from {
-        display: block;
-        font-size: 10px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--color-text-tertiary);
-      }
-      .price-val {
-        font-size: 24px;
-        font-weight: 800;
-        color: var(--color-text-primary);
-        line-height: 1.1;
-        font-variant-numeric: tabular-nums;
-        white-space: nowrap;
-      }
-      .price-cur {
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--color-text-secondary);
-        margin-left: 2px;
-      }
-      .price-split {
-        font-size: 11px;
-        color: var(--color-text-tertiary);
-      }
-
-      .cta-row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .save-btn {
-        padding: 5px 8px;
-        border-radius: var(--radius-md);
-        border: none;
-        background: transparent;
-        font-size: 17px;
-        line-height: 1;
-        cursor: pointer;
-        color: var(--color-text-tertiary);
-        transition: color 0.12s;
-      }
-      .save-btn:hover,
-      .save-btn.saved {
-        color: #e11d48;
-      }
-
-      .btn-primary {
-        display: inline-flex;
-        align-items: center;
-        padding: 7px 18px;
-        border-radius: var(--radius-md);
-        font-size: 13px;
-        font-weight: 600;
-        background: var(--color-blue-700);
-        color: #fff;
-        text-decoration: none;
-        white-space: nowrap;
-        transition: background 0.12s;
-      }
-      .btn-primary:hover {
-        background: var(--color-blue-800);
-      }
-
-      @media (max-width: 600px) {
-        .deal-row {
-          gap: 12px;
-          padding: 12px 14px;
-        }
-        .deal-row.has-photo {
-          padding-left: 14px;
-        }
-        .deal-row::before {
-          display: none;
-        }
-        .dest-iata,
-        .dest-sep {
-          display: none;
-        }
-        .leg-route,
-        .week-dots,
-        .week-dots--two {
-          display: none;
-        }
-        .leg {
-          gap: 6px;
-          font-size: 12px;
-        }
-        .leg-time-group {
-          margin-left: 0;
-        }
-        .legs {
-          gap: 4px;
-        }
-        .price-val {
-          font-size: 20px;
-        }
-        .btn-primary {
-          padding: 6px 12px;
-          font-size: 12px;
-        }
+        background: var(--primary);
+        opacity: 0.4;
       }
     `,
   ],

@@ -8,7 +8,10 @@ import {
   HostListener,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, ActivatedRoute, RouterLink } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, switchMap } from 'rxjs';
 import { DealCardComponent } from './deal-card.component';
@@ -73,79 +76,48 @@ const TIMES = [
 @Component({
   selector: 'app-deals-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, DealCardComponent],
+  imports: [CommonModule, DealCardComponent, HlmButton, HlmInput, HlmSpinner],
   template: `
-    <!-- ── Header ──────────────────────────── -->
-    <header class="site-header">
-      <div class="header-inner">
-        <a [routerLink]="['/deals']" class="logo-link" aria-label="Lotsy">
-          <svg width="110" height="32" viewBox="0 0 122 36" fill="none">
-            <circle cx="18" cy="18" r="16" fill="#f48120" />
-            <g transform="translate(8.5,9.5) scale(0.85)">
-              <path
-                fill="white"
-                d="M23 10 L17 8 L10 1 L8 3 L13 8 L4 8 L2 6 L1 10 L2 14 L4 12 L13 12 L8 17 L10 19 L17 12 Z"
-              />
-            </g>
-            <text
-              x="42"
-              y="24"
-              font-family="Outfit,system-ui,sans-serif"
-              font-weight="800"
-              font-size="20"
-              fill="#1a1a1a"
-              letter-spacing="-0.5"
-            >
-              Lotsy
-            </text>
-          </svg>
-        </a>
-        <nav class="main-nav">
-          <button class="nav-item active">Okazje</button>
-          <a class="nav-item" [routerLink]="['/czartery']">Czartery</a>
-          <a class="nav-item" [routerLink]="['/jedna-strona']">W jedną stronę</a>
-          <button class="nav-item" disabled>Wyszukiwarka</button>
-          <button class="nav-item" disabled>Alerty</button>
-        </nav>
-        <div class="header-right">
-          <a [routerLink]="['/deals/saved']" class="saved-link">
-            Zapisane
-            @if (savedCount() > 0) {
-              <span class="saved-badge">{{ savedCount() }}</span>
-            }
-          </a>
-        </div>
-      </div>
-    </header>
-
-    <!-- ── Page ─────────────────────────────── -->
-    <main class="page">
-      <div class="page-head">
-        <h1>Okazje weekendowe</h1>
-        <p>
+    <main class="mx-auto flex w-full max-w-[1100px] flex-col gap-5 px-3 py-7 sm:px-6">
+      <div class="flex flex-col gap-1">
+        <h1 class="text-2xl font-bold tracking-tight">Okazje weekendowe</h1>
+        <p class="text-sm text-muted-foreground">
           Tanie loty z polskich lotnisk · 3–7 dni
           @if (lastUpdate()) {
-            <span class="muted"> · Odświeżono: {{ lastUpdate() }}</span>
+            <span class="text-muted-foreground/70"> · Odświeżono: {{ lastUpdate() }}</span>
           }
         </p>
       </div>
 
-      <!-- ── Filter bar ────────────────────── -->
-      <div class="filter-card">
+      <!-- ── Filter card ───────────────────── -->
+      <section class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-xs">
         <!-- Row 1: dropdowns -->
-        <div class="filter-row">
+        <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
           <!-- Kraj -->
-          <div class="fg" (click)="$event.stopPropagation()">
-            <span class="fg-label">Kraj</span>
+          <div
+            class="relative flex min-w-36 flex-1 flex-col gap-1.5"
+            (click)="$event.stopPropagation()"
+          >
+            <label class="text-xs font-medium text-muted-foreground">Kraj</label>
             <button
-              class="dd-btn"
-              [class.dd-active]="selectedCountries().length > 0"
+              hlmBtn
+              variant="outline"
+              size="sm"
+              class="w-full justify-between gap-2 font-normal"
+              [class.border-primary]="selectedCountries().length > 0"
+              [class.text-primary]="selectedCountries().length > 0"
               (click)="cOpen.set(!cOpen())"
             >
-              <span>{{
+              <span class="truncate">{{
                 selectedCountries().length ? selectedCountries().length + ' krajów' : 'Wszystkie'
               }}</span>
-              <svg class="chevron" [class.flip]="cOpen()" width="10" height="6" viewBox="0 0 10 6">
+              <svg
+                class="shrink-0 text-muted-foreground transition-transform"
+                [class.rotate-180]="cOpen()"
+                width="10"
+                height="6"
+                viewBox="0 0 10 6"
+              >
                 <path
                   d="M1 1l4 4 4-4"
                   stroke="currentColor"
@@ -157,11 +129,16 @@ const TIMES = [
               </svg>
             </button>
             @if (cOpen()) {
-              <div class="dd-menu">
+              <div
+                class="absolute top-full left-0 z-50 mt-1 max-h-64 min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+              >
                 @for (c of ALL_COUNTRIES; track c.code) {
-                  <label class="dd-item">
+                  <label
+                    class="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                  >
                     <input
                       type="checkbox"
+                      class="size-3.5 shrink-0 accent-primary"
                       [checked]="selectedCountries().includes(c.code)"
                       (change)="toggleCountry(c.code)"
                     />
@@ -173,17 +150,30 @@ const TIMES = [
           </div>
 
           <!-- Lotnisko wylotu -->
-          <div class="fg" (click)="$event.stopPropagation()">
-            <span class="fg-label">Lotnisko wylotu</span>
+          <div
+            class="relative flex min-w-36 flex-1 flex-col gap-1.5"
+            (click)="$event.stopPropagation()"
+          >
+            <label class="text-xs font-medium text-muted-foreground">Lotnisko wylotu</label>
             <button
-              class="dd-btn"
-              [class.dd-active]="selectedOrigins().length > 0"
+              hlmBtn
+              variant="outline"
+              size="sm"
+              class="w-full justify-between gap-2 font-normal"
+              [class.border-primary]="selectedOrigins().length > 0"
+              [class.text-primary]="selectedOrigins().length > 0"
               (click)="oOpen.set(!oOpen())"
             >
-              <span>{{
+              <span class="truncate">{{
                 selectedOrigins().length ? selectedOrigins().join(', ') : 'Wszystkie lotniska'
               }}</span>
-              <svg class="chevron" [class.flip]="oOpen()" width="10" height="6" viewBox="0 0 10 6">
+              <svg
+                class="shrink-0 text-muted-foreground transition-transform"
+                [class.rotate-180]="oOpen()"
+                width="10"
+                height="6"
+                viewBox="0 0 10 6"
+              >
                 <path
                   d="M1 1l4 4 4-4"
                   stroke="currentColor"
@@ -195,11 +185,16 @@ const TIMES = [
               </svg>
             </button>
             @if (oOpen()) {
-              <div class="dd-menu">
+              <div
+                class="absolute top-full left-0 z-50 mt-1 max-h-64 min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+              >
                 @for (ap of polishAirports(); track ap.iata) {
-                  <label class="dd-item">
+                  <label
+                    class="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                  >
                     <input
                       type="checkbox"
+                      class="size-3.5 shrink-0 accent-primary"
                       [checked]="selectedOrigins().includes(ap.iata)"
                       (change)="toggleOrigin(ap.iata)"
                     />
@@ -211,21 +206,34 @@ const TIMES = [
           </div>
 
           <!-- Typ połączenia -->
-          <div class="fg" (click)="$event.stopPropagation()">
-            <span class="fg-label">Typ połączenia</span>
+          <div
+            class="relative flex min-w-36 flex-1 flex-col gap-1.5"
+            (click)="$event.stopPropagation()"
+          >
+            <label class="text-xs font-medium text-muted-foreground">Typ połączenia</label>
             <button
-              class="dd-btn"
-              [class.dd-active]="!(selectedLevels().length === 1 && selectedLevels()[0] === 1)"
+              hlmBtn
+              variant="outline"
+              size="sm"
+              class="w-full justify-between gap-2 font-normal"
+              [class.border-primary]="!(selectedLevels().length === 1 && selectedLevels()[0] === 1)"
+              [class.text-primary]="!(selectedLevels().length === 1 && selectedLevels()[0] === 1)"
               (click)="tOpen.set(!tOpen())"
             >
-              <span>{{
+              <span class="truncate">{{
                 selectedLevels().length === 1 && selectedLevels()[0] === 1
                   ? 'Tam i z powrotem'
                   : selectedLevels().length === 3
                     ? 'Wszystkie typy'
                     : selectedLevels().length + ' wybrane'
               }}</span>
-              <svg class="chevron" [class.flip]="tOpen()" width="10" height="6" viewBox="0 0 10 6">
+              <svg
+                class="shrink-0 text-muted-foreground transition-transform"
+                [class.rotate-180]="tOpen()"
+                width="10"
+                height="6"
+                viewBox="0 0 10 6"
+              >
                 <path
                   d="M1 1l4 4 4-4"
                   stroke="currentColor"
@@ -237,11 +245,16 @@ const TIMES = [
               </svg>
             </button>
             @if (tOpen()) {
-              <div class="dd-menu">
+              <div
+                class="absolute top-full left-0 z-50 mt-1 max-h-64 min-w-64 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+              >
                 @for (t of TRIP_LEVELS; track t.id) {
-                  <label class="dd-item">
+                  <label
+                    class="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                  >
                     <input
                       type="checkbox"
+                      class="size-3.5 shrink-0 accent-primary"
                       [checked]="selectedLevels().includes(t.id)"
                       (change)="toggleLevel(t.id)"
                     />
@@ -253,30 +266,31 @@ const TIMES = [
           </div>
 
           <!-- Sortuj -->
-          <div class="fg">
-            <span class="fg-label">Sortuj</span>
-            <div class="sel-wrap">
-              <select (change)="onSortChange($event)">
-                <option value="price" [selected]="sortBy() === 'price'">Cena rosnąco</option>
-                <option value="departure" [selected]="sortBy() === 'departure'">Data wylotu</option>
-                <option value="duration" [selected]="sortBy() === 'duration'">Liczba nocy</option>
-              </select>
-            </div>
+          <div class="flex min-w-36 flex-1 flex-col gap-1.5">
+            <label class="text-xs font-medium text-muted-foreground">Sortuj</label>
+            <select
+              class="h-8 w-full cursor-pointer rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              (change)="onSortChange($event)"
+            >
+              <option value="price" [selected]="sortBy() === 'price'">Cena rosnąco</option>
+              <option value="departure" [selected]="sortBy() === 'departure'">Data wylotu</option>
+              <option value="duration" [selected]="sortBy() === 'duration'">Liczba nocy</option>
+            </select>
           </div>
 
           @if (activeFilterCount() > 0) {
-            <button class="clear-btn" (click)="clearFilters()">
+            <button hlmBtn variant="outline" size="sm" (click)="clearFilters()">
               Wyczyść ({{ activeFilterCount() }})
             </button>
           }
         </div>
 
         <!-- Row 2: sliders -->
-        <div class="filter-row filter-row--sliders">
-          <div class="fg fg--slider">
-            <div class="slider-header">
-              <span class="fg-label">Maks. cena</span>
-              <span class="slider-val">{{ maxPrice() }} PLN</span>
+        <div class="flex flex-wrap items-end gap-6 border-t border-border pt-4">
+          <div class="flex w-full max-w-64 flex-col gap-1.5">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-medium text-muted-foreground">Maks. cena</label>
+              <span class="text-sm font-bold">{{ maxPrice() }} PLN</span>
             </div>
             <input
               class="range"
@@ -287,26 +301,32 @@ const TIMES = [
               [value]="maxPrice()"
               (input)="maxPrice.set(+readNum($event))"
             />
-            <div class="range-ends">
+            <div class="flex justify-between text-[10px] text-muted-foreground">
               <span>200</span><span>{{ DEFAULT_MAX_PRICE }}</span>
             </div>
           </div>
 
-          <div class="fg fg--nights">
-            <span class="fg-label">Liczba nocy</span>
-            <div class="nights-inputs">
-              <span class="nights-sub">od</span>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-muted-foreground">Liczba nocy</label>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold tracking-wide text-muted-foreground uppercase"
+                >od</span
+              >
               <input
-                class="nights-num"
+                hlmInput
+                class="h-8 w-14 text-center tabular-nums"
                 type="number"
                 min="1"
                 [max]="MAX_NIGHTS"
                 [value]="minNights()"
                 (change)="onMinNights($event)"
               />
-              <span class="nights-sub">do</span>
+              <span class="text-[10px] font-bold tracking-wide text-muted-foreground uppercase"
+                >do</span
+              >
               <input
-                class="nights-num"
+                hlmInput
+                class="h-8 w-14 text-center tabular-nums"
                 type="number"
                 min="1"
                 [max]="MAX_NIGHTS"
@@ -318,82 +338,102 @@ const TIMES = [
         </div>
 
         <!-- Row 3: days & times -->
-        <div class="filter-row filter-row--days">
-          <div class="dt-group">
-            <span class="dt-label">Wylot</span>
-            <div class="dt-pills">
+        <div class="flex flex-col gap-2 border-t border-border pt-4">
+          <div
+            class="flex items-center gap-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <span
+              class="w-12 shrink-0 text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
+              >Wylot</span
+            >
+            <div class="flex items-center gap-1">
               @for (d of DAYS; track d.js) {
                 <button
-                  class="pill"
-                  [class.pill--on]="depDays().includes(d.js)"
+                  hlmBtn
+                  size="sm"
+                  [variant]="depDays().includes(d.js) ? 'default' : 'outline'"
+                  class="h-7 shrink-0 rounded-full px-2.5 text-xs"
                   (click)="toggleDay(depDays, d.js)"
                 >
                   {{ d.label }}
                 </button>
               }
-              <span class="dt-sep"></span>
+              <div class="mx-1 h-5 w-px shrink-0 bg-border"></div>
               @for (t of TIMES; track t.id) {
                 <button
-                  class="pill pill--time"
-                  [class.pill--on]="depTimes().includes(t.id)"
+                  hlmBtn
+                  size="sm"
+                  [variant]="depTimes().includes(t.id) ? 'default' : 'outline'"
+                  class="h-9 shrink-0 flex-col gap-0 rounded-full px-2.5 text-xs leading-tight"
                   (click)="toggleTime(depTimes, t.id)"
                 >
-                  {{ t.label }}<span class="pill-sub">{{ t.sub }}</span>
+                  {{ t.label }}<span class="text-[9px] font-normal opacity-70">{{ t.sub }}</span>
                 </button>
               }
             </div>
           </div>
-          <div class="dt-group">
-            <span class="dt-label">Powrót</span>
-            <div class="dt-pills">
+          <div
+            class="flex items-center gap-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            <span
+              class="w-12 shrink-0 text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
+              >Powrót</span
+            >
+            <div class="flex items-center gap-1">
               @for (d of DAYS; track d.js) {
                 <button
-                  class="pill"
-                  [class.pill--on]="retDays().includes(d.js)"
+                  hlmBtn
+                  size="sm"
+                  [variant]="retDays().includes(d.js) ? 'default' : 'outline'"
+                  class="h-7 shrink-0 rounded-full px-2.5 text-xs"
                   (click)="toggleDay(retDays, d.js)"
                 >
                   {{ d.label }}
                 </button>
               }
-              <span class="dt-sep"></span>
+              <div class="mx-1 h-5 w-px shrink-0 bg-border"></div>
               @for (t of TIMES; track t.id) {
                 <button
-                  class="pill pill--time"
-                  [class.pill--on]="retTimes().includes(t.id)"
+                  hlmBtn
+                  size="sm"
+                  [variant]="retTimes().includes(t.id) ? 'default' : 'outline'"
+                  class="h-9 shrink-0 flex-col gap-0 rounded-full px-2.5 text-xs leading-tight"
                   (click)="toggleTime(retTimes, t.id)"
                 >
-                  {{ t.label }}<span class="pill-sub">{{ t.sub }}</span>
+                  {{ t.label }}<span class="text-[9px] font-normal opacity-70">{{ t.sub }}</span>
                 </button>
               }
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- ── Results ───────────────────────── -->
       @if (loading()) {
-        <div class="state-row">
-          <div class="spinner"></div>
+        <div class="flex items-center justify-center gap-3 py-16 text-sm text-muted-foreground">
+          <hlm-spinner class="size-5" />
           <span>Wczytywanie ofert…</span>
         </div>
       } @else if (error()) {
-        <div class="state-row state-row--error">
+        <div class="rounded-xl border border-border bg-card px-6 py-5 text-sm text-destructive">
           Nie udało się wczytać ofert. Spróbuj odświeżyć stronę.
         </div>
       } @else {
-        <div class="results-card">
-          <div class="results-toolbar">
-            <span class="results-count"
+        <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+          <div class="border-b border-border px-5 py-2.5">
+            <span class="text-sm font-medium text-muted-foreground"
               >{{ allDeals().length }} {{ pluralize(allDeals().length) }}</span
             >
           </div>
 
           @if (allDeals().length === 0) {
-            <div class="empty">
-              <div class="empty-icon">✈</div>
-              <div class="empty-title">Brak okazji dla tych filtrów</div>
-              <div class="empty-sub">Zmień kraj, lotnisko lub budżet</div>
-              <button class="btn-sec" (click)="clearFilters()">Wyczyść filtry</button>
+            <div class="flex flex-col items-center gap-3 px-5 py-20 text-center">
+              <div class="text-4xl text-muted-foreground/50">✈</div>
+              <div class="font-semibold">Brak okazji dla tych filtrów</div>
+              <div class="text-sm text-muted-foreground">Zmień kraj, lotnisko lub budżet</div>
+              <button hlmBtn variant="outline" size="sm" (click)="clearFilters()">
+                Wyczyść filtry
+              </button>
             </div>
           } @else {
             @for (deal of visibleDeals(); track deal.id) {
@@ -404,17 +444,17 @@ const TIMES = [
               />
             }
             @if (visibleDeals().length < allDeals().length) {
-              <div class="load-more">
-                <button class="btn-sec" (click)="loadMore()">
+              <div class="flex justify-center border-t border-border p-4">
+                <button hlmBtn variant="outline" size="sm" (click)="loadMore()">
                   Pokaż więcej ({{ allDeals().length - visibleDeals().length }} pozostałych)
                 </button>
               </div>
             }
           }
-        </div>
+        </section>
       }
 
-      <p class="footer-note">
+      <p class="text-center text-xs text-muted-foreground">
         Ceny w obie strony za osobę · Dostępność może się zmienić · „Sprawdź" prowadzi do aktualnej
         oferty na stronie linii lotniczej
       </p>
@@ -422,386 +462,13 @@ const TIMES = [
   `,
   styles: [
     `
-      /* ── Header ─────────────────────────────── */
-      .site-header {
-        position: sticky;
-        top: 0;
-        z-index: 300;
-        height: var(--header-h);
-        background: var(--color-surface);
-        border-bottom: 1px solid var(--color-border);
-      }
-      .header-inner {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 0 24px;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        gap: 20px;
-      }
-      .logo-link {
-        display: flex;
-        align-items: center;
-        text-decoration: none;
-        flex-shrink: 0;
-      }
-
-      .main-nav {
-        display: flex;
-        gap: 2px;
-        margin-left: 4px;
-      }
-      .nav-item {
-        padding: 5px 12px;
-        border-radius: var(--radius-md);
-        border: none;
-        font-size: 14px;
-        font-weight: 400;
-        cursor: pointer;
-        color: var(--color-text-secondary);
-        background: transparent;
-        text-decoration: none;
-        transition: all 0.12s;
-      }
-      .nav-item.active {
-        font-weight: 600;
-        color: var(--color-blue-700);
-        background: var(--color-blue-50);
-      }
-      .nav-item:disabled {
-        opacity: 0.4;
-        cursor: default;
-      }
-
-      @media (max-width: 768px) {
-        .header-inner {
-          padding: 0 12px;
-          gap: 8px;
-        }
-        .logo-link svg {
-          width: 84px;
-          height: 26px;
-        }
-        .main-nav {
-          display: flex;
-          flex: 1 1 auto;
-          min-width: 0;
-          overflow-x: auto;
-          flex-wrap: nowrap;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-        }
-        .main-nav::-webkit-scrollbar {
-          display: none;
-        }
-        .nav-item {
-          flex-shrink: 0;
-          white-space: nowrap;
-          display: inline-flex;
-          align-items: center;
-          min-height: 40px;
-          padding: 0 10px;
-          box-sizing: border-box;
-        }
-        .header-right {
-          flex-shrink: 0;
-        }
-        .saved-link {
-          padding: 5px 8px;
-          min-height: 40px;
-          box-sizing: border-box;
-        }
-      }
-
-      .header-right {
-        margin-left: auto;
-      }
-      .saved-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 12px;
-        border-radius: var(--radius-md);
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--color-text-secondary);
-        text-decoration: none;
-        transition: background 0.12s;
-      }
-      .saved-link:hover {
-        background: var(--color-sidebar-active);
-      }
-      .saved-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 18px;
-        height: 18px;
-        padding: 0 4px;
-        border-radius: 9px;
-        background: var(--color-blue-700);
-        color: #fff;
-        font-size: 11px;
-        font-weight: 700;
-      }
-
-      /* ── Page ────────────────────────────────── */
-      .page {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 28px 24px 56px;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-      }
-      .page-head h1 {
-        font-size: 26px;
-        font-weight: 800;
-        letter-spacing: -0.025em;
-        margin-bottom: 4px;
-      }
-      .page-head p {
-        font-size: 14px;
-        color: var(--color-text-secondary);
-      }
-      .muted {
-        color: var(--color-text-tertiary);
-      }
-
-      /* ── Filter card ──────────────────────────── */
-      .filter-card {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
-        overflow: visible;
-      }
-
-      .filter-row {
-        display: flex;
-        gap: 0;
-        align-items: stretch;
-        flex-wrap: wrap;
-        border-bottom: 1px solid var(--color-border);
-      }
-      .filter-row:last-child {
-        border-bottom: none;
-      }
-      .filter-row--sliders {
-        padding: 12px 16px;
-        gap: 24px;
-        border-bottom: none;
-      }
-
-      /* Filter group */
-      .fg {
-        position: relative;
-        flex: 1;
-        min-width: 130px;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding: 12px 16px;
-        border-right: 1px solid var(--color-border);
-      }
-      .fg:last-child {
-        border-right: none;
-      }
-      .fg--slider {
-        border-right: none;
-        max-width: 280px;
-      }
-
-      .fg-label {
-        font-size: 10px;
-        font-weight: 600;
-        color: var(--color-text-tertiary);
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
-      }
-
-      /* Dropdown button */
-      .dd-btn {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 6px 10px;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--color-text-primary);
-        cursor: pointer;
-        text-align: left;
-        transition:
-          border-color 0.15s,
-          box-shadow 0.15s;
-      }
-      .dd-btn:hover {
-        border-color: var(--color-border-strong);
-      }
-      .dd-btn:focus {
-        outline: none;
-        border-color: var(--color-blue-700);
-        box-shadow: var(--shadow-focus);
-      }
-      .dd-btn.dd-active {
-        border-color: var(--color-blue-600);
-        background: var(--color-blue-50);
-        color: var(--color-blue-800);
-      }
-      .chevron {
-        flex-shrink: 0;
-        color: var(--color-text-tertiary);
-        transition: transform 0.15s;
-      }
-      .chevron.flip {
-        transform: rotate(180deg);
-      }
-
-      /* Dropdown menu */
-      .dd-menu {
-        position: absolute;
-        top: calc(100% + 4px);
-        left: 0;
-        z-index: 400;
-        min-width: 220px;
-        max-height: 260px;
-        overflow-y: auto;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-        padding: 6px 0;
-      }
-      .dd-item {
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        padding: 8px 14px;
-        font-size: 13px;
-        color: var(--color-text-primary);
-        cursor: pointer;
-        transition: background 0.1s;
-        border-bottom: 1px solid var(--color-border);
-      }
-      .dd-item:last-child {
-        border-bottom: none;
-      }
-      .dd-item:hover {
-        background: var(--color-sidebar-active);
-      }
-      .dd-item input[type='checkbox'] {
-        accent-color: var(--color-blue-700);
-        width: 14px;
-        height: 14px;
-        flex-shrink: 0;
-        cursor: pointer;
-      }
-
-      /* Native select */
-      .sel-wrap select {
-        width: 100%;
-        padding: 6px 30px 6px 10px;
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--color-text-primary);
-        background: var(--color-surface);
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ca3af' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 10px center;
-        cursor: pointer;
-        outline: none;
-        transition:
-          border-color 0.15s,
-          box-shadow 0.15s;
-      }
-      .sel-wrap select:focus {
-        border-color: var(--color-blue-700);
-        box-shadow: var(--shadow-focus);
-      }
-
-      /* Clear button (inline in filter-row) */
-      .clear-btn {
-        align-self: center;
-        margin: 0 16px 0 0;
-        padding: 6px 14px;
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--color-text-secondary);
-        background: var(--color-surface);
-        cursor: pointer;
-        white-space: nowrap;
-        transition: background 0.12s;
-      }
-      .clear-btn:hover {
-        background: var(--color-sidebar-active);
-      }
-
-      /* Sliders */
-      .slider-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .slider-val {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--color-text-primary);
-      }
-      .range-pair {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-      .fg--nights {
-        border-right: none;
-        min-width: 0;
-        flex: 0 0 auto;
-      }
-      .nights-inputs {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 2px;
-      }
-      .nights-sub {
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--color-text-tertiary);
-      }
-      .nights-num {
-        width: 48px;
-        padding: 5px 6px;
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--color-text-primary);
-        background: var(--color-surface);
-        text-align: center;
-        outline: none;
-        font-variant-numeric: tabular-nums;
-      }
-      .nights-num:focus {
-        border-color: var(--color-blue-700);
-        box-shadow: var(--shadow-focus);
-      }
+      /* Native range slider thumbs are not expressible with Tailwind utilities. */
       .range {
         -webkit-appearance: none;
         appearance: none;
         width: 100%;
         height: 4px;
-        background: var(--color-border);
+        background: var(--border);
         border-radius: 2px;
         outline: none;
         cursor: pointer;
@@ -811,270 +478,18 @@ const TIMES = [
         width: 16px;
         height: 16px;
         border-radius: 50%;
-        background: var(--color-blue-700);
-        border: 2px solid #fff;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        background: var(--primary);
+        border: 2px solid var(--card);
+        box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
         cursor: pointer;
-        transition: background 0.12s;
-      }
-      .range::-webkit-slider-thumb:hover {
-        background: var(--color-blue-800);
       }
       .range::-moz-range-thumb {
         width: 16px;
         height: 16px;
         border-radius: 50%;
-        background: var(--color-blue-700);
-        border: 2px solid #fff;
+        background: var(--primary);
+        border: 2px solid var(--card);
         cursor: pointer;
-      }
-      .range-ends {
-        display: flex;
-        justify-content: space-between;
-        font-size: 10px;
-        color: var(--color-text-tertiary);
-      }
-
-      /* ── Days & times row ───────────────────────── */
-      .filter-row--days {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 12px 16px;
-        border-bottom: none;
-      }
-      .dt-group {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .dt-label {
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
-        color: var(--color-text-tertiary);
-        min-width: 42px;
-      }
-      .dt-pills {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        flex-wrap: wrap;
-      }
-      .dt-sep {
-        display: inline-block;
-        width: 1px;
-        height: 20px;
-        background: var(--color-border);
-        margin: 0 4px;
-      }
-      .pill {
-        padding: 3px 8px;
-        border-radius: var(--radius-full);
-        border: 1px solid var(--color-border);
-        background: var(--color-surface);
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--color-text-secondary);
-        cursor: pointer;
-        transition: all 0.12s;
-        line-height: 1.4;
-        white-space: nowrap;
-      }
-      .pill:hover {
-        border-color: var(--color-border-strong);
-        color: var(--color-text-primary);
-      }
-      .pill--on {
-        background: var(--color-blue-50);
-        border-color: var(--color-blue-600);
-        color: var(--color-blue-800);
-        font-weight: 600;
-      }
-      .pill--time {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 2px 10px;
-      }
-      .pill-sub {
-        font-size: 9px;
-        font-weight: 400;
-        opacity: 0.7;
-        line-height: 1.2;
-      }
-
-      /* ── State rows ──────────────────────────── */
-      .state-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 40px 0;
-        font-size: 14px;
-        color: var(--color-text-secondary);
-      }
-      .state-row--error {
-        padding: 20px 24px;
-        color: #dc2626;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-      }
-      .spinner {
-        width: 22px;
-        height: 22px;
-        flex-shrink: 0;
-        border: 2px solid var(--color-border);
-        border-top-color: var(--color-blue-700);
-        border-radius: 50%;
-        animation: spin 0.7s linear infinite;
-      }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      /* ── Results card ────────────────────────── */
-      .results-card {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        overflow: hidden;
-        box-shadow: var(--shadow-sm);
-      }
-      .results-toolbar {
-        display: flex;
-        align-items: center;
-        padding: 10px 20px;
-        border-bottom: 1px solid var(--color-border);
-      }
-      .results-count {
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--color-text-secondary);
-      }
-
-      /* Empty state */
-      .empty {
-        padding: 60px 20px;
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 12px;
-      }
-      .empty-icon {
-        font-size: 36px;
-        color: var(--color-text-tertiary);
-      }
-      .empty-title {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--color-text-secondary);
-      }
-      .empty-sub {
-        font-size: 13px;
-        color: var(--color-text-tertiary);
-      }
-
-      /* Load more */
-      .load-more {
-        display: flex;
-        justify-content: center;
-        padding: 16px;
-        border-top: 1px solid var(--color-border);
-      }
-
-      /* Shared secondary button */
-      .btn-sec {
-        padding: 7px 14px;
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--color-text-primary);
-        background: var(--color-surface);
-        cursor: pointer;
-        transition: background 0.12s;
-      }
-      .btn-sec:hover {
-        background: var(--color-sidebar-active);
-      }
-
-      /* Footer */
-      .footer-note {
-        font-size: 12px;
-        color: var(--color-text-tertiary);
-        text-align: center;
-      }
-
-      @media (max-width: 600px) {
-        .page {
-          padding: 16px 0 40px;
-          gap: 14px;
-        }
-        .page-head {
-          padding: 0 14px;
-        }
-        .page-head h1 {
-          font-size: 20px;
-        }
-        .filter-card {
-          border-radius: 0;
-          border-left: none;
-          border-right: none;
-        }
-        .filter-row {
-          overflow-x: auto;
-          flex-wrap: nowrap;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-        }
-        .filter-row::-webkit-scrollbar {
-          display: none;
-        }
-        .filter-row--days {
-          overflow-x: visible;
-          flex-wrap: nowrap;
-          padding: 10px 14px;
-          gap: 6px;
-        }
-        .filter-row--sliders {
-          padding: 10px 14px;
-          gap: 16px;
-        }
-        .fg {
-          min-width: 100px;
-          padding: 10px 12px;
-        }
-        .dd-btn span {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          max-width: 90px;
-        }
-        .dt-group {
-          flex-wrap: nowrap;
-          overflow-x: auto;
-          scrollbar-width: none;
-          gap: 6px;
-        }
-        .dt-group::-webkit-scrollbar {
-          display: none;
-        }
-        .dt-pills {
-          flex-wrap: nowrap;
-        }
-        .results-header {
-          padding: 0 14px;
-        }
-        .deal-list {
-          border-radius: 0;
-          border-left: none;
-          border-right: none;
-        }
       }
     `,
   ],

@@ -9,7 +9,10 @@ import {
   ElementRef,
 } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmBadge } from '@spartan-ng/helm/badge';
+import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { OneWayService } from '../../core/services/oneway.service';
 import type { OneWayDirection, OneWayFare, OneWayMeta } from '../../core/models/oneway-fare.model';
 
@@ -56,91 +59,80 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
 @Component({
   selector: 'app-oneway-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, DecimalPipe],
+  imports: [CommonModule, DecimalPipe, HlmButton, HlmBadge, HlmInput, HlmSpinner],
   template: `
-    <header class="site-header">
-      <div class="header-inner">
-        <a [routerLink]="['/deals']" class="logo-link" aria-label="Lotsy">
-          <svg width="110" height="32" viewBox="0 0 122 36" fill="none">
-            <circle cx="18" cy="18" r="16" fill="#f48120" />
-            <g transform="translate(8.5,9.5) scale(0.85)">
-              <path
-                fill="white"
-                d="M23 10 L17 8 L10 1 L8 3 L13 8 L4 8 L2 6 L1 10 L2 14 L4 12 L13 12 L8 17 L10 19 L17 12 Z"
-              />
-            </g>
-            <text
-              x="42"
-              y="24"
-              font-family="Outfit,system-ui,sans-serif"
-              font-weight="800"
-              font-size="20"
-              fill="#1a1a1a"
-              letter-spacing="-0.5"
-            >
-              Lotsy
-            </text>
-          </svg>
-        </a>
-        <nav class="main-nav">
-          <a class="nav-item" [routerLink]="['/deals']">Okazje</a>
-          <a class="nav-item" [routerLink]="['/czartery']">Czartery</a>
-          <span class="nav-item active">W jedną stronę</span>
-        </nav>
-      </div>
-    </header>
-
-    <main class="page">
-      <div class="page-head">
-        <h1>Loty w jedną stronę</h1>
-        <p>
+    <main class="mx-auto flex w-full max-w-[1100px] flex-col gap-5 px-3 py-7 sm:px-6">
+      <div class="flex flex-col gap-1">
+        <h1 class="text-2xl font-bold tracking-tight">Loty w jedną stronę</h1>
+        <p class="text-sm text-muted-foreground">
           Bilety Ryanair bez przesiadek · cena za osobę
           @if (lastUpdate()) {
-            <span class="muted"> · Odświeżono: {{ lastUpdate() }}</span>
+            <span class="text-muted-foreground/70"> · Odświeżono: {{ lastUpdate() }}</span>
           }
         </p>
       </div>
 
       <!-- Mobile-only filters trigger; the filter card itself becomes a full-screen
-           overlay on mobile via the filter-card--open class (see media queries). -->
-      <button type="button" class="filters-trigger" (click)="filtersOpen.set(true)">
+           overlay on mobile via the "open" class (see styles). -->
+      <button
+        hlmBtn
+        variant="outline"
+        class="sticky top-16 z-40 w-full gap-2 shadow-xs sm:hidden"
+        type="button"
+        (click)="filtersOpen.set(true)"
+      >
         <span>Filtry</span>
         @if (filterCount() > 0) {
-          <span class="filters-badge">{{ filterCount() }}</span>
+          <span hlmBadge class="px-1.5">{{ filterCount() }}</span>
         }
       </button>
 
       <!-- ── Filters ─────────────────────────── -->
-      <div class="filter-card" [class.filter-card--open]="filtersOpen()">
-        <div class="filter-card-head">
-          <span class="filter-card-title">Filtry</span>
+      <div
+        class="filter-card flex-col overflow-visible rounded-xl border border-border bg-card shadow-xs max-sm:hidden sm:flex"
+        [class.open]="filtersOpen()"
+      >
+        <div
+          class="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 sm:hidden"
+        >
+          <span class="text-base font-bold">Filtry</span>
           <button
+            hlmBtn
+            variant="ghost"
+            size="icon-sm"
             type="button"
-            class="filter-card-close"
+            class="text-xl"
             (click)="closeFilters()"
             aria-label="Zamknij"
           >
             ×
           </button>
         </div>
-        <div class="filter-card-body">
-          <div class="filter-row">
+        <div class="flex flex-1 flex-col gap-4 p-4 max-sm:overflow-y-auto">
+          <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
             <!-- Direction -->
-            <div class="fg">
-              <span class="fg-label">Kierunek</span>
-              <div class="mode-toggle" role="tablist">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-medium text-muted-foreground">Kierunek</label>
+              <div
+                class="inline-flex gap-0.5 rounded-lg border border-border bg-muted p-0.5"
+                role="tablist"
+              >
                 <button
-                  class="mode-btn"
+                  hlmBtn
+                  size="sm"
                   role="tab"
-                  [class.active]="direction() === 'OUT'"
+                  class="h-7"
+                  [variant]="direction() === 'OUT' ? 'default' : 'ghost'"
                   (click)="setDirection('OUT')"
                 >
                   Z Polski
                 </button>
                 <button
-                  class="mode-btn"
+                  hlmBtn
+                  size="sm"
                   role="tab"
-                  [class.active]="direction() === 'IN'"
+                  class="h-7"
+                  [variant]="direction() === 'IN' ? 'default' : 'ghost'"
                   (click)="setDirection('IN')"
                 >
                   Do Polski
@@ -149,29 +141,33 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
             </div>
 
             <!-- PL airport autocomplete -->
-            <div class="fg fg-dest" (click)="$event.stopPropagation()">
-              <span class="fg-label">Lotnisko polskie</span>
-              <div class="dest-box" [class.dd-active]="selectedPlAirports().length > 0">
+            <div
+              class="relative flex min-w-44 flex-1 flex-col gap-1.5"
+              (click)="$event.stopPropagation()"
+            >
+              <label class="text-xs font-medium text-muted-foreground">Lotnisko polskie</label>
+              <div
+                class="flex min-h-8 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm transition-shadow focus-within:ring-[3px] focus-within:ring-ring/50"
+                [class.border-primary]="selectedPlAirports().length > 0"
+              >
                 @if (selectedPlAirports().length) {
-                  <div class="dest-chips">
-                    @for (a of selectedPlAirports(); track a.iata) {
-                      <span class="dest-chip">
-                        {{ a.city }} ({{ a.iata }})
-                        <button
-                          type="button"
-                          class="dest-chip-x"
-                          (click)="removePlAirportItem(a)"
-                          aria-label="Usuń"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    }
-                  </div>
+                  @for (a of selectedPlAirports(); track a.iata) {
+                    <span hlmBadge variant="secondary" class="gap-1 border-transparent pr-1">
+                      {{ a.city }} ({{ a.iata }})
+                      <button
+                        type="button"
+                        class="flex size-4 items-center justify-center rounded-full hover:bg-foreground/10"
+                        (click)="removePlAirportItem(a)"
+                        aria-label="Usuń"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  }
                 }
                 <input
                   #plAirportInputEl
-                  class="dest-input"
+                  class="min-w-20 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                   type="text"
                   placeholder="Miasto lub kod…"
                   [value]="plAirportInput()"
@@ -181,16 +177,18 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                 />
               </div>
               @if (plAirportPanelOpen() && plAirportSuggestions().length) {
-                <div class="dd-panel dest-panel">
+                <div
+                  class="absolute top-full left-0 z-50 mt-1 max-h-64 w-full min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+                >
                   @for (a of plAirportSuggestions(); track a.iata; let i = $index) {
                     <div
-                      class="dd-opt dest-opt"
-                      [class.dest-opt-active]="i === plAirportHighlight()"
+                      class="flex cursor-pointer items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm"
+                      [class.bg-accent]="i === plAirportHighlight()"
                       (mouseenter)="plAirportHighlight.set(i)"
                       (mousedown)="$event.preventDefault()"
                       (click)="selectPlAirportSuggestion(a)"
                     >
-                      <span class="dest-opt-name">{{ a.city }} ({{ a.iata }})</span>
+                      <span>{{ a.city }} ({{ a.iata }})</span>
                     </div>
                   }
                 </div>
@@ -198,29 +196,35 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
             </div>
 
             <!-- Country / city autocomplete -->
-            <div class="fg fg-dest" (click)="$event.stopPropagation()">
-              <span class="fg-label">{{ direction() === 'OUT' ? 'Dokąd' : 'Skąd' }}</span>
-              <div class="dest-box" [class.dd-active]="hasDestSelection()">
+            <div
+              class="relative flex min-w-44 flex-1 flex-col gap-1.5"
+              (click)="$event.stopPropagation()"
+            >
+              <label class="text-xs font-medium text-muted-foreground">{{
+                direction() === 'OUT' ? 'Dokąd' : 'Skąd'
+              }}</label>
+              <div
+                class="flex min-h-8 w-full flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm transition-shadow focus-within:ring-[3px] focus-within:ring-ring/50"
+                [class.border-primary]="hasDestSelection()"
+              >
                 @if (selectedDest().length) {
-                  <div class="dest-chips">
-                    @for (s of selectedDest(); track s.kind + '|' + s.name + '|' + (s.iata ?? '')) {
-                      <span class="dest-chip">
-                        {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
-                        <button
-                          type="button"
-                          class="dest-chip-x"
-                          (click)="removeDestItem(s)"
-                          aria-label="Usuń"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    }
-                  </div>
+                  @for (s of selectedDest(); track s.kind + '|' + s.name + '|' + (s.iata ?? '')) {
+                    <span hlmBadge variant="secondary" class="gap-1 border-transparent pr-1">
+                      {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
+                      <button
+                        type="button"
+                        class="flex size-4 items-center justify-center rounded-full hover:bg-foreground/10"
+                        (click)="removeDestItem(s)"
+                        aria-label="Usuń"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  }
                 }
                 <input
                   #destInputEl
-                  class="dest-input"
+                  class="min-w-20 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                   type="text"
                   placeholder="Kraj lub miasto…"
                   [value]="destInput()"
@@ -230,28 +234,35 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                 />
               </div>
               @if (destPanelOpen() && destSuggestions().length) {
-                <div class="dd-panel dest-panel">
+                <div
+                  class="absolute top-full left-0 z-50 mt-1 max-h-64 w-full min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+                >
                   @for (
                     s of destSuggestions();
                     track s.kind + '|' + s.name + '|' + (s.iata ?? '');
                     let i = $index
                   ) {
                     <div
-                      class="dd-opt dest-opt"
-                      [class.dest-opt-active]="i === destHighlight()"
+                      class="flex cursor-pointer items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm"
+                      [class.bg-accent]="i === destHighlight()"
                       (mouseenter)="destHighlight.set(i)"
                       (mousedown)="$event.preventDefault()"
                       (click)="selectDestSuggestion(s)"
                     >
-                      <span class="dest-opt-name">
+                      <span>
                         {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
                         @if (s.kind === 'city' || s.kind === 'airport') {
-                          <span class="dest-opt-country">({{ s.country }})</span>
+                          <span class="text-muted-foreground">({{ s.country }})</span>
                         }
                       </span>
-                      <span class="dest-opt-tag">{{
-                        s.kind === 'country' ? 'kraj' : s.kind === 'city' ? 'miasto' : 'lotnisko'
-                      }}</span>
+                      <span
+                        hlmBadge
+                        variant="outline"
+                        class="shrink-0 font-normal text-muted-foreground"
+                        >{{
+                          s.kind === 'country' ? 'kraj' : s.kind === 'city' ? 'miasto' : 'lotnisko'
+                        }}</span
+                      >
                     </div>
                   }
                 </div>
@@ -259,10 +270,11 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
             </div>
 
             <!-- Date range -->
-            <div class="fg">
-              <span class="fg-label">Wylot od</span>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-medium text-muted-foreground">Wylot od</label>
               <input
-                class="date-input"
+                hlmInput
+                class="h-8 w-36"
                 type="date"
                 [value]="dateFrom()"
                 [min]="minDate()"
@@ -270,10 +282,11 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                 (change)="setDateFrom($event)"
               />
             </div>
-            <div class="fg">
-              <span class="fg-label">Wylot do</span>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-medium text-muted-foreground">Wylot do</label>
               <input
-                class="date-input"
+                hlmInput
+                class="h-8 w-36"
                 type="date"
                 [value]="dateTo()"
                 [min]="minDate()"
@@ -283,15 +296,17 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
             </div>
           </div>
 
-          <!-- Row 2: day-of-week pills + price range + sort + reset -->
-          <div class="filter-row filter-row--secondary">
-            <div class="fg">
-              <span class="fg-label">Dni tygodnia wylotu</span>
-              <div class="day-pills">
+          <!-- Row 2: day-of-week pills + price + sort + reset -->
+          <div class="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-border pt-4">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-medium text-muted-foreground">Dni tygodnia wylotu</label>
+              <div class="flex items-center gap-1">
                 @for (d of DAYS; track d.js) {
                   <button
-                    class="day-pill"
-                    [class.on]="selectedDays().has(d.js)"
+                    hlmBtn
+                    size="sm"
+                    [variant]="selectedDays().has(d.js) ? 'default' : 'outline'"
+                    class="h-7 shrink-0 rounded-full px-2.5 text-xs"
                     (click)="toggleDay(d.js)"
                   >
                     {{ d.label }}
@@ -299,10 +314,11 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                 }
               </div>
             </div>
-            <div class="fg">
-              <span class="fg-label">Maks. cena (zł)</span>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-medium text-muted-foreground">Maks. cena (zł)</label>
               <input
-                class="price-input"
+                hlmInput
+                class="h-8 w-24"
                 type="number"
                 min="0"
                 placeholder="max"
@@ -310,885 +326,155 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                 (change)="setMaxPrice($event)"
               />
             </div>
-            <div class="fg">
-              <span class="fg-label">Sortowanie</span>
-              <select class="sort-select" [value]="sort()" (change)="setSort($event)">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-medium text-muted-foreground">Sortowanie</label>
+              <select
+                class="h-8 cursor-pointer rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                [value]="sort()"
+                (change)="setSort($event)"
+              >
                 <option value="price">Najtańsze najpierw</option>
                 <option value="date">Data wylotu</option>
               </select>
             </div>
             @if (hasFilters()) {
-              <button class="clear-btn" (click)="clearFilters()">Wyczyść filtry</button>
+              <button hlmBtn variant="outline" size="sm" (click)="clearFilters()">
+                Wyczyść filtry
+              </button>
             }
           </div>
         </div>
-        <div class="filter-card-foot">
+        <div class="flex shrink-0 items-center gap-2 border-t border-border p-3 sm:hidden">
           @if (hasFilters()) {
-            <button class="filter-foot-clear" (click)="clearFilters()">Wyczyść</button>
+            <button hlmBtn variant="outline" class="flex-1" (click)="clearFilters()">
+              Wyczyść
+            </button>
           }
-          <button type="button" class="filter-foot-show" (click)="closeFilters()">
+          <button hlmBtn class="flex-1" type="button" (click)="closeFilters()">
             Pokaż wyniki ({{ fares().length }})
           </button>
         </div>
       </div>
 
-      <div class="toolbar">
-        <span class="count">
+      <div class="flex items-center">
+        <span class="text-sm font-medium text-muted-foreground">
           {{ fares().length }} lotów
           @if (fares().length === 300) {
-            <span class="muted">(pokazuję pierwsze 300)</span>
+            <span class="text-muted-foreground/70">(pokazuję pierwsze 300)</span>
           }
         </span>
       </div>
 
       @if (loading()) {
-        <div class="state-info">Ładowanie…</div>
+        <div class="flex items-center justify-center gap-3 py-16 text-sm text-muted-foreground">
+          <hlm-spinner class="size-5" />
+          <span>Ładowanie…</span>
+        </div>
       } @else if (error()) {
-        <div class="state-info error">Nie udało się pobrać ofert. Spróbuj ponownie później.</div>
+        <div class="rounded-xl border border-border bg-card px-6 py-5 text-sm text-destructive">
+          Nie udało się pobrać ofert. Spróbuj ponownie później.
+        </div>
       } @else if (fares().length === 0) {
-        <div class="state-info">Brak lotów dla wybranych filtrów.</div>
+        <div
+          class="flex flex-col items-center gap-3 rounded-xl border border-border bg-card px-5 py-20 text-center"
+        >
+          <div class="text-4xl text-muted-foreground/50">✈</div>
+          <div class="font-semibold">Brak lotów dla wybranych filtrów</div>
+          <div class="text-sm text-muted-foreground">Zmień kierunek, lotnisko lub daty</div>
+          @if (hasFilters()) {
+            <button hlmBtn variant="outline" size="sm" (click)="clearFilters()">
+              Wyczyść filtry
+            </button>
+          }
+        </div>
       } @else {
-        <div class="results-card">
+        <section
+          class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-xs"
+        >
           @for (f of fares(); track f.id) {
-            <div class="offer-row">
+            <div
+              class="grid grid-cols-[1fr_auto] items-center gap-3 px-3.5 py-3 transition-colors hover:bg-accent/40 sm:gap-6 sm:px-5 sm:py-3.5"
+            >
               <!-- ── Left ─────────────────────── -->
-              <div class="offer-left">
-                <div class="dest-header">
-                  <span class="dest-city">{{ f.originCity }} → {{ f.destCity }}</span>
-                  <span class="dest-sep">·</span>
+              <div class="flex min-w-0 flex-col gap-2">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="text-[15px] font-bold">{{ f.originCity }} → {{ f.destCity }}</span>
+                  <span class="text-border max-sm:hidden">·</span>
                   <!-- Show the foreign-side country: destination when flying
                        out of Poland, origin when flying back in. -->
-                  <span class="dest-country">{{
+                  <span class="text-[13px] text-muted-foreground">{{
                     direction() === 'IN' ? f.originCountry : f.destCountry
                   }}</span>
                 </div>
 
-                <div class="leg">
-                  <span class="dep-highlight">
-                    <span class="dep-date">{{ fmtDate(f.date) }}</span>
-                    <span class="dep-hour">{{ fmtTime(f.departureTime) }}</span>
-                    <span class="dep-airport"
-                      >{{ f.originCity }} <span class="dep-code">({{ f.origin }})</span></span
+                <div class="flex flex-wrap items-center gap-1.5 text-[13px] sm:gap-2.5">
+                  <span class="flex shrink-0 items-center gap-1.5">
+                    <span class="text-xs text-muted-foreground">{{ fmtDate(f.date) }}</span>
+                    <span class="text-sm font-bold tabular-nums">{{
+                      fmtTime(f.departureTime)
+                    }}</span>
+                    <span class="font-semibold"
+                      >{{ f.originCity }}
+                      <span class="font-normal text-muted-foreground">({{ f.origin }})</span></span
                     >
                   </span>
-                  <span class="leg-route">
-                    <span class="leg-arrow">→</span>
-                    <strong>{{ f.destCity }}</strong>
-                    <span class="leg-code">({{ f.destination }})</span>
-                    <span class="leg-arr">przylot {{ fmtTime(f.arrivalTime) }}</span>
+                  <span class="flex flex-wrap items-center gap-1 max-sm:hidden">
+                    <span class="mx-0.5 text-muted-foreground">→</span>
+                    <strong class="font-semibold">{{ f.destCity }}</strong>
+                    <span class="font-normal text-muted-foreground">({{ f.destination }})</span>
+                    <span class="text-xs text-muted-foreground"
+                      >przylot {{ fmtTime(f.arrivalTime) }}</span
+                    >
                   </span>
                   <span
-                    class="chip"
-                    [class.chip-neutral]="f.source !== 'WIZZAIR'"
-                    [class.chip-wizz]="f.source === 'WIZZAIR'"
+                    hlmBadge
+                    variant="secondary"
+                    [class]="
+                      'gap-1 border-transparent font-medium' +
+                      (f.source === 'WIZZAIR' ? ' bg-[#e6007e]/10 text-[#c6007e]' : '')
+                    "
                     >{{ f.airline }}
                     @if (f.flightNumber) {
-                      <span class="chip-sub">{{ f.flightNumber }}</span>
+                      <span class="font-normal opacity-70">{{ f.flightNumber }}</span>
                     }
                   </span>
                 </div>
               </div>
 
               <!-- ── Right ────────────────────── -->
-              <div class="offer-right">
-                <div class="price-block">
-                  <div class="price-val">
+              <div class="flex shrink-0 flex-col items-end gap-2.5">
+                <div class="text-right">
+                  <div
+                    class="text-xl leading-tight font-extrabold whitespace-nowrap tabular-nums sm:text-2xl"
+                  >
                     {{ f.price | number: '1.0-0' }}
-                    <span class="price-cur">{{ f.currency }}</span>
+                    <span class="text-sm font-medium text-muted-foreground">{{ f.currency }}</span>
                   </div>
-                  <div class="price-mode">w jedną stronę</div>
+                  <div class="text-[11px] text-muted-foreground">w jedną stronę</div>
                 </div>
-                <a class="btn-primary" [href]="bookingUrl(f)" target="_blank" rel="noopener"
+                <a hlmBtn size="sm" [href]="bookingUrl(f)" target="_blank" rel="noopener"
                   >Sprawdź</a
                 >
               </div>
             </div>
           }
-        </div>
+        </section>
       }
     </main>
   `,
   styles: [
     `
-      .site-header {
-        position: sticky;
-        top: 0;
-        z-index: 200;
-        height: var(--header-h);
-        background: var(--color-surface);
-        border-bottom: 1px solid var(--color-border);
-      }
-      .header-inner {
-        max-width: 1060px;
-        margin: 0 auto;
-        padding: 0 24px;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        gap: 24px;
-      }
-      .logo-link {
-        display: flex;
-        align-items: center;
-      }
-      .main-nav {
-        display: flex;
-        gap: 4px;
-      }
-      .nav-item {
-        padding: 5px 12px;
-        border-radius: var(--radius-md);
-        border: none;
-        font-size: 14px;
-        font-weight: 400;
-        cursor: pointer;
-        color: var(--color-text-secondary);
-        background: transparent;
-        text-decoration: none;
-        transition: all 0.12s;
-      }
-      .nav-item.active {
-        font-weight: 600;
-        color: var(--color-blue-700);
-        background: var(--color-blue-50);
-        cursor: default;
-      }
-
-      @media (max-width: 768px) {
-        .header-inner {
-          padding: 0 12px;
-          gap: 10px;
-        }
-        .logo-link svg {
-          width: 84px;
-          height: 26px;
-        }
-        .main-nav {
-          flex: 1 1 auto;
-          min-width: 0;
-          overflow-x: auto;
-          flex-wrap: nowrap;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-        }
-        .main-nav::-webkit-scrollbar {
-          display: none;
-        }
-        .nav-item {
-          flex-shrink: 0;
-          white-space: nowrap;
-          display: inline-flex;
-          align-items: center;
-          min-height: 40px;
-          padding: 0 12px;
-          box-sizing: border-box;
-        }
-      }
-
-      .page {
-        max-width: 1060px;
-        margin: 0 auto;
-        padding: 28px 24px 48px;
-      }
-      .page-head h1 {
-        margin: 0;
-        font-size: 22px;
-        font-weight: 700;
-        color: var(--color-text-primary);
-      }
-      .page-head p {
-        margin: 6px 0 0;
-        font-size: 14px;
-        color: var(--color-text-secondary);
-      }
-      .muted {
-        color: var(--color-text-tertiary);
-      }
-
-      /* ── Mobile filters trigger (hidden on desktop) ─── */
-      .filters-trigger {
-        display: none;
-      }
-
-      /* ── Filter card ─────────────────────── */
-      .filter-card {
-        margin-top: 20px;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        padding: 14px 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        box-shadow: var(--shadow-sm);
-      }
-      /* Header/footer of the filter card only render as an overlay chrome on mobile. */
-      .filter-card-head,
-      .filter-card-foot {
-        display: none;
-      }
-      .filter-card-body {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-      .filter-row {
-        display: flex;
-        align-items: flex-end;
-        gap: 16px;
-        flex-wrap: wrap;
-      }
-      .filter-row--secondary {
-        justify-content: space-between;
-      }
-      .fg {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-        position: relative;
-      }
-      .fg-label {
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: var(--color-text-tertiary);
-      }
-
-      .mode-toggle {
-        display: inline-flex;
-        background: var(--color-sidebar-active);
-        border-radius: var(--radius-md);
-        padding: 3px;
-        gap: 2px;
-      }
-      .mode-btn {
-        border: none;
-        background: transparent;
-        padding: 5px 12px;
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--color-text-secondary);
-        border-radius: calc(var(--radius-md) - 2px);
-        cursor: pointer;
-        transition: all 0.12s;
-      }
-      .mode-btn.active {
-        background: var(--color-surface);
-        color: var(--color-blue-700);
-        font-weight: 600;
-        box-shadow: var(--shadow-sm);
-      }
-
-      .dd-btn {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        min-width: 160px;
-        padding: 7px 10px;
-        font-size: 13px;
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        background: var(--color-surface);
-        color: var(--color-text-primary);
-        cursor: pointer;
-        transition: border-color 0.12s;
-      }
-      .dd-btn:hover {
-        border-color: var(--color-border-strong);
-      }
-      .dd-btn.dd-active {
-        border-color: var(--color-blue-600);
-        color: var(--color-blue-700);
-        font-weight: 600;
-      }
-      .chevron {
-        transition: transform 0.15s;
-        color: var(--color-text-tertiary);
-        flex-shrink: 0;
-      }
-      .chevron.flip {
-        transform: rotate(180deg);
-      }
-      .dd-panel {
-        position: absolute;
-        top: calc(100% + 6px);
-        left: 0;
-        z-index: 300;
-        min-width: 220px;
-        max-height: 280px;
-        overflow-y: auto;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
-        padding: 6px;
-      }
-      .dd-opt {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 8px;
-        font-size: 13px;
-        color: var(--color-text-primary);
-        border-radius: var(--radius-sm);
-        cursor: pointer;
-      }
-      .dd-opt:hover {
-        background: var(--color-surface-hover);
-      }
-      .dd-code {
-        color: var(--color-text-tertiary);
-      }
-
-      /* ── Country/city autocomplete ───────── */
-      .dest-box {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px;
-        min-width: 220px;
-        max-width: 340px;
-        padding: 5px 8px;
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        background: var(--color-surface);
-        cursor: text;
-        transition: border-color 0.12s;
-      }
-      .dest-box:hover {
-        border-color: var(--color-border-strong);
-      }
-      .dest-box:focus-within,
-      .dest-box.dd-active {
-        border-color: var(--color-blue-600);
-      }
-      .dest-chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-      .dest-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 3px 4px 3px 10px;
-        font-size: 12px;
-        font-weight: 600;
-        border-radius: 999px;
-        background: var(--color-blue-50);
-        color: var(--color-blue-700);
-        white-space: nowrap;
-      }
-      .dest-chip-x {
-        border: none;
-        background: transparent;
-        color: inherit;
-        font-size: 14px;
-        line-height: 1;
-        cursor: pointer;
-        padding: 0 3px;
-      }
-      .dest-chip-x:hover {
-        opacity: 0.7;
-      }
-      .dest-input {
-        flex: 1 1 80px;
-        min-width: 80px;
-        border: none;
-        outline: none;
-        background: transparent;
-        font-size: 13px;
-        font-family: inherit;
-        color: var(--color-text-primary);
-        padding: 2px 0;
-      }
-      .dest-panel {
-        min-width: 280px;
-        max-height: 280px;
-      }
-      .dest-opt {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-      }
-      .dd-opt.dest-opt-active {
-        background: var(--color-surface-hover);
-      }
-      .dest-opt-name {
-        display: flex;
-        align-items: baseline;
-        gap: 6px;
-      }
-      .dest-opt-country {
-        font-size: 11px;
-        color: var(--color-text-tertiary);
-      }
-      .dest-opt-tag {
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-        color: var(--color-text-tertiary);
-        background: var(--color-sidebar-active);
-        padding: 2px 6px;
-        border-radius: 999px;
-        flex-shrink: 0;
-      }
-
-      .date-input,
-      .price-input,
-      .sort-select {
-        padding: 6px 10px;
-        font-size: 13px;
-        font-family: inherit;
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        background: var(--color-surface);
-        color: var(--color-text-primary);
-      }
-      .price-input {
-        width: 90px;
-      }
-
-      .day-pills {
-        display: flex;
-        gap: 4px;
-      }
-      .day-pill {
-        min-width: 36px;
-        padding: 5px 8px;
-        font-size: 12px;
-        font-weight: 600;
-        border: 1px solid var(--color-border);
-        border-radius: 999px;
-        background: var(--color-surface);
-        color: var(--color-text-secondary);
-        cursor: pointer;
-        transition: all 0.12s;
-      }
-      .day-pill.on {
-        background: var(--color-blue-50);
-        border-color: var(--color-blue-600);
-        color: var(--color-blue-700);
-      }
-
-      .clear-btn {
-        border: none;
-        background: transparent;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--color-text-secondary);
-        cursor: pointer;
-        padding: 6px 8px;
-        border-radius: var(--radius-sm);
-      }
-      .clear-btn:hover {
-        background: var(--color-surface-hover);
-        color: var(--color-text-primary);
-      }
-
-      /* ── Mobile filters: sticky trigger + full-screen overlay ─── */
-      @media (max-width: 768px) {
-        .filters-trigger {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          width: 100%;
-          margin-top: 16px;
-          padding: 12px 16px;
-          min-height: 44px;
-          border: 1px solid var(--color-border);
-          border-radius: var(--radius-lg);
-          background: var(--color-surface);
-          color: var(--color-text-primary);
-          font-size: 14px;
-          font-weight: 600;
-          box-shadow: var(--shadow-sm);
-          box-sizing: border-box;
-          position: sticky;
-          top: calc(var(--header-h) + 8px);
-          z-index: 150;
-        }
-        .filters-badge {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-width: 18px;
-          height: 18px;
-          padding: 0 5px;
-          border-radius: 999px;
-          background: var(--color-blue-700);
-          color: #fff;
-          font-size: 11px;
-          font-weight: 700;
-        }
-
-        /* Filter card is hidden inline; it becomes a full-screen overlay when open. */
-        .filter-card {
-          display: none;
-          margin-top: 0;
-        }
-        .filter-card.filter-card--open {
+      /* Mobile: the filter card becomes a full-screen overlay. Structural rules
+         only — colors come from the theme tokens used in the template. */
+      @media (max-width: 639.98px) {
+        .filter-card.open {
           display: flex;
           position: fixed;
           inset: 0;
-          z-index: 500;
+          z-index: 60;
           border-radius: 0;
           border: none;
           box-shadow: none;
-          padding: 0;
-          gap: 0;
-        }
-        .filter-card-head {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          flex-shrink: 0;
-          padding: 14px 16px;
-          border-bottom: 1px solid var(--color-border);
-        }
-        .filter-card-title {
-          font-size: 16px;
-          font-weight: 700;
-          color: var(--color-text-primary);
-        }
-        .filter-card-close {
-          border: none;
-          background: transparent;
-          font-size: 26px;
-          line-height: 1;
-          color: var(--color-text-secondary);
-          cursor: pointer;
-          min-width: 40px;
-          min-height: 40px;
-        }
-        .filter-card-body {
-          flex: 1 1 auto;
-          overflow-y: auto;
-          padding: 16px;
-          gap: 20px;
-        }
-        .filter-card-foot {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex-shrink: 0;
-          padding: 12px 16px;
-          border-top: 1px solid var(--color-border);
-          background: var(--color-surface);
-        }
-        .filter-foot-clear {
-          flex-shrink: 0;
-          border: 1px solid var(--color-border);
-          background: var(--color-surface);
-          color: var(--color-text-secondary);
-          font-size: 13px;
-          font-weight: 600;
-          padding: 12px 14px;
-          border-radius: var(--radius-md);
-          cursor: pointer;
-          min-height: 44px;
-        }
-        .filter-foot-show {
-          flex: 1 1 auto;
-          border: none;
-          background: var(--color-blue-700);
-          color: #fff;
-          font-size: 14px;
-          font-weight: 700;
-          padding: 12px 14px;
-          border-radius: var(--radius-md);
-          cursor: pointer;
-          min-height: 44px;
-        }
-
-        /* Stack all controls full-width and comfortably sized inside the overlay. */
-        .filter-row,
-        .filter-row--secondary {
-          flex-direction: column;
-          align-items: stretch;
-          gap: 16px;
-        }
-        .fg {
-          width: 100%;
-        }
-        .fg-dest {
-          max-width: none;
-        }
-        .dest-box {
-          max-width: none;
-          min-height: 44px;
-          box-sizing: border-box;
-        }
-        .mode-toggle {
-          width: 100%;
-        }
-        .mode-btn {
-          flex: 1 1 0;
-          padding: 10px 12px;
-        }
-        .date-input,
-        .price-input,
-        .sort-select {
-          width: 100%;
-          min-height: 44px;
-          box-sizing: border-box;
-        }
-        .day-pills {
-          flex-wrap: wrap;
-        }
-        .day-pill {
-          min-height: 36px;
-        }
-
-        /* Suggestion panels render in normal flow below the field instead of being
-           absolutely positioned, so they can't get clipped by the overlay. */
-        .dd-panel {
-          position: static;
-          margin-top: 8px;
-          min-width: 0;
-          box-shadow: none;
-        }
-      }
-
-      .toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        margin: 14px 0 10px;
-      }
-      .count {
-        font-size: 13px;
-        color: var(--color-text-tertiary);
-      }
-
-      .state-info {
-        padding: 60px 20px;
-        text-align: center;
-        font-size: 14px;
-        color: var(--color-text-secondary);
-      }
-      .state-info.error {
-        color: var(--color-amber-700);
-      }
-
-      /* ── Results list (same look as charters) ── */
-      .results-card {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        overflow: hidden;
-        box-shadow: var(--shadow-sm);
-      }
-
-      .offer-row {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
-        gap: 24px;
-        padding: 14px 20px;
-        position: relative;
-        background: var(--color-surface);
-        border-bottom: 1px solid var(--color-border);
-        transition: background-color 0.1s;
-      }
-      .offer-row:last-child {
-        border-bottom: none;
-      }
-      .offer-row:hover {
-        background: var(--color-surface-hover);
-      }
-
-      .offer-left {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        min-width: 0;
-        position: relative;
-        z-index: 1;
-      }
-
-      .dest-header {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-      .dest-city {
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--color-text-primary);
-      }
-      .dest-sep {
-        color: var(--color-border-strong);
-      }
-      .dest-country {
-        font-size: 13px;
-        color: var(--color-text-secondary);
-      }
-
-      .leg {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        font-size: 13px;
-      }
-
-      /* Emphasized: date + hour + departure airport */
-      .dep-highlight {
-        display: inline-flex;
-        align-items: baseline;
-        gap: 8px;
-        padding: 3px 10px;
-        border-radius: var(--radius-md);
-        background: var(--color-blue-50);
-        white-space: nowrap;
-      }
-      .dep-date {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--color-blue-700);
-      }
-      .dep-hour {
-        font-size: 15px;
-        font-weight: 800;
-        color: var(--color-blue-700);
-        font-variant-numeric: tabular-nums;
-      }
-      .dep-airport {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--color-text-primary);
-      }
-      .dep-code {
-        font-weight: 500;
-        color: var(--color-text-tertiary);
-      }
-
-      .leg-route {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        flex-wrap: wrap;
-        font-size: 13px;
-        color: var(--color-text-primary);
-      }
-      .leg-route strong {
-        font-weight: 600;
-      }
-      .leg-code {
-        color: var(--color-text-tertiary);
-        font-weight: 400;
-      }
-      .leg-arrow {
-        color: var(--color-text-tertiary);
-        margin: 0 2px;
-      }
-      .leg-arr {
-        color: var(--color-text-secondary);
-        margin-left: 4px;
-        font-variant-numeric: tabular-nums;
-      }
-
-      .chip {
-        font-size: 11px;
-        font-weight: 600;
-        padding: 2px 8px;
-        border-radius: 999px;
-        white-space: nowrap;
-      }
-      .chip-neutral {
-        background: var(--color-sidebar-active);
-        color: var(--color-text-secondary);
-      }
-      .chip-wizz {
-        background: #e6007e;
-        color: #fff;
-      }
-      .chip-sub {
-        font-weight: 400;
-        color: var(--color-text-tertiary);
-      }
-
-      .offer-right {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 10px;
-        flex-shrink: 0;
-        position: relative;
-        z-index: 1;
-      }
-      .price-block {
-        text-align: right;
-      }
-      .price-val {
-        font-size: 20px;
-        font-weight: 800;
-        color: var(--color-blue-700);
-        line-height: 1.1;
-        white-space: nowrap;
-      }
-      .price-cur {
-        font-size: 12px;
-        font-weight: 600;
-      }
-      .price-mode {
-        font-size: 11px;
-        color: var(--color-text-tertiary);
-        margin-top: 2px;
-      }
-      .btn-primary {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 16px;
-        border-radius: var(--radius-md);
-        font-size: 13px;
-        font-weight: 500;
-        background: var(--color-blue-700);
-        color: #fff;
-        text-decoration: none;
-        transition: background 0.12s;
-      }
-      .btn-primary:hover {
-        background: var(--color-blue-800);
-      }
-
-      @media (max-width: 768px) {
-        .offer-row {
-          grid-template-columns: 1fr;
-          gap: 12px;
-          padding: 14px 16px;
-        }
-        .dest-header,
-        .leg {
-          flex-wrap: wrap;
-        }
-        .dep-highlight {
-          white-space: normal;
-          flex-wrap: wrap;
-        }
-        .offer-right {
-          flex-direction: column;
-          align-items: stretch;
-          width: 100%;
-          gap: 10px;
-        }
-        .price-block {
-          text-align: left;
-        }
-        .btn-primary {
-          width: 100%;
-          justify-content: center;
-          padding: 12px 16px;
-          font-size: 14px;
-          min-height: 44px;
-          box-sizing: border-box;
         }
       }
     `,

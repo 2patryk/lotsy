@@ -26,6 +26,9 @@ importers:
       '@lotsy/db':
         specifier: workspace:*
         version: link:../packages/db
+      '@lotsy/flights-client':
+        specifier: workspace:*
+        version: link:../packages/flights-client
       '@nestjs/common':
         specifier: ^11.0.1
         version: 11.1.26(reflect-metadata@0.2.2)(rxjs@7.8.2)

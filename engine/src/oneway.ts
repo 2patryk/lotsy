@@ -5,6 +5,8 @@ import {
   getWizzRoutes,
   getWizzTimetable,
   type DailyFare,
+  getPlnRates,
+  toPln,
 } from '@lotsy/flights-client';
 import {
   ORIGIN_AIRPORTS,
@@ -16,7 +18,6 @@ import {
   WIZZ_BATCH_DELAY_MS,
   DEST_AIRPORTS,
 } from './config.js';
-import { getPlnRates, toPln } from './fx.js';
 
 // Standalone engine for the "one-way, last-minute" tab: cheapest Ryanair
 // one-way fare per route and day, both directions, within a rolling window

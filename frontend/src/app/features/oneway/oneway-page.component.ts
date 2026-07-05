@@ -3,11 +3,13 @@ import {
   inject,
   signal,
   computed,
+  effect,
   HostListener,
   ViewChild,
   ElementRef,
 } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmInput } from '@spartan-ng/helm/input';
@@ -389,6 +391,8 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
 })
 export class OneWayPageComponent {
   private oneWayService = inject(OneWayService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   @ViewChild('destInputEl') destInputEl?: ElementRef<HTMLInputElement>;
   @ViewChild('plAirportInputEl') plAirportInputEl?: ElementRef<HTMLInputElement>;
@@ -523,9 +527,91 @@ export class OneWayPageComponent {
       .slice(0, MAX_PL_AIRPORT_SUGGESTIONS);
   });
 
+  // Dest/PL chips need direction-specific meta to resolve names, so URL tokens
+  // wait here until loadMeta() delivers it.
+  private pendingPl: string[] = [];
+  private pendingDest: string[] = [];
+
   constructor() {
+    this.restoreFromUrl();
     this.loadMeta();
     this.load();
+
+    // Mirror the active filters into the query string so views are shareable.
+    effect(() => {
+      const dest = this.selectedDest()
+        .map((s) =>
+          s.kind === 'country' ? `c:${s.name}` : s.kind === 'city' ? `m:${s.name}` : `a:${s.iata}`,
+        )
+        .join(',');
+      this.router.navigate([], {
+        relativeTo: this.route,
+        replaceUrl: true,
+        queryParams: {
+          dir: this.direction() === 'IN' ? 'IN' : null,
+          pl:
+            this.selectedPlAirports()
+              .map((a) => a.iata)
+              .join(',') || null,
+          dest: dest || null,
+          days: [...this.selectedDays()].join(',') || null,
+          from: this.dateFrom() || null,
+          to: this.dateTo() || null,
+          max: this.maxPrice() ?? null,
+          sort: this.sort() !== 'price' ? this.sort() : null,
+        },
+      });
+    });
+  }
+
+  private restoreFromUrl() {
+    const p = this.route.snapshot.queryParams;
+    if (p['dir'] === 'IN') this.direction.set('IN');
+    if (p['days']) {
+      const days = String(p['days'])
+        .split(',')
+        .map(Number)
+        .filter((d) => d >= 0 && d <= 6);
+      this.selectedDays.set(new Set(days));
+    }
+    if (p['from']) this.dateFrom.set(p['from']);
+    if (p['to']) this.dateTo.set(p['to']);
+    if (p['max'] && !isNaN(Number(p['max']))) this.maxPrice.set(Number(p['max']));
+    if (p['sort'] === 'date') this.sort.set('date');
+    if (p['pl']) this.pendingPl = String(p['pl']).split(',');
+    if (p['dest']) this.pendingDest = String(p['dest']).split(',');
+  }
+
+  // Turn URL tokens into chips once meta is known; entries that no longer
+  // exist in the current dataset are silently dropped.
+  private applyPendingChips(m: OneWayMeta) {
+    if (!this.pendingPl.length && !this.pendingDest.length) return;
+
+    const pl = this.pendingPl
+      .map((iata) => m.plAirports.find((a) => a.iata === iata))
+      .filter((a): a is PlAirportSuggestion => !!a);
+    this.pendingPl = [];
+
+    const dest = this.pendingDest
+      .map((token): DestSuggestion | null => {
+        const [kind, value] = [token.slice(0, 2), token.slice(2)];
+        if (kind === 'c:' && m.countries.includes(value)) return { kind: 'country', name: value };
+        if (kind === 'm:') {
+          const city = m.cities.find((c) => c.name === value);
+          return city ? { kind: 'city', name: city.name, country: city.country } : null;
+        }
+        if (kind === 'a:') {
+          const ap = m.airports.find((a) => a.iata === value);
+          return ap ? { kind: 'airport', name: ap.city, country: ap.country, iata: ap.iata } : null;
+        }
+        return null;
+      })
+      .filter((s): s is DestSuggestion => s !== null);
+    this.pendingDest = [];
+
+    if (pl.length) this.selectedPlAirports.set(pl);
+    if (dest.length) this.selectedDest.set(dest);
+    if (pl.length || dest.length) this.load();
   }
 
   @HostListener('document:click')
@@ -706,7 +792,10 @@ export class OneWayPageComponent {
   }
 
   private loadMeta() {
-    this.oneWayService.getMeta(this.direction()).subscribe((m) => this.meta.set(m));
+    this.oneWayService.getMeta(this.direction()).subscribe((m) => {
+      this.meta.set(m);
+      this.applyPendingChips(m);
+    });
   }
 
   private load() {

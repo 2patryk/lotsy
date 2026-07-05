@@ -16,6 +16,7 @@ import {
   WIZZ_BATCH_DELAY_MS,
   DEST_AIRPORTS,
 } from './config.js';
+import { getPlnRates, toPln } from './fx.js';
 
 // Standalone engine for the "one-way, last-minute" tab: cheapest Ryanair
 // one-way fare per route and day, both directions, within a rolling window
@@ -36,6 +37,29 @@ type OneWayFareRow = Prisma.OneWayFareCreateManyInput;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+// Neon (free tier) suspends the compute after a few idle minutes, which drops
+// our connection during the long fetch phase (Postgres 57P01). Reconnect and
+// retry the DB op a couple of times before giving up.
+async function withDbRetry<T>(op: () => Promise<T>, label: string): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await op();
+    } catch (err) {
+      const msg = String(err);
+      const dropped =
+        msg.includes('57P01') || msg.includes('Closed the connection') || msg.includes('P1017');
+      if (!dropped || attempt >= 2) throw err;
+      console.warn(`[oneway] DB ${label}: connection dropped, reconnecting (retry ${attempt + 1})`);
+      try {
+        await prisma.$disconnect();
+      } catch {
+        /* ignore */
+      }
+      await prisma.$connect();
+    }
+  }
 }
 
 function toDateKey(d: Date): string {
@@ -297,14 +321,24 @@ async function fetchDetails(
     routes.map((r) => [`${r.origin}:${r.destination}`, r.direction]),
   );
 
+  // Wizz prices come in the departure country's currency (EUR/GBP/…), so
+  // normalize every fare to PLN before comparing or storing.
+  const rates = await getPlnRates();
+  let droppedFx = 0;
+
   // Cheapest fare seen so far per (origin, destination, day). Ties keep the
   // first carrier (Ryanair, since it runs first) — good enough, both are valid.
   const best = new Map<string, DailyFare>();
   const consider = (f: DailyFare) => {
     if (f.date < fromKey || f.date > toKey) return;
+    const pln = toPln(f.price, f.currency, rates);
+    if (pln == null) {
+      droppedFx++;
+      return; // unknown currency — don't pollute the min() with a raw amount
+    }
     const key = `${f.origin}:${f.destination}:${f.date}`;
     const cur = best.get(key);
-    if (!cur || f.price < cur.price) best.set(key, f);
+    if (!cur || pln < cur.price) best.set(key, { ...f, price: pln, currency: 'PLN' });
   };
 
   // Ryanair: one call per route+month.
@@ -383,6 +417,10 @@ async function fetchDetails(
     });
   }
 
+  if (droppedFx > 0) {
+    console.warn(`[oneway] dropped ${droppedFx} fares with unconvertible currency`);
+  }
+
   return { rows, ryanairFailures, wizzFailures };
 }
 
@@ -424,7 +462,9 @@ async function buildPolishFallback(): Promise<Map<string, AirportInfo>> {
 async function main() {
   console.log(`[oneway] starting (dry-run: ${DRY_RUN})`);
 
-  const runRecord = DRY_RUN ? null : await prisma.searchRun.create({ data: { status: 'PARTIAL' } });
+  // Created just before the write, not here — opening it now would leave the
+  // connection idle through the long fetch phase and Neon would drop it.
+  let runRecord: { id: string } | null = null;
 
   try {
     const { from, to, fromKey, toKey } = windowBounds();
@@ -477,14 +517,23 @@ async function main() {
       return;
     }
 
-    await prisma.$transaction([
-      prisma.oneWayFare.deleteMany(),
-      ...Array.from({ length: Math.ceil(rows.length / INSERT_CHUNK) }, (_, i) =>
-        prisma.oneWayFare.createMany({
-          data: rows.slice(i * INSERT_CHUNK, (i + 1) * INSERT_CHUNK),
-        }),
-      ),
-    ]);
+    runRecord = await withDbRetry(
+      () => prisma.searchRun.create({ data: { status: 'PARTIAL' } }),
+      'searchRun.create',
+    );
+
+    await withDbRetry(
+      () =>
+        prisma.$transaction([
+          prisma.oneWayFare.deleteMany(),
+          ...Array.from({ length: Math.ceil(rows.length / INSERT_CHUNK) }, (_, i) =>
+            prisma.oneWayFare.createMany({
+              data: rows.slice(i * INSERT_CHUNK, (i + 1) * INSERT_CHUNK),
+            }),
+          ),
+        ]),
+      'oneWayFare write',
+    );
 
     console.log(`[oneway] saved ${rows.length} rows across ${routes.length} routes`);
 

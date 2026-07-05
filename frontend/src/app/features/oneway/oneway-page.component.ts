@@ -1570,15 +1570,9 @@ export class OneWayPageComponent {
     const dateOut = f.date.slice(0, 10);
 
     if (f.source === 'WIZZAIR') {
-      const params = new URLSearchParams({
-        departureStation: f.origin,
-        arrivalStation: f.destination,
-        departureDate: dateOut,
-        adultCount: '1',
-        childCount: '0',
-        infantCount: '0',
-      });
-      return `https://wizzair.com/pl-pl/booking/select-flight?${params}`;
+      // Path-based deep link: /select-flight/{dep}/{arr}/{out}/{ret}/{adt}/{chd}/{inf}/null.
+      // The query-param form only opens the booking page without prefilling the flight.
+      return `https://wizzair.com/pl-pl/booking/select-flight/${f.origin}/${f.destination}/${dateOut}/null/1/0/0/null`;
     }
 
     const params = new URLSearchParams({

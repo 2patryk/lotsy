@@ -1,7 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import type { OneWayDirection, OneWayFare, OneWayMeta } from '../models/oneway-fare.model';
+import type {
+  OneWayDirection,
+  OneWayFare,
+  OneWayMeta,
+  OnwardCarrier,
+  OnwardFlight,
+  OnwardMode,
+} from '../models/oneway-fare.model';
 
 export interface OneWayFaresQueryParams {
   direction: OneWayDirection;
@@ -34,6 +41,24 @@ export class OneWayService {
     if (query.maxPrice != null) params = params.set('maxPrice', String(query.maxPrice));
     if (query.sort) params = params.set('sort', query.sort);
     return this.http.get<OneWayFare[]>(`${environment.apiUrl}/oneway/fares`, { params });
+  }
+
+  // Live onward/feeder connections for one airport and day. Fetched per
+  // carrier so Ryanair (fast) can render before Wizz (slow fan-out) lands.
+  getOnward(query: {
+    airport: string;
+    date: string;
+    carrier: OnwardCarrier;
+    mode: OnwardMode;
+    windowStart: string;
+  }) {
+    const params = new HttpParams()
+      .set('airport', query.airport)
+      .set('date', query.date)
+      .set('carrier', query.carrier)
+      .set('mode', query.mode)
+      .set('windowStart', query.windowStart);
+    return this.http.get<OnwardFlight[]>(`${environment.apiUrl}/oneway/onward`, { params });
   }
 
   getMeta(direction: OneWayDirection) {

@@ -20,6 +20,7 @@ import { SegmentedToggleComponent } from '../../shared/filters/segmented-toggle.
 import { DayPillsComponent } from '../../shared/filters/day-pills.component';
 import { FilterCardComponent } from '../../shared/filters/filter-card.component';
 import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
+import { OnwardPanelComponent } from './onward-panel.component';
 
 const WD = ['ndz', 'pon', 'wt', 'śr', 'czw', 'pt', 'sob'];
 const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -65,6 +66,7 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
     DayPillsComponent,
     SortSelectComponent,
     FilterCardComponent,
+    OnwardPanelComponent,
   ],
   template: `
     <main class="mx-auto flex w-full max-w-[1100px] flex-col gap-5 px-3 py-7 sm:px-6">
@@ -317,7 +319,9 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
         >
           @for (f of fares(); track f.id) {
             <div
-              class="grid grid-cols-[1fr_auto] items-center gap-3 px-3.5 py-3 transition-colors hover:bg-accent/40 sm:gap-6 sm:px-5 sm:py-3.5"
+              class="grid cursor-pointer grid-cols-[1fr_auto] items-center gap-3 px-3.5 py-3 transition-colors hover:bg-accent/40 sm:gap-6 sm:px-5 sm:py-3.5"
+              [class]="expandedFareId() === f.id ? 'bg-accent/40' : ''"
+              (click)="toggleOnward(f.id)"
             >
               <!-- ── Left ─────────────────────── -->
               <div class="flex min-w-0 flex-col gap-2">
@@ -378,11 +382,20 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                   </div>
                   <div class="text-[11px] text-muted-foreground">w jedną stronę</div>
                 </div>
-                <a hlmBtn size="sm" [href]="bookingUrl(f)" target="_blank" rel="noopener"
+                <a
+                  hlmBtn
+                  size="sm"
+                  [href]="bookingUrl(f)"
+                  target="_blank"
+                  rel="noopener"
+                  (click)="$event.stopPropagation()"
                   >Sprawdź</a
                 >
               </div>
             </div>
+            @if (expandedFareId() === f.id) {
+              <app-onward-panel [fare]="f" />
+            }
           }
         </section>
       }
@@ -431,6 +444,9 @@ export class OneWayPageComponent {
   plAirportInput = signal('');
   plAirportPanelOpen = signal(false);
   plAirportHighlight = signal(0);
+
+  // Fare row expanded with the live onward-connections panel (one at a time).
+  expandedFareId = signal<string | null>(null);
 
   selectedDays = signal<Set<number>>(new Set());
   dateFrom = signal<string>('');
@@ -839,6 +855,10 @@ export class OneWayPageComponent {
           this.loading.set(false);
         },
       });
+  }
+
+  toggleOnward(id: string) {
+    this.expandedFareId.set(this.expandedFareId() === id ? null : id);
   }
 
   fmtDate(iso: string): string {

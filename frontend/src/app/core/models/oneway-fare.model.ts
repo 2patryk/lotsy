@@ -20,6 +20,28 @@ export interface OneWayFare {
   updatedAt: string;
 }
 
+// Row from GET /oneway/onward — a live carrier lookup around one airport.
+// mode=departures: flights leaving the airport; mode=arrivals: flights into it.
+export interface OnwardFlight {
+  origin: string;
+  destination: string;
+  originCity: string;
+  originCountry: string;
+  destCity: string;
+  destCountry: string;
+  date: string; // YYYY-MM-DD
+  departureTime: string; // ISO datetime
+  arrivalTime: string;
+  price: number; // PLN
+  currency: 'PLN';
+  source: 'RYANAIR' | 'WIZZAIR';
+  airline: string;
+  flightNumber: string | null;
+}
+
+export type OnwardMode = 'departures' | 'arrivals';
+export type OnwardCarrier = 'ryanair' | 'wizz';
+
 export interface OneWayMeta {
   plAirports: { iata: string; city: string }[];
   countries: string[];

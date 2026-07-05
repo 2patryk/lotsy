@@ -15,19 +15,12 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { OneWayService } from '../../core/services/oneway.service';
 import type { OneWayDirection, OneWayFare, OneWayMeta } from '../../core/models/oneway-fare.model';
+import { SegmentedToggleComponent } from '../../shared/filters/segmented-toggle.component';
+import { DayPillsComponent } from '../../shared/filters/day-pills.component';
+import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
 
 const WD = ['ndz', 'pon', 'wt', 'śr', 'czw', 'pt', 'sob'];
 const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
-
-const DAYS = [
-  { js: 1, label: 'Pn' },
-  { js: 2, label: 'Wt' },
-  { js: 3, label: 'Śr' },
-  { js: 4, label: 'Cz' },
-  { js: 5, label: 'Pt' },
-  { js: 6, label: 'Sb' },
-  { js: 0, label: 'Nd' },
-];
 
 // Diacritic- and case-insensitive normalization, e.g. "wlochy" matches "Włochy".
 function normalize(s: string): string {
@@ -59,7 +52,17 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
 @Component({
   selector: 'app-oneway-page',
   standalone: true,
-  imports: [CommonModule, DecimalPipe, HlmButton, HlmBadge, HlmInput, HlmSpinner],
+  imports: [
+    CommonModule,
+    DecimalPipe,
+    HlmButton,
+    HlmBadge,
+    HlmInput,
+    HlmSpinner,
+    SegmentedToggleComponent,
+    DayPillsComponent,
+    SortSelectComponent,
+  ],
   template: `
     <main class="mx-auto flex w-full max-w-[1100px] flex-col gap-5 px-3 py-7 sm:px-6">
       <div class="flex flex-col gap-1">
@@ -111,34 +114,12 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
         <div class="flex flex-1 flex-col gap-4 p-4 max-sm:overflow-y-auto">
           <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
             <!-- Direction -->
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-muted-foreground">Kierunek</label>
-              <div
-                class="inline-flex gap-0.5 rounded-lg border border-border bg-muted p-0.5"
-                role="tablist"
-              >
-                <button
-                  hlmBtn
-                  size="sm"
-                  role="tab"
-                  class="h-7"
-                  [variant]="direction() === 'OUT' ? 'default' : 'ghost'"
-                  (click)="setDirection('OUT')"
-                >
-                  Z Polski
-                </button>
-                <button
-                  hlmBtn
-                  size="sm"
-                  role="tab"
-                  class="h-7"
-                  [variant]="direction() === 'IN' ? 'default' : 'ghost'"
-                  (click)="setDirection('IN')"
-                >
-                  Do Polski
-                </button>
-              </div>
-            </div>
+            <app-segmented-toggle
+              label="Kierunek"
+              [options]="directionOptions"
+              [value]="direction()"
+              (changed)="setDirectionValue($event)"
+            />
 
             <!-- PL airport autocomplete -->
             <div
@@ -300,19 +281,7 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
           <div class="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-border pt-4">
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-medium text-muted-foreground">Dni tygodnia wylotu</label>
-              <div class="flex items-center gap-1">
-                @for (d of DAYS; track d.js) {
-                  <button
-                    hlmBtn
-                    size="sm"
-                    [variant]="selectedDays().has(d.js) ? 'default' : 'outline'"
-                    class="h-7 shrink-0 rounded-full px-2.5 text-xs"
-                    (click)="toggleDay(d.js)"
-                  >
-                    {{ d.label }}
-                  </button>
-                }
-              </div>
+              <app-day-pills [selected]="selectedDaysArray()" (toggled)="toggleDay($event)" />
             </div>
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-medium text-muted-foreground">Maks. cena (zł)</label>
@@ -326,17 +295,11 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                 (change)="setMaxPrice($event)"
               />
             </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-muted-foreground">Sortowanie</label>
-              <select
-                class="h-8 cursor-pointer rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                [value]="sort()"
-                (change)="setSort($event)"
-              >
-                <option value="price">Najtańsze najpierw</option>
-                <option value="date">Data wylotu</option>
-              </select>
-            </div>
+            <app-sort-select
+              [options]="sortOptions"
+              [value]="sort()"
+              (changed)="setSortValue($event)"
+            />
             @if (hasFilters()) {
               <button hlmBtn variant="outline" size="sm" (click)="clearFilters()">
                 Wyczyść filtry
@@ -426,18 +389,20 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                       >przylot {{ fmtTime(f.arrivalTime) }}</span
                     >
                   </span>
-                  <span
-                    hlmBadge
-                    variant="secondary"
-                    [class]="
-                      'gap-1 border-transparent font-medium' +
-                      (f.source === 'WIZZAIR' ? ' bg-[#e6007e]/10 text-[#c6007e]' : '')
-                    "
-                    >{{ f.airline }}
-                    @if (f.flightNumber) {
-                      <span class="font-normal opacity-70">{{ f.flightNumber }}</span>
-                    }
-                  </span>
+                  @if (f.airline) {
+                    <span
+                      hlmBadge
+                      variant="secondary"
+                      [class]="
+                        'gap-1 border-transparent font-medium' +
+                        (f.source === 'WIZZAIR' ? ' bg-[#e6007e]/10 text-[#c6007e]' : '')
+                      "
+                      >{{ f.airline }}
+                      @if (f.flightNumber) {
+                        <span class="font-normal opacity-70">{{ f.flightNumber }}</span>
+                      }
+                    </span>
+                  }
                 </div>
               </div>
 
@@ -486,7 +451,14 @@ export class OneWayPageComponent {
   @ViewChild('destInputEl') destInputEl?: ElementRef<HTMLInputElement>;
   @ViewChild('plAirportInputEl') plAirportInputEl?: ElementRef<HTMLInputElement>;
 
-  readonly DAYS = DAYS;
+  readonly directionOptions = [
+    { value: 'OUT', label: 'Z Polski' },
+    { value: 'IN', label: 'Do Polski' },
+  ];
+  readonly sortOptions: SortOption[] = [
+    { value: 'price', label: 'Najtańsze najpierw' },
+    { value: 'date', label: 'Data wylotu' },
+  ];
 
   direction = signal<OneWayDirection>('OUT');
   loading = signal(true);
@@ -535,6 +507,9 @@ export class OneWayPageComponent {
   });
   minDate = computed(() => this.meta().dateMin?.slice(0, 10) ?? '');
   maxDate = computed(() => this.meta().dateMax?.slice(0, 10) ?? '');
+
+  // Array form of selectedDays for app-day-pills, which takes number[] rather than a Set.
+  selectedDaysArray = computed(() => [...this.selectedDays()]);
 
   hasDestSelection = computed(() => this.selectedDest().length > 0);
   hasFilters = computed(
@@ -626,6 +601,11 @@ export class OneWayPageComponent {
 
   closeFilters() {
     this.filtersOpen.set(false);
+  }
+
+  // app-segmented-toggle emits a plain string; narrow it to the direction union here.
+  setDirectionValue(value: string) {
+    this.setDirection(value as OneWayDirection);
   }
 
   setDirection(direction: OneWayDirection) {
@@ -774,8 +754,9 @@ export class OneWayPageComponent {
     this.load();
   }
 
-  setSort(e: Event) {
-    this.sort.set((e.target as HTMLSelectElement).value as 'price' | 'date');
+  // app-sort-select emits a plain string; narrow it to the sort union here.
+  setSortValue(value: string) {
+    this.sort.set(value as 'price' | 'date');
     this.load();
   }
 

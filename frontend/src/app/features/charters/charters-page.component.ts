@@ -1,9 +1,19 @@
-import { Component, inject, signal, computed, HostListener } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
+import {
+  MultiSelectDropdownComponent,
+  type MultiSelectOption,
+} from '../../shared/filters/multi-select-dropdown.component';
+import {
+  SegmentedToggleComponent,
+  type SegmentOption,
+} from '../../shared/filters/segmented-toggle.component';
+import { DayPillsComponent } from '../../shared/filters/day-pills.component';
+import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
 import { ChartersService } from '../../core/services/charters.service';
 import type { CharterFlight, ChartersMeta } from '../../core/models/charter-offer.model';
 
@@ -12,20 +22,21 @@ type PriceMode = 'roundTrip' | 'oneWay';
 const WD = ['ndz', 'pon', 'wt', 'śr', 'czw', 'pt', 'sob'];
 const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
 
-const DAYS = [
-  { js: 1, label: 'Pn' },
-  { js: 2, label: 'Wt' },
-  { js: 3, label: 'Śr' },
-  { js: 4, label: 'Cz' },
-  { js: 5, label: 'Pt' },
-  { js: 6, label: 'Sb' },
-  { js: 0, label: 'Nd' },
-];
-
 @Component({
   selector: 'app-charters-page',
   standalone: true,
-  imports: [CommonModule, DecimalPipe, HlmButton, HlmBadge, HlmInput, HlmSpinner],
+  imports: [
+    CommonModule,
+    DecimalPipe,
+    HlmButton,
+    HlmBadge,
+    HlmInput,
+    HlmSpinner,
+    MultiSelectDropdownComponent,
+    SegmentedToggleComponent,
+    DayPillsComponent,
+    SortSelectComponent,
+  ],
   template: `
     <main class="mx-auto flex w-full max-w-[1100px] flex-col gap-5 px-3 py-7 sm:px-6">
       <div class="flex flex-col gap-1">
@@ -42,128 +53,30 @@ const DAYS = [
       <section class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-xs">
         <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
           <!-- Mode -->
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-muted-foreground">Typ biletu</label>
-            <div
-              class="inline-flex gap-0.5 rounded-lg border border-border bg-muted p-0.5"
-              role="tablist"
-            >
-              <button
-                hlmBtn
-                size="sm"
-                role="tab"
-                class="h-7"
-                [variant]="mode() === 'roundTrip' ? 'default' : 'ghost'"
-                (click)="setMode('roundTrip')"
-              >
-                W obie strony
-              </button>
-              <button
-                hlmBtn
-                size="sm"
-                role="tab"
-                class="h-7"
-                [variant]="mode() === 'oneWay' ? 'default' : 'ghost'"
-                (click)="setMode('oneWay')"
-              >
-                W jedną stronę
-              </button>
-            </div>
-          </div>
+          <app-segmented-toggle
+            label="Typ biletu"
+            [options]="modeOptions"
+            [value]="mode()"
+            (changed)="setModeValue($event)"
+          />
 
           <!-- Departure airport -->
-          <div
-            class="relative flex min-w-36 flex-1 flex-col gap-1.5"
-            (click)="$event.stopPropagation()"
-          >
-            <label class="text-xs font-medium text-muted-foreground">Lotnisko wylotu</label>
-            <button
-              hlmBtn
-              variant="outline"
-              size="sm"
-              class="w-full justify-between gap-2 font-normal"
-              [class.border-primary]="selectedOrigins().size > 0"
-              [class.text-primary]="selectedOrigins().size > 0"
-              (click)="toggleDropdown('origin')"
-            >
-              <span class="truncate">{{ originLabel() }}</span>
-              <svg
-                class="shrink-0 text-muted-foreground transition-transform"
-                [class.rotate-180]="openDropdown() === 'origin'"
-                width="10"
-                height="6"
-                viewBox="0 0 10 6"
-              >
-                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" />
-              </svg>
-            </button>
-            @if (openDropdown() === 'origin') {
-              <div
-                class="absolute top-full left-0 z-50 mt-1 max-h-64 min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-              >
-                @for (o of meta().origins; track o.iata) {
-                  <label
-                    class="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                  >
-                    <input
-                      type="checkbox"
-                      class="size-3.5 shrink-0 accent-primary"
-                      [checked]="selectedOrigins().has(o.iata)"
-                      (change)="toggleOrigin(o.iata)"
-                    />
-                    {{ o.name }} <span class="text-muted-foreground">({{ o.iata }})</span>
-                  </label>
-                }
-              </div>
-            }
-          </div>
+          <app-multi-select-dropdown
+            label="Lotnisko wylotu"
+            [options]="originOptions()"
+            [selected]="selectedOriginsArr()"
+            [summary]="originSummary"
+            (toggled)="toggleOrigin($event)"
+          />
 
           <!-- Destination country -->
-          <div
-            class="relative flex min-w-36 flex-1 flex-col gap-1.5"
-            (click)="$event.stopPropagation()"
-          >
-            <label class="text-xs font-medium text-muted-foreground">Kraj przylotu</label>
-            <button
-              hlmBtn
-              variant="outline"
-              size="sm"
-              class="w-full justify-between gap-2 font-normal"
-              [class.border-primary]="selectedCountries().size > 0"
-              [class.text-primary]="selectedCountries().size > 0"
-              (click)="toggleDropdown('country')"
-            >
-              <span class="truncate">{{ countryLabel() }}</span>
-              <svg
-                class="shrink-0 text-muted-foreground transition-transform"
-                [class.rotate-180]="openDropdown() === 'country'"
-                width="10"
-                height="6"
-                viewBox="0 0 10 6"
-              >
-                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" />
-              </svg>
-            </button>
-            @if (openDropdown() === 'country') {
-              <div
-                class="absolute top-full left-0 z-50 mt-1 max-h-64 min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-              >
-                @for (c of meta().countries; track c) {
-                  <label
-                    class="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                  >
-                    <input
-                      type="checkbox"
-                      class="size-3.5 shrink-0 accent-primary"
-                      [checked]="selectedCountries().has(c)"
-                      (change)="toggleCountry(c)"
-                    />
-                    {{ c }}
-                  </label>
-                }
-              </div>
-            }
-          </div>
+          <app-multi-select-dropdown
+            label="Kraj przylotu"
+            [options]="countryOptions()"
+            [selected]="selectedCountriesArr()"
+            [summary]="countrySummary"
+            (toggled)="toggleCountry($event)"
+          />
 
           <!-- Date range -->
           <div class="flex flex-col gap-1.5">
@@ -196,19 +109,7 @@ const DAYS = [
         <div class="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-border pt-4">
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium text-muted-foreground">Dni tygodnia wylotu</label>
-            <div class="flex items-center gap-1">
-              @for (d of DAYS; track d.js) {
-                <button
-                  hlmBtn
-                  size="sm"
-                  [variant]="selectedDays().has(d.js) ? 'default' : 'outline'"
-                  class="h-7 shrink-0 rounded-full px-2.5 text-xs"
-                  (click)="toggleDay(d.js)"
-                >
-                  {{ d.label }}
-                </button>
-              }
-            </div>
+            <app-day-pills [selected]="selectedDaysArr()" (toggled)="toggleDay($event)" />
           </div>
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium text-muted-foreground">Cena od (zł)</label>
@@ -234,17 +135,11 @@ const DAYS = [
               (change)="setMaxPrice($event)"
             />
           </div>
-          <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-medium text-muted-foreground">Sortowanie</label>
-            <select
-              class="h-8 cursor-pointer rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              [value]="sort()"
-              (change)="setSort($event)"
-            >
-              <option value="price">Najtańsze najpierw</option>
-              <option value="date">Data wylotu</option>
-            </select>
-          </div>
+          <app-sort-select
+            [options]="sortOptions"
+            [value]="sort()"
+            (changed)="setSortValue($event)"
+          />
           @if (hasFilters()) {
             <button hlmBtn variant="outline" size="sm" (click)="clearFilters()">
               Wyczyść filtry
@@ -446,8 +341,6 @@ const DAYS = [
 export class ChartersPageComponent {
   private chartersService = inject(ChartersService);
 
-  readonly DAYS = DAYS;
-
   mode = signal<PriceMode>('roundTrip');
   loading = signal(true);
   error = signal(false);
@@ -462,7 +355,6 @@ export class ChartersPageComponent {
     lastUpdate: null,
   });
 
-  openDropdown = signal<'origin' | 'country' | null>(null);
   selectedOrigins = signal<Set<string>>(new Set());
   selectedCountries = signal<Set<string>>(new Set());
   selectedDays = signal<Set<number>>(new Set());
@@ -485,14 +377,27 @@ export class ChartersPageComponent {
   minDate = computed(() => this.meta().minDate?.slice(0, 10) ?? '');
   maxDate = computed(() => this.meta().maxDate?.slice(0, 10) ?? '');
 
-  originLabel = computed(() => {
-    const n = this.selectedOrigins().size;
-    return n === 0 ? 'Wszystkie' : n === 1 ? [...this.selectedOrigins()][0] : `${n} lotnisk`;
-  });
-  countryLabel = computed(() => {
-    const sel = this.selectedCountries();
-    return sel.size === 0 ? 'Wszystkie' : sel.size === 1 ? [...sel][0] : `${sel.size} krajów`;
-  });
+  // Shared filter-component wiring
+  readonly modeOptions: SegmentOption[] = [
+    { value: 'roundTrip', label: 'W obie strony' },
+    { value: 'oneWay', label: 'W jedną stronę' },
+  ];
+  originOptions = computed<MultiSelectOption[]>(() =>
+    this.meta().origins.map((o) => ({ value: o.iata, label: `${o.name} (${o.iata})` })),
+  );
+  countryOptions = computed<MultiSelectOption[]>(() =>
+    this.meta().countries.map((c) => ({ value: c, label: c })),
+  );
+  selectedOriginsArr = computed(() => [...this.selectedOrigins()]);
+  selectedCountriesArr = computed(() => [...this.selectedCountries()]);
+  selectedDaysArr = computed(() => [...this.selectedDays()]);
+  readonly sortOptions: SortOption[] = [
+    { value: 'price', label: 'Najtańsze najpierw' },
+    { value: 'date', label: 'Data wylotu' },
+  ];
+  readonly originSummary = (sel: string[]) => (sel.length === 1 ? sel[0] : `${sel.length} lotnisk`);
+  readonly countrySummary = (sel: string[]) => (sel.length === 1 ? sel[0] : `${sel.length} krajów`);
+
   hasFilters = computed(
     () =>
       this.selectedOrigins().size > 0 ||
@@ -509,19 +414,15 @@ export class ChartersPageComponent {
     this.load();
   }
 
-  @HostListener('document:click')
-  closeDropdowns() {
-    this.openDropdown.set(null);
-  }
-
-  toggleDropdown(which: 'origin' | 'country') {
-    this.openDropdown.set(this.openDropdown() === which ? null : which);
-  }
-
   setMode(mode: PriceMode) {
     if (this.mode() === mode) return;
     this.mode.set(mode);
     this.load();
+  }
+
+  /** Adapter for app-segmented-toggle, which emits a plain string. */
+  setModeValue(value: string) {
+    this.setMode(value as PriceMode);
   }
 
   toggleOrigin(iata: string) {
@@ -570,8 +471,8 @@ export class ChartersPageComponent {
     this.load();
   }
 
-  setSort(e: Event) {
-    this.sort.set((e.target as HTMLSelectElement).value as 'price' | 'date');
+  setSortValue(value: string) {
+    this.sort.set(value as 'price' | 'date');
     this.load();
   }
 

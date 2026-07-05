@@ -1,17 +1,15 @@
-import {
-  Component,
-  inject,
-  signal,
-  computed,
-  effect,
-  untracked,
-  HostListener,
-} from '@angular/core';
+import { Component, inject, signal, computed, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
+import {
+  MultiSelectDropdownComponent,
+  type MultiSelectOption,
+} from '../../shared/filters/multi-select-dropdown.component';
+import { DayPillsComponent } from '../../shared/filters/day-pills.component';
+import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, switchMap } from 'rxjs';
 import { DealCardComponent } from './deal-card.component';
@@ -76,7 +74,16 @@ const TIMES = [
 @Component({
   selector: 'app-deals-page',
   standalone: true,
-  imports: [CommonModule, DealCardComponent, HlmButton, HlmInput, HlmSpinner],
+  imports: [
+    CommonModule,
+    DealCardComponent,
+    HlmButton,
+    HlmInput,
+    HlmSpinner,
+    MultiSelectDropdownComponent,
+    DayPillsComponent,
+    SortSelectComponent,
+  ],
   template: `
     <main class="mx-auto flex w-full max-w-[1100px] flex-col gap-5 px-3 py-7 sm:px-6">
       <div class="flex flex-col gap-1">
@@ -93,191 +100,40 @@ const TIMES = [
       <section class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-xs">
         <!-- Row 1: dropdowns -->
         <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
-          <!-- Kraj -->
-          <div
-            class="relative flex min-w-36 flex-1 flex-col gap-1.5"
-            (click)="$event.stopPropagation()"
-          >
-            <label class="text-xs font-medium text-muted-foreground">Kraj</label>
-            <button
-              hlmBtn
-              variant="outline"
-              size="sm"
-              class="w-full justify-between gap-2 font-normal"
-              [class.border-primary]="selectedCountries().length > 0"
-              [class.text-primary]="selectedCountries().length > 0"
-              (click)="cOpen.set(!cOpen())"
-            >
-              <span class="truncate">{{
-                selectedCountries().length ? selectedCountries().length + ' krajów' : 'Wszystkie'
-              }}</span>
-              <svg
-                class="shrink-0 text-muted-foreground transition-transform"
-                [class.rotate-180]="cOpen()"
-                width="10"
-                height="6"
-                viewBox="0 0 10 6"
-              >
-                <path
-                  d="M1 1l4 4 4-4"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  fill="none"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-            @if (cOpen()) {
-              <div
-                class="absolute top-full left-0 z-50 mt-1 max-h-64 min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-              >
-                @for (c of ALL_COUNTRIES; track c.code) {
-                  <label
-                    class="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                  >
-                    <input
-                      type="checkbox"
-                      class="size-3.5 shrink-0 accent-primary"
-                      [checked]="selectedCountries().includes(c.code)"
-                      (change)="toggleCountry(c.code)"
-                    />
-                    {{ c.name }}
-                  </label>
-                }
-              </div>
-            }
-          </div>
+          <app-multi-select-dropdown
+            label="Kraj"
+            [options]="countryOptions"
+            [selected]="selectedCountries()"
+            placeholder="Wszystkie"
+            [summary]="countrySummary"
+            (toggled)="toggleCountry($event)"
+          />
 
-          <!-- Lotnisko wylotu -->
-          <div
-            class="relative flex min-w-36 flex-1 flex-col gap-1.5"
-            (click)="$event.stopPropagation()"
-          >
-            <label class="text-xs font-medium text-muted-foreground">Lotnisko wylotu</label>
-            <button
-              hlmBtn
-              variant="outline"
-              size="sm"
-              class="w-full justify-between gap-2 font-normal"
-              [class.border-primary]="selectedOrigins().length > 0"
-              [class.text-primary]="selectedOrigins().length > 0"
-              (click)="oOpen.set(!oOpen())"
-            >
-              <span class="truncate">{{
-                selectedOrigins().length ? selectedOrigins().join(', ') : 'Wszystkie lotniska'
-              }}</span>
-              <svg
-                class="shrink-0 text-muted-foreground transition-transform"
-                [class.rotate-180]="oOpen()"
-                width="10"
-                height="6"
-                viewBox="0 0 10 6"
-              >
-                <path
-                  d="M1 1l4 4 4-4"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  fill="none"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-            @if (oOpen()) {
-              <div
-                class="absolute top-full left-0 z-50 mt-1 max-h-64 min-w-52 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-              >
-                @for (ap of polishAirports(); track ap.iata) {
-                  <label
-                    class="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                  >
-                    <input
-                      type="checkbox"
-                      class="size-3.5 shrink-0 accent-primary"
-                      [checked]="selectedOrigins().includes(ap.iata)"
-                      (change)="toggleOrigin(ap.iata)"
-                    />
-                    {{ ap.name }} ({{ ap.iata }})
-                  </label>
-                }
-              </div>
-            }
-          </div>
+          <app-multi-select-dropdown
+            label="Lotnisko wylotu"
+            [options]="originOptions()"
+            [selected]="selectedOrigins()"
+            placeholder="Wszystkie lotniska"
+            [summary]="originSummary"
+            (toggled)="toggleOrigin($event)"
+          />
 
-          <!-- Typ połączenia -->
-          <div
-            class="relative flex min-w-36 flex-1 flex-col gap-1.5"
-            (click)="$event.stopPropagation()"
-          >
-            <label class="text-xs font-medium text-muted-foreground">Typ połączenia</label>
-            <button
-              hlmBtn
-              variant="outline"
-              size="sm"
-              class="w-full justify-between gap-2 font-normal"
-              [class.border-primary]="!(selectedLevels().length === 1 && selectedLevels()[0] === 1)"
-              [class.text-primary]="!(selectedLevels().length === 1 && selectedLevels()[0] === 1)"
-              (click)="tOpen.set(!tOpen())"
-            >
-              <span class="truncate">{{
-                selectedLevels().length === 1 && selectedLevels()[0] === 1
-                  ? 'Tam i z powrotem'
-                  : selectedLevels().length === 3
-                    ? 'Wszystkie typy'
-                    : selectedLevels().length + ' wybrane'
-              }}</span>
-              <svg
-                class="shrink-0 text-muted-foreground transition-transform"
-                [class.rotate-180]="tOpen()"
-                width="10"
-                height="6"
-                viewBox="0 0 10 6"
-              >
-                <path
-                  d="M1 1l4 4 4-4"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  fill="none"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-            @if (tOpen()) {
-              <div
-                class="absolute top-full left-0 z-50 mt-1 max-h-64 min-w-64 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-              >
-                @for (t of TRIP_LEVELS; track t.id) {
-                  <label
-                    class="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                  >
-                    <input
-                      type="checkbox"
-                      class="size-3.5 shrink-0 accent-primary"
-                      [checked]="selectedLevels().includes(t.id)"
-                      (change)="toggleLevel(t.id)"
-                    />
-                    {{ t.label }}
-                  </label>
-                }
-              </div>
-            }
-          </div>
+          <app-multi-select-dropdown
+            label="Typ połączenia"
+            [options]="levelOptions"
+            [selected]="selectedLevelStrings()"
+            placeholder="Tam i z powrotem"
+            [summary]="levelSummary"
+            [active]="!(selectedLevels().length === 1 && selectedLevels()[0] === 1)"
+            (toggled)="toggleLevel(+$event)"
+          />
 
-          <!-- Sortuj -->
-          <div class="flex min-w-36 flex-1 flex-col gap-1.5">
-            <label class="text-xs font-medium text-muted-foreground">Sortuj</label>
-            <select
-              class="h-8 w-full cursor-pointer rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              (change)="onSortChange($event)"
-            >
-              <option value="price" [selected]="sortBy() === 'price'">Cena rosnąco</option>
-              <option value="departure" [selected]="sortBy() === 'departure'">Data wylotu</option>
-              <option value="duration" [selected]="sortBy() === 'duration'">Liczba nocy</option>
-            </select>
-          </div>
-
+          <app-sort-select
+            label="Sortuj"
+            [options]="sortOptions"
+            [value]="sortBy()"
+            (changed)="setSort($event)"
+          />
           @if (activeFilterCount() > 0) {
             <button hlmBtn variant="outline" size="sm" (click)="clearFilters()">
               Wyczyść ({{ activeFilterCount() }})
@@ -347,17 +203,7 @@ const TIMES = [
               >Wylot</span
             >
             <div class="flex items-center gap-1">
-              @for (d of DAYS; track d.js) {
-                <button
-                  hlmBtn
-                  size="sm"
-                  [variant]="depDays().includes(d.js) ? 'default' : 'outline'"
-                  class="h-7 shrink-0 rounded-full px-2.5 text-xs"
-                  (click)="toggleDay(depDays, d.js)"
-                >
-                  {{ d.label }}
-                </button>
-              }
+              <app-day-pills [selected]="depDays()" (toggled)="toggleDay(depDays, $event)" />
               <div class="mx-1 h-5 w-px shrink-0 bg-border"></div>
               @for (t of TIMES; track t.id) {
                 <button
@@ -380,17 +226,7 @@ const TIMES = [
               >Powrót</span
             >
             <div class="flex items-center gap-1">
-              @for (d of DAYS; track d.js) {
-                <button
-                  hlmBtn
-                  size="sm"
-                  [variant]="retDays().includes(d.js) ? 'default' : 'outline'"
-                  class="h-7 shrink-0 rounded-full px-2.5 text-xs"
-                  (click)="toggleDay(retDays, d.js)"
-                >
-                  {{ d.label }}
-                </button>
-              }
+              <app-day-pills [selected]="retDays()" (toggled)="toggleDay(retDays, $event)" />
               <div class="mx-1 h-5 w-px shrink-0 bg-border"></div>
               @for (t of TIMES; track t.id) {
                 <button
@@ -529,12 +365,38 @@ export class DealsPageComponent {
   visibleCount = signal(24);
   selectedId = signal<string | null>(null);
 
-  // dropdown open state
-  cOpen = signal(false);
-  oOpen = signal(false);
-  tOpen = signal(false);
-
   savedCount = computed(() => this.savedService.savedDeals().length);
+
+  // Shared filter-component wiring
+  readonly countryOptions: MultiSelectOption[] = ALL_COUNTRIES.map((c) => ({
+    value: c.code,
+    label: c.name,
+  }));
+  originOptions = computed<MultiSelectOption[]>(() =>
+    this.polishAirports().map((a) => ({ value: a.iata, label: `${a.name} (${a.iata})` })),
+  );
+  readonly levelOptions: MultiSelectOption[] = TRIP_LEVELS.map((t) => ({
+    value: String(t.id),
+    label: t.label,
+  }));
+  selectedLevelStrings = computed(() => this.selectedLevels().map(String));
+  readonly sortOptions: SortOption[] = [
+    { value: 'price', label: 'Cena rosnąco' },
+    { value: 'departure', label: 'Data wylotu' },
+    { value: 'duration', label: 'Liczba nocy' },
+  ];
+  readonly countrySummary = (sel: string[]) => `${sel.length} krajów`;
+  readonly originSummary = (sel: string[]) => sel.join(', ');
+  readonly levelSummary = (sel: string[]) =>
+    sel.length === 1 && sel[0] === '1'
+      ? 'Tam i z powrotem'
+      : sel.length === 3
+        ? 'Wszystkie typy'
+        : `${sel.length} wybrane`;
+
+  setSort(v: string) {
+    this.sortBy.set(v as 'price' | 'departure' | 'duration');
+  }
 
   visibleDeals = computed(() => this.allDeals().slice(0, this.visibleCount()));
 
@@ -566,13 +428,6 @@ export class DealsPageComponent {
     depTimes: this.depTimes().length ? this.depTimes().join(',') : undefined,
     retTimes: this.retTimes().length ? this.retTimes().join(',') : undefined,
   }));
-
-  @HostListener('document:click')
-  closeAllMenus() {
-    this.cOpen.set(false);
-    this.oOpen.set(false);
-    this.tOpen.set(false);
-  }
 
   constructor() {
     const p = this.route.snapshot.queryParams;
@@ -682,10 +537,6 @@ export class DealsPageComponent {
   onMaxNights(e: Event) {
     const v = this.readNum(e);
     this.maxNights.set(Math.max(v, this.minNights()));
-  }
-
-  onSortChange(e: Event) {
-    this.sortBy.set((e.target as HTMLSelectElement).value as 'price' | 'departure' | 'duration');
   }
 
   clearFilters() {

@@ -11,27 +11,17 @@ import { SavedDealsService } from '../services/saved-deals.service';
   template: `
     <header class="sticky top-0 z-50 h-14 border-b border-border bg-card">
       <div class="mx-auto flex h-full max-w-[1100px] items-center gap-3 px-3 sm:gap-5 sm:px-6">
-        <a [routerLink]="['/deals']" class="flex shrink-0 items-center gap-2" aria-label="Lotsy">
-          <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-            <defs>
-              <linearGradient
-                id="lotsy-mark-grad"
-                x1="4"
-                y1="28"
-                x2="28"
-                y2="4"
-                gradientUnits="userSpaceOnUse"
-              >
-                <stop stop-color="#e8680a" />
-                <stop offset="1" stop-color="#ffa23c" />
-              </linearGradient>
-            </defs>
-            <rect width="32" height="32" rx="9" fill="url(#lotsy-mark-grad)" />
-            <g transform="translate(16.5 16) rotate(-38) scale(0.72) translate(-12.5 -12)">
-              <path fill="#fff" d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
+        <a
+          [routerLink]="['/deals']"
+          class="flex shrink-0 items-center gap-2 text-foreground"
+          aria-label="Lotsy"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <g transform="translate(12 12) rotate(-38) scale(0.85) translate(-12.5 -12)">
+              <path fill="currentColor" d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
             </g>
           </svg>
-          <span class="text-lg font-extrabold tracking-tight text-foreground">Lotsy</span>
+          <span class="text-lg font-extrabold tracking-tight">Lotsy</span>
         </a>
 
         <nav

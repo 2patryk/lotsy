@@ -9,7 +9,7 @@ import {
   getWizzTimetable,
   toPln,
 } from '@lotsy/flights-client';
-import type { DailyFare } from '@lotsy/flights-client';
+import { createQuery, getFlights, Passengers } from 'fast-flights-ts';
 
 // One row in the onward-connections panel, price already normalized to PLN.
 // mode=departures: flights leaving `airport` (after an OUT fare's arrival).
@@ -26,7 +26,7 @@ export interface OnwardFlight {
   arrivalTime: string;
   price: number; // PLN
   currency: 'PLN';
-  source: 'RYANAIR' | 'WIZZAIR';
+  source: 'RYANAIR' | 'WIZZAIR' | 'GOOGLE';
   airline: string;
   flightNumber: string | null;
 }
@@ -48,6 +48,12 @@ const RYAN_CONCURRENCY = 3;
 const RYAN_BATCH_DELAY_MS = 300;
 const WIZZ_CONCURRENCY = 2;
 const WIZZ_BATCH_DELAY_MS = 350;
+const GOOGLE_CONCURRENCY = 4;
+const GOOGLE_BATCH_DELAY_MS = 200;
+
+// Carriers already covered by their dedicated fetchers — dropped from Google
+// results to avoid duplicates (Buzz/Lauda/Malta Air are Ryanair-group).
+const GOOGLE_EXCLUDED_AIRLINES = /ryanair|wizz|buzz|lauda|malta air/i;
 
 const IATA_RE = /^[A-Z]{3}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -94,24 +100,45 @@ function asUtcWallClock(t: string): string {
   return /[Z+]/.test(t.slice(11)) ? t : t + 'Z';
 }
 
-async function runConcurrent<T>(
+async function runConcurrent<T, R>(
   items: readonly T[],
-  fn: (item: T) => Promise<DailyFare[]>,
+  fn: (item: T) => Promise<R[]>,
   concurrency: number,
   delayMs: number,
-): Promise<DailyFare[]> {
-  const fares: DailyFare[] = [];
+): Promise<R[]> {
+  const out: R[] = [];
   for (let i = 0; i < items.length; i += concurrency) {
     const settled = await Promise.allSettled(
       items.slice(i, i + concurrency).map(fn),
     );
     for (const s of settled) {
       // Individual route failures are dropped — a partial list beats a 500.
-      if (s.status === 'fulfilled') fares.push(...s.value);
+      if (s.status === 'fulfilled') out.push(...s.value);
     }
     if (i + concurrency < items.length) await sleep(delayMs);
   }
-  return fares;
+  return out;
+}
+
+// Shape of a fast-flights-ts itinerary (fields we rely on).
+interface GoogleItinerary {
+  type?: string; // airline IATA code, e.g. "VY"
+  price?: number; // in the requested currency (PLN)
+  airlines?: string[];
+  flights: Array<{
+    from_airport: { code: string };
+    to_airport: { code: string };
+    departure: { date: number[]; time: number[] };
+    arrival: { date: number[]; time: number[] };
+  }>;
+}
+
+// [2026,7,7] + [5,55] → "2026-07-07T05:55:00Z" (wall-clock-as-UTC convention).
+function googleIso(date: number[], time: number[]): string {
+  const [y, m, d] = date;
+  const [hh = 0, mm = 0] = time;
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${y}-${p(m)}-${p(d)}T${p(hh)}:${p(mm)}:00Z`;
 }
 
 @Injectable()
@@ -120,6 +147,7 @@ export class OnwardService {
   // the same key share one carrier fetch. Lost on restart — acceptable.
   private ryanairDayCache = new Map<string, CacheEntry<OnwardFlight[]>>();
   private windowCache = new Map<string, CacheEntry<OnwardFlight[]>>();
+  private googleDayCache = new Map<string, CacheEntry<OnwardFlight[]>>();
   private routesCache = new Map<string, CacheEntry<string[]>>();
 
   async getOnward(params: {
@@ -131,7 +159,10 @@ export class OnwardService {
   }): Promise<OnwardFlight[]> {
     const airport = params.airport?.toUpperCase() ?? '';
     const date = params.date ?? '';
-    const carrier = params.carrier === 'wizz' ? 'wizz' : 'ryanair';
+    const carrier =
+      params.carrier === 'wizz' || params.carrier === 'google'
+        ? params.carrier
+        : 'ryanair';
     const mode: OnwardMode =
       params.mode === 'arrivals' ? 'arrivals' : 'departures';
     const windowStart = params.windowStart || date;
@@ -151,7 +182,9 @@ export class OnwardService {
     }
 
     let flights: OnwardFlight[];
-    if (carrier === 'ryanair' && mode === 'departures') {
+    if (carrier === 'google') {
+      flights = await this.getGoogleDay(mode, airport, date);
+    } else if (carrier === 'ryanair' && mode === 'departures') {
       flights = await this.getRyanairDeparturesDay(airport, date);
     } else {
       flights = await this.getWindow(carrier, mode, airport, windowStart);
@@ -325,26 +358,112 @@ export class OnwardService {
         });
       }
 
-      // Timetable rows carry only IATA codes — resolve city names from the
-      // airports table synced by AirportsService (fallback: the code itself).
-      const airports = await prisma.airport.findMany({
-        where: { iata: { in: [...iatas] } },
-      });
-      const byIata = new Map(airports.map((a) => [a.iata, a]));
-      for (const f of flights) {
-        const o = byIata.get(f.origin);
-        const d = byIata.get(f.destination);
-        if (o) {
-          f.originCity = o.name;
-          f.originCountry = o.country.toUpperCase();
-        }
-        if (d) {
-          f.destCity = d.name;
-          f.destCountry = d.country.toUpperCase();
-        }
-      }
-
+      await this.enrichCities(flights, iatas);
       return flights;
     });
+  }
+
+  // ── Google Flights (fast-flights-ts): other carriers, non-stop only ─────
+  // Google has no "anywhere" search either, so we fan out over the union of
+  // known Ryanair+Wizz routes; the same city pairs surface easyJet, Vueling
+  // and other carriers. Day-granular (a whole window would be 8× the calls).
+
+  private getGoogleDay(
+    mode: OnwardMode,
+    airport: string,
+    date: string,
+  ): Promise<OnwardFlight[]> {
+    const key = `${mode}:${airport}:${date}`;
+    return this.cached(this.googleDayCache, key, WINDOW_TTL_MS, async () => {
+      const [ryanRoutes, wizzRoutes] = await Promise.all([
+        this.cached(this.routesCache, `ryanair:${airport}`, ROUTES_TTL_MS, () =>
+          getDestinations(airport),
+        ).catch(() => [] as string[]),
+        this.cached(this.routesCache, `wizz:${airport}`, ROUTES_TTL_MS, () =>
+          getWizzRoutes(airport),
+        ).catch(() => [] as string[]),
+      ]);
+      const routes = [...new Set([...ryanRoutes, ...wizzRoutes])];
+      if (routes.length === 0) return [];
+
+      const itineraries = await runConcurrent(
+        routes,
+        async (r) => {
+          const [from_airport, to_airport] =
+            mode === 'departures' ? [airport, r] : [r, airport];
+          const query = createQuery({
+            flights: [{ date, from_airport, to_airport }],
+            trip: 'one-way',
+            seat: 'economy',
+            passengers: new Passengers({ adults: 1 }),
+            currency: 'PLN',
+            max_stops: 0,
+          });
+          return (await getFlights(query)) as unknown as GoogleItinerary[];
+        },
+        GOOGLE_CONCURRENCY,
+        GOOGLE_BATCH_DELAY_MS,
+      );
+
+      const flights: OnwardFlight[] = [];
+      const iatas = new Set<string>();
+      const seen = new Set<string>();
+      for (const it of itineraries) {
+        // max_stops:0 requested, but stay defensive about multi-leg rows.
+        if (it.flights?.length !== 1 || !it.price || it.price <= 0) continue;
+        const airline = it.airlines?.join(' + ') || it.type || '';
+        if (!airline || GOOGLE_EXCLUDED_AIRLINES.test(airline)) continue;
+        const leg = it.flights[0];
+        const departureTime = googleIso(leg.departure.date, leg.departure.time);
+        const dedupeKey = `${airline}:${leg.from_airport.code}:${leg.to_airport.code}:${departureTime}`;
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        iatas.add(leg.from_airport.code);
+        iatas.add(leg.to_airport.code);
+        flights.push({
+          origin: leg.from_airport.code,
+          destination: leg.to_airport.code,
+          originCity: leg.from_airport.code, // enriched from DB below
+          originCountry: '',
+          destCity: leg.to_airport.code,
+          destCountry: '',
+          date: departureTime.slice(0, 10),
+          departureTime,
+          arrivalTime: googleIso(leg.arrival.date, leg.arrival.time),
+          price: Math.round(it.price * 100) / 100,
+          currency: 'PLN',
+          source: 'GOOGLE',
+          airline,
+          flightNumber: null,
+        });
+      }
+
+      await this.enrichCities(flights, iatas);
+      return flights;
+    });
+  }
+
+  // Resolve IATA codes to city names from the airports table synced by
+  // AirportsService (fallback: the code itself, set by the caller).
+  private async enrichCities(
+    flights: OnwardFlight[],
+    iatas: Set<string>,
+  ): Promise<void> {
+    const airports = await prisma.airport.findMany({
+      where: { iata: { in: [...iatas] } },
+    });
+    const byIata = new Map(airports.map((a) => [a.iata, a]));
+    for (const f of flights) {
+      const o = byIata.get(f.origin);
+      const d = byIata.get(f.destination);
+      if (o) {
+        f.originCity = o.name;
+        f.originCountry = o.country.toUpperCase();
+      }
+      if (d) {
+        f.destCity = d.name;
+        f.destCountry = d.country.toUpperCase();
+      }
+    }
   }
 }

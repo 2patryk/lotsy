@@ -3,6 +3,10 @@ packages:
   - 'api'
   - 'engine'
   - 'frontend'
+# node-libcurl (optional dep of fast-flights-ts) pulls "nan" from a git URL,
+# which pnpm blocks as an exotic subdependency; the fetch fallback is enough.
+overrides:
+  'fast-flights-ts>node-libcurl': '-'
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true

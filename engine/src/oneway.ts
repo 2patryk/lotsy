@@ -397,7 +397,14 @@ async function fetchDetails(
   }
 
   const rows: OneWayFareRow[] = [];
+  let droppedNonPln = 0;
   for (const f of best.values()) {
+    // Belt-and-braces: consider() normalizes everything to PLN, so a non-PLN
+    // fare here means a conversion bug upstream — never let it reach the DB.
+    if (f.currency !== 'PLN') {
+      droppedNonPln++;
+      continue;
+    }
     rows.push({
       direction: dirOf.get(`${f.origin}:${f.destination}`) ?? 'OUT',
       origin: f.origin,
@@ -419,6 +426,9 @@ async function fetchDetails(
 
   if (droppedFx > 0) {
     console.warn(`[oneway] dropped ${droppedFx} fares with unconvertible currency`);
+  }
+  if (droppedNonPln > 0) {
+    console.warn(`[oneway] dropped ${droppedNonPln} non-PLN rows before insert (conversion bug?)`);
   }
 
   return { rows, ryanairFailures, wizzFailures };

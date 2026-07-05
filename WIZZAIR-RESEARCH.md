@@ -116,17 +116,29 @@ po IP/reputacji, zwłaszcza z chmury/Render):
 > **Wniosek z testu:** blokada 403 z PLAN.md rozwiązana wyłącznie nagłówkami (`Origin`/`Referer`)
 > + dynamiczną wersją. Nie było potrzeby proxy ani cookie z przeglądarki. Plan awaryjny zostaje na wypadek blokad IP z serwera prod (Render).
 
-### Faza W2 — integracja z silnikiem (mix & match)
-- [ ] `engine/src/oneway.ts` / `search.ts`: dołożyć Wizz jako drugie źródło obok Ryanaira.
-- [ ] `route-cache.ts`: cache tras Wizza obok Ryanaira; unia realnych połączeń per para lotnisk.
-- [ ] Pooling one-way per dzień: `cenaTam = min(Ryanair[out], Wizz[out])`,
-      `cenaPowrót = min(Ryanair[ret], Wizz[ret])`; `mixedCarrier=true` gdy różni przewoźnicy.
-- [ ] Zapis `outboundSource`/`returnSource` = `WIZZAIR` (pole już jest w schema.prisma).
+### Faza W2 — integracja z silnikiem (mix & match) ✅ ZROBIONE (2026-07-05, dry-run zweryfikowany)
+- [x] `engine/src/oneway.ts`: Wizz jako drugie źródło. `mergeWizzRoutes()` pobiera mapę tras Wizza
+      (`getWizzRoutes` per PL lotnisko), oznacza wspólne trasy i dokłada trasy Wizz-only (OUT+IN).
+- [x] Pooling one-way per (trasa, dzień): `fetchDetails` zbiera taryfy Ryanair + Wizz do jednej mapy
+      i zostawia **najtańszą** — `source`/`airline` zapisują zwycięskiego przewoźnika.
+- [x] Schema `OneWayFare`: dodane `source` + `airline` (migracja `20260705120000_add_oneway_source`, zaaplikowana na Neon).
+- [x] API (`oneway.service`) zwraca pełny wiersz → `source`/`airline` przechodzą do frontu bez zmian.
+- [x] Frontend `/jedna-strona`: chip przewoźnika dynamiczny (`f.airline`, różowy `chip-wizz`),
+      `bookingUrl` kieruje do wizzair.com dla lotów Wizza.
+- **Wynik dry-run:** 818 tras (399 OUT / 419 IN), 3826 wierszy, **357 dni gdzie Wizz jest tańszy**.
 
-### Faza W3 — hardening
-- [ ] Rate-limit / throttling (nie zabić się o CloudFront): ~1 req/s, jitter, cache tras.
-- [ ] Obsługa błędów: 403 → alert + fallback na sam Ryanair (degradacja, nie crash).
-- [ ] Weryfikacja poprawności cen na 2–3 trasach vs strona wizzair.com.
+> **Uwaga (znane ograniczenie):** dla lotnisk zagranicznych, które lata **tylko** Wizz (nie ma ich
+> w discovery Ryanaira), brakuje polskich nazw miasta/kraju → front pokaże kod IATA. Overlap z
+> Ryanairem pokrywa większość tras płd. Europy. Wzbogacenie nazw = ewentualna Faza W4.
+
+### Faza W3 — hardening ✅ ZROBIONE (2026-07-05)
+- [x] Throttling Wizza osobno od Ryanaira: `WIZZ_MAX_CONCURRENT=2`, `WIZZ_BATCH_DELAY_MS=600`.
+- [x] Retry na 5xx (Wizz zwraca **HTTP 503 pod obciążeniem**) + 429/403; backoff wykładniczy z jitterem,
+      `MAX_RETRIES=4` (pierwszy dry-run: 200 błędów 503 → naprawione przez retry-on-5xx).
+- [x] Degradacja zamiast crasha: jeśli **całe** route-discovery Wizza padnie → `wizzEnabled=false`,
+      run leci na samym Ryanairze. Pojedyncze błędy tras są izolowane (`Promise.allSettled`) i tylko logowane.
+- [x] Kill-switch: `ENABLE_WIZZ=false` wyłącza Wizza globalnie (np. gdyby prod IP dostał bana).
+- [x] Weryfikacja: dry-run na pełnej siatce + smoke-test klienta vs realne ceny wizzair.com.
 
 ---
 

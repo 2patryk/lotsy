@@ -352,7 +352,8 @@ Uruchamiany cronem co ~3 h (`.github/workflows/search.yml`); w dev ręcznie (`wo
 - [x] Upsert `Deal` + czyszczenie (`expiresAt`/`departAt`), logowanie `SearchRun` (✅ 2026-06-11)
 - [x] Uruchom na małym podzbiorze tras, sprawdź realne deale w bazie — 259 dealów zapisanych do Neon, `SearchRun=SUCCESS` (✅ 2026-06-11)
 - [x] **Faza 2b — klient Wizz (W1 ZROBIONE, zweryfikowane 2026-07-05):** `packages/flights-client/src/wizzair.ts` — `getWizzTimetable`, `getWizzRoutes`, `getWizzApiVersion` (auto-detekcja `{ver}`, wykryła 29.5.0). Blokada 403 rozwiązana: nagłówki `Origin/Referer` + dynamiczna wersja. Smoke-test zwraca realne trasy i ceny (WAW→CTA, KTW→BCN). Szczegóły: `WIZZAIR-RESEARCH.md`.
-  - [ ] **W2 — mix & match w silniku:** dołożyć Wizz jako drugie źródło w `engine/src/oneway.ts` / `search.ts`, unia tras w `route-cache.ts`, pooling one-way per dzień (`outboundSource='WIZZAIR'`).
+  - [x] **W2 — mix & match w silniku (ZROBIONE 2026-07-05):** Wizz dołożony w `engine/src/oneway.ts` (`mergeWizzRoutes` + pooling najtańszej taryfy per trasa+dzień). `OneWayFare` ma `source`/`airline` (migracja `20260705120000_add_oneway_source`). Front `/jedna-strona` pokazuje przewoźnika i linkuje do wizzair.com. Dry-run: 818 tras, 357 dni z tańszym Wizzem.
+  - [x] **W3 — hardening (ZROBIONE 2026-07-05):** osobny throttling Wizza, retry na 5xx (503 pod obciążeniem) z jitterem, degradacja do samego Ryanaira przy pełnej awarii Wizza, kill-switch `ENABLE_WIZZ=false`.
 
 ### Faza 3 — API + Frontend _(Status: ✅ ukończona)_
 - [x] `DealsModule`: `GET /deals` z filtrami (warunek `expiresAt>now` i `departAt>now`), `GET /deals/:id`, `/health`; znacznik „ostatnia aktualizacja" z `SearchRun` (✅ 2026-06-11)

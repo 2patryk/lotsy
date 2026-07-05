@@ -75,9 +75,17 @@ function windows(from: string, to: string): Array<{ from: string; to: string }> 
   return out;
 }
 
+// Wizz returns local wall-clock without a timezone; append 'Z' so the hour
+// survives a downstream new Date(...).toISOString() round-trip (matches Ryanair).
+function asUtcWallClock(t: string): string {
+  return /[Z+]/.test(t.slice(11)) ? t : t + 'Z';
+}
+
 function toDailyFare(f: WizzTimetableFlight): DailyFare {
-  const departureTime = f.departureDates?.[0] ?? f.departureDate;
-  const arrivalTime = f.arrivalDates?.[0] ?? departureTime;
+  const departureTime = asUtcWallClock(f.departureDates?.[0] ?? f.departureDate);
+  const arrivalTime = asUtcWallClock(
+    f.arrivalDates?.[0] ?? f.departureDates?.[0] ?? f.departureDate,
+  );
   return {
     date: f.departureDate.slice(0, 10),
     departureTime,

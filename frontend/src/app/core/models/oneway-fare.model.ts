@@ -15,6 +15,8 @@ export interface OneWayFare {
   flightNumber: string | null;
   price: number;
   currency: string;
+  source: string; // "RYANAIR" | "WIZZAIR"
+  airline: string; // display name, e.g. "Ryanair" / "Wizz Air"
   updatedAt: string;
 }
 

@@ -143,6 +143,16 @@ export const MAX_CONCURRENT = 3;
 // Delay between batches (ms)
 export const BATCH_DELAY_MS = 300;
 
+// Pool Wizz Air fares alongside Ryanair (mix & match). Disable to fall back to
+// Ryanair-only, e.g. if Wizz starts blocking the runner's IP.
+export const ENABLE_WIZZ = process.env.ENABLE_WIZZ !== 'false';
+
+// Wizz's backend throttles bursts with HTTP 503, and retrying in parallel only
+// adds load — so we go fully serial with a short gap. Slower but avoids the
+// throttle entirely, which is faster end-to-end than fighting it with retries.
+export const WIZZ_MAX_CONCURRENT = 1;
+export const WIZZ_BATCH_DELAY_MS = 350;
+
 // Deal TTL in hours
 export const DEAL_TTL_HOURS = 48;
 

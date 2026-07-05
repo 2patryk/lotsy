@@ -1,6 +1,21 @@
 import { prisma, type Prisma } from '@lotsy/db';
-import { getCheapestPerDay, getOneWayFaresList } from '@lotsy/flights-client';
-import { ORIGIN_AIRPORTS, MAX_CONCURRENT, BATCH_DELAY_MS, ONEWAY_HORIZON_DAYS } from './config.js';
+import {
+  getCheapestPerDay,
+  getOneWayFaresList,
+  getWizzRoutes,
+  getWizzTimetable,
+  type DailyFare,
+} from '@lotsy/flights-client';
+import {
+  ORIGIN_AIRPORTS,
+  MAX_CONCURRENT,
+  BATCH_DELAY_MS,
+  ONEWAY_HORIZON_DAYS,
+  ENABLE_WIZZ,
+  WIZZ_MAX_CONCURRENT,
+  WIZZ_BATCH_DELAY_MS,
+  DEST_AIRPORTS,
+} from './config.js';
 
 // Standalone engine for the "one-way, last-minute" tab: cheapest Ryanair
 // one-way fare per route and day, both directions, within a rolling window
@@ -56,6 +71,8 @@ interface Route {
   origin: string;
   destination: string;
   direction: 'OUT' | 'IN';
+  ryanair: boolean;
+  wizz: boolean;
 }
 
 interface AirportInfo {
@@ -71,10 +88,12 @@ interface DiscoveryResult {
 async function runConcurrent<T, R>(
   items: readonly T[],
   fn: (item: T) => Promise<R>,
+  concurrency: number = MAX_CONCURRENT,
+  delayMs: number = BATCH_DELAY_MS,
 ): Promise<Array<{ item: T; result?: R; error?: unknown }>> {
   const results: Array<{ item: T; result?: R; error?: unknown }> = [];
-  for (let i = 0; i < items.length; i += MAX_CONCURRENT) {
-    const batch = items.slice(i, i + MAX_CONCURRENT);
+  for (let i = 0; i < items.length; i += concurrency) {
+    const batch = items.slice(i, i + concurrency);
     const settled = await Promise.allSettled(batch.map(fn));
     for (let j = 0; j < batch.length; j++) {
       const s = settled[j];
@@ -84,7 +103,7 @@ async function runConcurrent<T, R>(
           : { item: batch[j], error: s.reason },
       );
     }
-    if (i + MAX_CONCURRENT < items.length) await sleep(BATCH_DELAY_MS);
+    if (i + concurrency < items.length) await sleep(delayMs);
   }
   return results;
 }
@@ -118,7 +137,13 @@ async function discover(fromKey: string, toKey: string): Promise<DiscoveryResult
     for (const f of result ?? []) {
       recordAirportInfo(f.origin, f.originCity, f.originCountry);
       recordAirportInfo(f.destination, f.destCity, f.destCountry);
-      routes.push({ origin: f.origin, destination: f.destination, direction: 'OUT' });
+      routes.push({
+        origin: f.origin,
+        destination: f.destination,
+        direction: 'OUT',
+        ryanair: true,
+        wizz: false,
+      });
       if (f.destCountryCode && f.destCountryCode.toLowerCase() !== 'pl') {
         foreignCountryCodes.add(f.destCountryCode.toLowerCase());
       }
@@ -150,7 +175,13 @@ async function discover(fromKey: string, toKey: string): Promise<DiscoveryResult
     for (const f of result ?? []) {
       recordAirportInfo(f.origin, f.originCity, f.originCountry);
       recordAirportInfo(f.destination, f.destCity, f.destCountry);
-      routes.push({ origin: f.origin, destination: f.destination, direction: 'IN' });
+      routes.push({
+        origin: f.origin,
+        destination: f.destination,
+        direction: 'IN',
+        ryanair: true,
+        wizz: false,
+      });
       inRoutesCount++;
     }
   }
@@ -171,62 +202,188 @@ async function discover(fromKey: string, toKey: string): Promise<DiscoveryResult
   return { routes: uniqueRoutes, airportInfo };
 }
 
-// Phase 2: per-day cheapest fare for every active route, filtered to the window.
+// Phase 1c: fold Wizz Air into the route set. Flags Ryanair routes that Wizz
+// also serves (so the detail phase pools both), and appends Wizz-only routes.
+// Returns whether Wizz is usable this run — if every route-map call fails
+// (e.g. IP block), we disable Wizz and keep going on Ryanair alone.
+async function mergeWizzRoutes(
+  routes: Route[],
+  airportInfo: Map<string, AirportInfo>,
+): Promise<{ routes: Route[]; wizzEnabled: boolean }> {
+  const wizzResults = await runConcurrent(
+    ORIGIN_AIRPORTS as readonly string[],
+    (origin) => getWizzRoutes(origin),
+    WIZZ_MAX_CONCURRENT,
+    WIZZ_BATCH_DELAY_MS,
+  );
+
+  // PL airport -> set of destinations Wizz flies from it (routes are bidirectional).
+  const wizzByPL = new Map<string, Set<string>>();
+  let failures = 0;
+  for (const { item: origin, result, error } of wizzResults) {
+    if (error) {
+      failures++;
+      console.warn(`[oneway] Wizz routes failed for ${origin}:`, error);
+      continue;
+    }
+    wizzByPL.set(origin, new Set((result ?? []).filter((d) => DEST_AIRPORTS.has(d))));
+  }
+
+  if (failures === ORIGIN_AIRPORTS.length) {
+    console.warn('[oneway] Wizz route discovery fully failed — disabling Wizz for this run');
+    return { routes, wizzEnabled: false };
+  }
+
+  const servesWizz = (route: Route): boolean =>
+    route.direction === 'OUT'
+      ? (wizzByPL.get(route.origin)?.has(route.destination) ?? false)
+      : (wizzByPL.get(route.destination)?.has(route.origin) ?? false);
+
+  // Flag existing Ryanair routes that Wizz also flies.
+  for (const route of routes) {
+    if (servesWizz(route)) route.wizz = true;
+  }
+
+  // Append Wizz-only routes (both directions), skipping pairs already present.
+  const seen = new Set(routes.map((r) => `${r.origin}:${r.destination}`));
+  let added = 0;
+  for (const [pl, dests] of wizzByPL) {
+    for (const dest of dests) {
+      const outKey = `${pl}:${dest}`;
+      if (!seen.has(outKey)) {
+        seen.add(outKey);
+        routes.push({
+          origin: pl,
+          destination: dest,
+          direction: 'OUT',
+          ryanair: false,
+          wizz: true,
+        });
+        added++;
+      }
+      const inKey = `${dest}:${pl}`;
+      if (!seen.has(inKey)) {
+        seen.add(inKey);
+        routes.push({ origin: dest, destination: pl, direction: 'IN', ryanair: false, wizz: true });
+        added++;
+      }
+    }
+  }
+
+  const overlap = routes.filter((r) => r.ryanair && r.wizz).length;
+  console.log(
+    `[oneway] Wizz merge: ${failures} route-map failures, ${overlap} shared routes, ` +
+      `${added} Wizz-only routes added`,
+  );
+  // airportInfo for Wizz-only foreign airports may be missing; fillAirportNames
+  // falls back to the IATA code. Overlap with Ryanair covers the common case.
+  void airportInfo;
+
+  return { routes, wizzEnabled: true };
+}
+
+// Phase 2: per-day cheapest fare for every active route, pooling Ryanair and
+// Wizz (mix & match) — for each route+day we keep whichever carrier is cheaper.
 async function fetchDetails(
   routes: Route[],
   from: Date,
   to: Date,
   fromKey: string,
   toKey: string,
-): Promise<{ rows: OneWayFareRow[]; failures: number }> {
+  wizzEnabled: boolean,
+): Promise<{ rows: OneWayFareRow[]; ryanairFailures: number; wizzFailures: number }> {
   const months = monthsInWindow(from, to);
-
-  type Task = { route: Route; year: number; month: number };
-  const tasks: Task[] = [];
-  for (const route of routes) {
-    for (const { year, month } of months) {
-      tasks.push({ route, year, month });
-    }
-  }
-
-  const results = await runConcurrent(tasks, (t) =>
-    getCheapestPerDay(t.route.origin, t.route.destination, t.year, t.month),
+  const dirOf = new Map<string, 'OUT' | 'IN'>(
+    routes.map((r) => [`${r.origin}:${r.destination}`, r.direction]),
   );
 
-  const rows: OneWayFareRow[] = [];
-  let failures = 0;
+  // Cheapest fare seen so far per (origin, destination, day). Ties keep the
+  // first carrier (Ryanair, since it runs first) — good enough, both are valid.
+  const best = new Map<string, DailyFare>();
+  const consider = (f: DailyFare) => {
+    if (f.date < fromKey || f.date > toKey) return;
+    const key = `${f.origin}:${f.destination}:${f.date}`;
+    const cur = best.get(key);
+    if (!cur || f.price < cur.price) best.set(key, f);
+  };
 
-  for (const { item, result, error } of results) {
+  // Ryanair: one call per route+month.
+  type RyanTask = { route: Route; year: number; month: number };
+  const ryanTasks: RyanTask[] = [];
+  for (const route of routes) {
+    if (!route.ryanair) continue;
+    for (const { year, month } of months) ryanTasks.push({ route, year, month });
+  }
+
+  let ryanairFailures = 0;
+  const ryanResults = await runConcurrent(ryanTasks, (t) =>
+    getCheapestPerDay(t.route.origin, t.route.destination, t.year, t.month),
+  );
+  for (const { item, result, error } of ryanResults) {
     if (error) {
-      failures++;
+      ryanairFailures++;
       console.warn(
-        `[oneway] cheapestPerDay failed for ${item.route.origin}→${item.route.destination} ` +
+        `[oneway] Ryanair cheapestPerDay failed for ${item.route.origin}→${item.route.destination} ` +
           `${item.year}-${item.month + 1}:`,
         error,
       );
       continue;
     }
-    for (const f of result ?? []) {
-      if (f.date < fromKey || f.date > toKey) continue;
-      rows.push({
-        direction: item.route.direction,
-        origin: item.route.origin,
-        originCity: '', // filled in by caller once airport names are known
-        originCountry: '',
-        destination: item.route.destination,
-        destCity: '',
-        destCountry: '',
-        date: new Date(`${f.date}T00:00:00Z`),
-        departureTime: new Date(f.departureTime),
-        arrivalTime: new Date(f.arrivalTime),
-        flightNumber: null,
-        price: f.price,
-        currency: f.currency,
-      });
+    for (const f of result ?? []) consider(f);
+  }
+
+  // Wizz: one call per route covers the whole window (client splits into 42-day
+  // sub-windows internally).
+  let wizzFailures = 0;
+  if (wizzEnabled) {
+    const wizzRoutes = routes.filter((r) => r.wizz);
+    const wizzResults = await runConcurrent(
+      wizzRoutes,
+      (r) =>
+        getWizzTimetable({
+          origin: r.origin,
+          destination: r.destination,
+          from: fromKey,
+          to: toKey,
+        }),
+      WIZZ_MAX_CONCURRENT,
+      WIZZ_BATCH_DELAY_MS,
+    );
+    for (const { item, result, error } of wizzResults) {
+      if (error) {
+        wizzFailures++;
+        console.warn(
+          `[oneway] Wizz timetable failed for ${item.origin}→${item.destination}:`,
+          error,
+        );
+        continue;
+      }
+      for (const f of result ?? []) consider(f);
     }
   }
 
-  return { rows, failures };
+  const rows: OneWayFareRow[] = [];
+  for (const f of best.values()) {
+    rows.push({
+      direction: dirOf.get(`${f.origin}:${f.destination}`) ?? 'OUT',
+      origin: f.origin,
+      originCity: '', // filled in by caller once airport names are known
+      originCountry: '',
+      destination: f.destination,
+      destCity: '',
+      destCountry: '',
+      date: new Date(`${f.date}T00:00:00Z`),
+      departureTime: new Date(f.departureTime),
+      arrivalTime: new Date(f.arrivalTime),
+      flightNumber: null,
+      price: f.price,
+      currency: f.currency,
+      source: f.source,
+      airline: f.airline,
+    });
+  }
+
+  return { rows, ryanairFailures, wizzFailures };
 }
 
 function fillAirportNames(
@@ -273,18 +430,37 @@ async function main() {
     const { from, to, fromKey, toKey } = windowBounds();
     console.log(`[oneway] window: ${fromKey} → ${toKey}`);
 
-    const { routes, airportInfo } = await discover(fromKey, toKey);
-    console.log(`[oneway] ${routes.length} unique active routes total`);
+    const discovery = await discover(fromKey, toKey);
+    let routes = discovery.routes;
+    const airportInfo = discovery.airportInfo;
+    console.log(`[oneway] ${routes.length} Ryanair active routes`);
 
-    const { rows, failures } = await fetchDetails(routes, from, to, fromKey, toKey);
+    let wizzEnabled = false;
+    if (ENABLE_WIZZ) {
+      const merged = await mergeWizzRoutes(routes, airportInfo);
+      routes = merged.routes;
+      wizzEnabled = merged.wizzEnabled;
+    }
+    console.log(`[oneway] ${routes.length} unique active routes total (Wizz: ${wizzEnabled})`);
+
+    const { rows, ryanairFailures, wizzFailures } = await fetchDetails(
+      routes,
+      from,
+      to,
+      fromKey,
+      toKey,
+      wizzEnabled,
+    );
     const polishFallback = await buildPolishFallback();
     fillAirportNames(rows, airportInfo, polishFallback);
 
     const outCount = routes.filter((r) => r.direction === 'OUT').length;
     const inCount = routes.filter((r) => r.direction === 'IN').length;
+    const wizzRows = rows.filter((r) => r.source === 'WIZZAIR').length;
     console.log(
       `[oneway] detail: ${routes.length} routes (OUT=${outCount}, IN=${inCount}), ` +
-        `${rows.length} rows, ${failures} failed lookups`,
+        `${rows.length} rows (${wizzRows} Wizz-cheapest), ` +
+        `${ryanairFailures} Ryanair + ${wizzFailures} Wizz failed lookups`,
     );
 
     if (DRY_RUN) {
@@ -295,7 +471,7 @@ async function main() {
         console.log(
           `  [${r.direction}] ${r.origin}(${r.originCity})→${r.destination}(${r.destCity}, ${r.destCountry}) ` +
             `${(r.date as Date).toISOString().slice(0, 10)} ${(r.departureTime as Date).toISOString().slice(11, 16)} ` +
-            `${r.price} ${r.currency}`,
+            `${r.price} ${r.currency} [${r.source}]`,
         );
       }
       return;

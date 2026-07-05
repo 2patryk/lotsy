@@ -145,6 +145,8 @@ model OneWayFare {
   flightNumber  String?
   price         Float // per person, PLN
   currency      String   @default("PLN")
+  source        String   @default("RYANAIR") // "RYANAIR" | "WIZZAIR" — cheapest carrier for this route+day
+  airline       String   @default("Ryanair") // display name of that carrier
   updatedAt     DateTime @updatedAt
 
   @@unique([origin, destination, date])

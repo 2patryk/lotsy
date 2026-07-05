@@ -377,8 +377,11 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                     <span class="leg-code">({{ f.destination }})</span>
                     <span class="leg-arr">przylot {{ fmtTime(f.arrivalTime) }}</span>
                   </span>
-                  <span class="chip chip-neutral"
-                    >Ryanair
+                  <span
+                    class="chip"
+                    [class.chip-neutral]="f.source !== 'WIZZAIR'"
+                    [class.chip-wizz]="f.source === 'WIZZAIR'"
+                    >{{ f.airline }}
                     @if (f.flightNumber) {
                       <span class="chip-sub">{{ f.flightNumber }}</span>
                     }
@@ -1103,6 +1106,10 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
         background: var(--color-sidebar-active);
         color: var(--color-text-secondary);
       }
+      .chip-wizz {
+        background: #e6007e;
+        color: #fff;
+      }
       .chip-sub {
         font-weight: 400;
         color: var(--color-text-tertiary);
@@ -1560,12 +1567,26 @@ export class OneWayPageComponent {
   }
 
   bookingUrl(f: OneWayFare): string {
+    const dateOut = f.date.slice(0, 10);
+
+    if (f.source === 'WIZZAIR') {
+      const params = new URLSearchParams({
+        departureStation: f.origin,
+        arrivalStation: f.destination,
+        departureDate: dateOut,
+        adultCount: '1',
+        childCount: '0',
+        infantCount: '0',
+      });
+      return `https://wizzair.com/pl-pl/booking/select-flight?${params}`;
+    }
+
     const params = new URLSearchParams({
       adults: '1',
       teens: '0',
       children: '0',
       infants: '0',
-      dateOut: f.date.slice(0, 10),
+      dateOut,
       isReturn: 'false',
       originIata: f.origin,
       destinationIata: f.destination,

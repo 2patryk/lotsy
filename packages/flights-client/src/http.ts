@@ -12,11 +12,17 @@ const BROWSER_HEADERS: Record<string, string> = {
   Origin: 'https://www.ryanair.com',
 };
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 4;
 const RETRY_DELAY_MS = 1000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Exponential backoff with jitter, so concurrent retries don't all fire at once.
+function backoffMs(attempt: number): number {
+  const base = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+  return base + Math.floor(Math.random() * RETRY_DELAY_MS);
 }
 
 export async function fetchJson<T>(url: string, extraHeaders?: Record<string, string>): Promise<T> {
@@ -64,7 +70,7 @@ async function request<T>(url: string, opts: RequestOptions): Promise<T> {
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) {
-      await sleep(RETRY_DELAY_MS * Math.pow(2, attempt - 1));
+      await sleep(backoffMs(attempt));
     }
 
     try {
@@ -74,7 +80,9 @@ async function request<T>(url: string, opts: RequestOptions): Promise<T> {
         headers: { ...BROWSER_HEADERS, ...extraHeaders },
       });
 
-      if (res.status === 429 || res.status === 403) {
+      // Transient: rate-limit, edge blocks, and 5xx (Wizz's backend throws 503
+      // under load). Back off and retry rather than dropping the route.
+      if (res.status === 429 || res.status === 403 || res.status >= 500) {
         lastError = new Error(`HTTP ${res.status} from ${url}`);
         continue;
       }

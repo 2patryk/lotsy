@@ -142,6 +142,18 @@ po IP/reputacji, zwłaszcza z chmury/Render):
 
 ---
 
+### Faza W4 — poprawki po wdrożeniu (2026-07-05)
+- [x] **Waluta → PLN:** Wizz zwraca ceny w walucie kraju **wylotu** (EUR/GBP/HUF/RON…), więc
+      pooling porównywał surowe EUR z PLN Ryanaira i wybierał źle. `engine/src/fx.ts` pobiera kursy
+      ECB (Frankfurter, darmowe, bez klucza) i normalizuje **każdą** taryfę do PLN **przed** poolingiem
+      i zapisem. Waluty spoza ECB (ILS, MAD, TND, AED, JOD — Izrael/Maroko/Tunezja/Jordania) są
+      **dropowane** (~37/run) zamiast psuć porównanie; te trasy pokrywa Ryanair.
+- [x] **Deep-link Wizz (poprawny format, zweryfikowany w przeglądarce):**
+      `https://wizzair.com/pl-pl/booking/select-flight/{dep}/{arr}/{data}/null/1/0/0/null`
+      (ścieżkowy, prefilluje lot). Forma z query-params otwierała tylko stronę bez wyboru lotu.
+- [x] **Neon drop połączenia (57P01):** darmowy tier usypia compute w trakcie ~10-min fazy pobierania.
+      Fix: rekord runu tworzony dopiero tuż przed zapisem (brak idle) + `withDbRetry` (reconnect).
+
 ## Źródła
 - [wizzair-scraper (timetable, payload + nagłówki)](https://github.com/kovacskokokornel/wizzair-scraper/blob/master/wizzair_timetable.py)
 - [projectivemotion/wizzair-scraper (przykładowy output, wersje API)](https://github.com/projectivemotion/wizzair-scraper)

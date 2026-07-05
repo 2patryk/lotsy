@@ -5,6 +5,10 @@
     "resolvePackageJsonExports": true,
     "esModuleInterop": true,
     "isolatedModules": true,
+    // Workspace packages (flights-client, db) import with .ts extensions so
+    // plain Node can type-strip them at runtime.
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,

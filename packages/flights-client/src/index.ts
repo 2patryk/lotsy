@@ -1,6 +1,6 @@
-export { getCheapestPerDay, getDestinations, getOneWayFaresList } from './ryanair.js';
-export { getWizzTimetable, getWizzRoutes, getWizzApiVersion } from './wizzair.js';
-export { getPlnRates, toPln } from './fx.js';
+export { getCheapestPerDay, getDestinations, getOneWayFaresList } from './ryanair.ts';
+export { getWizzTimetable, getWizzRoutes, getWizzApiVersion } from './wizzair.ts';
+export { getPlnRates, toPln } from './fx.ts';
 export type {
   DailyFare,
   RyanairFare,
@@ -10,4 +10,4 @@ export type {
   WizzTimetableParams,
   WizzTimetableResponse,
   WizzMapResponse,
-} from './types.js';
+} from './types.ts';

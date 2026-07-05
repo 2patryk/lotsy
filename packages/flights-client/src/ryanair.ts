@@ -1,4 +1,4 @@
-import { fetchJson } from './http.js';
+import { fetchJson } from './http.ts';
 import type {
   RyanairCheapestPerDayResponse,
   RyanairDestinationsResponse,
@@ -6,7 +6,7 @@ import type {
   OneWayFaresListParams,
   OneWayFareListItem,
   DailyFare,
-} from './types.js';
+} from './types.ts';
 
 const BASE = 'https://www.ryanair.com/api';
 

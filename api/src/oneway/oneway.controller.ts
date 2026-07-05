@@ -4,6 +4,7 @@ import {
   type OneWayDirection,
   type OneWayFaresSort,
 } from './oneway.service.js';
+import { OnwardService } from './onward.service.js';
 
 function csv(value?: string): string[] | undefined {
   return value
@@ -20,7 +21,29 @@ function toDirection(value?: string): OneWayDirection {
 
 @Controller('oneway')
 export class OneWayController {
-  constructor(private readonly oneWayService: OneWayService) {}
+  constructor(
+    private readonly oneWayService: OneWayService,
+    private readonly onwardService: OnwardService,
+  ) {}
+
+  // Live onward/feeder connections for an airport, fetched on demand from
+  // the carrier APIs (not from the synced OneWayFare table).
+  @Get('onward')
+  getOnward(
+    @Query('airport') airport?: string,
+    @Query('date') date?: string,
+    @Query('carrier') carrier?: string,
+    @Query('mode') mode?: string,
+    @Query('windowStart') windowStart?: string,
+  ) {
+    return this.onwardService.getOnward({
+      airport,
+      date,
+      carrier,
+      mode,
+      windowStart,
+    });
+  }
 
   @Get('fares')
   findFares(

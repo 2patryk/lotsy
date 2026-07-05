@@ -6,6 +6,10 @@
     "lib": ["ES2022"],
     "strict": true,
     "esModuleInterop": true,
+    // Workspace packages import with .ts extensions so plain Node (type
+    // stripping) can load them at runtime; tsc rewrites them to .js on emit.
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "skipLibCheck": true,
     "declaration": true,
     "declarationMap": true,

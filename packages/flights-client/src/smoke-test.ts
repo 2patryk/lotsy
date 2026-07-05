@@ -5,7 +5,7 @@ import {
   getWizzApiVersion,
   getWizzRoutes,
   getWizzTimetable,
-} from './index.js';
+} from './index.ts';
 
 const ROUTES = [
   { origin: 'WMI', dest: 'CIA' },

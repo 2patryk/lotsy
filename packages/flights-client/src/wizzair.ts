@@ -1,11 +1,11 @@
-import { fetchJsonPost, fetchJson, fetchText } from './http.js';
+import { fetchJsonPost, fetchJson, fetchText } from './http.ts';
 import type {
   DailyFare,
   WizzTimetableParams,
   WizzTimetableResponse,
   WizzTimetableFlight,
   WizzMapResponse,
-} from './types.js';
+} from './types.ts';
 
 // Wizz Air's own (unofficial) backend. The version segment in the path changes
 // on every deploy; we detect it dynamically and fall back to this seed.

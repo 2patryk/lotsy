@@ -255,6 +255,9 @@ importers:
 
   packages/flights-client:
     devDependencies:
+      '@types/node':
+        specifier: ^24.13.1
+        version: 24.13.1
       tsx:
         specifier: ^4.22.4
         version: 4.22.4

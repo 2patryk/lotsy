@@ -108,6 +108,51 @@ export interface OneWayFaresListParams {
   departureCountryCode?: string;
 }
 
+// --- Wizz Air (be.wizzair.com, unofficial backend) ---
+
+// POST Api/search/timetable — one cheapest fare per day, per direction.
+export interface WizzTimetableParams {
+  origin: string;
+  destination: string;
+  from: string; // "YYYY-MM-DD"
+  to: string; // "YYYY-MM-DD"
+  priceType?: 'regular' | 'wdc';
+}
+
+export interface WizzTimetableFlight {
+  departureStation: string;
+  arrivalStation: string;
+  departureDate: string; // "2026-08-01T00:00:00" (day bucket, local wall-clock)
+  departureDates?: string[]; // actual departure datetimes for that day
+  arrivalDates?: string[];
+  price: {
+    amount: number;
+    currencyCode: string;
+  };
+  priceType?: string;
+}
+
+export interface WizzTimetableResponse {
+  outboundFlights: WizzTimetableFlight[];
+  returnFlights: WizzTimetableFlight[];
+}
+
+// GET Api/asset/map — full route map (cities + their connections).
+export interface WizzMapConnection {
+  iata: string; // destination IATA
+}
+
+export interface WizzMapCity {
+  iata: string;
+  shortName?: string;
+  countryCode?: string;
+  connections: WizzMapConnection[];
+}
+
+export interface WizzMapResponse {
+  cities: WizzMapCity[];
+}
+
 // Normalized single-fare row used by the engine.
 export interface OneWayFareListItem {
   origin: string;

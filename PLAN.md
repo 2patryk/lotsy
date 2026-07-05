@@ -351,7 +351,8 @@ Uruchamiany cronem co ~3 h (`.github/workflows/search.yml`); w dev ręcznie (`wo
 - [x] Próg cenowy (config 800 PLN), `stops=0`, top 3 per trasa (✅ 2026-06-11)
 - [x] Upsert `Deal` + czyszczenie (`expiresAt`/`departAt`), logowanie `SearchRun` (✅ 2026-06-11)
 - [x] Uruchom na małym podzbiorze tras, sprawdź realne deale w bazie — 259 dealów zapisanych do Neon, `SearchRun=SUCCESS` (✅ 2026-06-11)
-- [!] **Faza 2b (po MVP):** klient Wizz (`timetable` + dynamiczny `{ver}`) + mix & match (⛔ blokada: `be.wizzair.com` zwraca 403 przez CloudFront; Kiwi Tequila API zamknięte 2024; opcja: Amadeus Self-Service — oficjalne, darmowy tier, wymaga rejestracji)
+- [x] **Faza 2b — klient Wizz (W1 ZROBIONE, zweryfikowane 2026-07-05):** `packages/flights-client/src/wizzair.ts` — `getWizzTimetable`, `getWizzRoutes`, `getWizzApiVersion` (auto-detekcja `{ver}`, wykryła 29.5.0). Blokada 403 rozwiązana: nagłówki `Origin/Referer` + dynamiczna wersja. Smoke-test zwraca realne trasy i ceny (WAW→CTA, KTW→BCN). Szczegóły: `WIZZAIR-RESEARCH.md`.
+  - [ ] **W2 — mix & match w silniku:** dołożyć Wizz jako drugie źródło w `engine/src/oneway.ts` / `search.ts`, unia tras w `route-cache.ts`, pooling one-way per dzień (`outboundSource='WIZZAIR'`).
 
 ### Faza 3 — API + Frontend _(Status: ✅ ukończona)_
 - [x] `DealsModule`: `GET /deals` z filtrami (warunek `expiresAt>now` i `departAt>now`), `GET /deals/:id`, `/health`; znacznik „ostatnia aktualizacja" z `SearchRun` (✅ 2026-06-11)

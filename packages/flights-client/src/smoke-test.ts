@@ -1,4 +1,11 @@
-import { getCheapestPerDay, getDestinations, getOneWayFaresList } from './index.js';
+import {
+  getCheapestPerDay,
+  getDestinations,
+  getOneWayFaresList,
+  getWizzApiVersion,
+  getWizzRoutes,
+  getWizzTimetable,
+} from './index.js';
 
 const ROUTES = [
   { origin: 'WMI', dest: 'CIA' },
@@ -83,6 +90,47 @@ async function main() {
     }
   } catch (err) {
     console.error('getOneWayFaresList (IN) ERROR:', err);
+  }
+
+  console.log('\n=== Smoke test: Wizz Air ===\n');
+
+  try {
+    const version = await getWizzApiVersion();
+    console.log(`Wizz API version: ${version}`);
+  } catch (err) {
+    console.error('getWizzApiVersion ERROR:', err);
+  }
+
+  for (const airport of ['WAW', 'KTW', 'GDN']) {
+    try {
+      const routes = await getWizzRoutes(airport);
+      console.log(`${airport} → ${routes.length} routes: ${routes.slice(0, 10).join(', ')}...`);
+    } catch (err) {
+      console.error(`${airport} getWizzRoutes ERROR:`, err);
+    }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+
+  const wizzTo = new Date(today.getTime() + 30 * 86_400_000);
+  for (const { origin, dest } of [
+    { origin: 'WAW', dest: 'CTA' },
+    { origin: 'KTW', dest: 'BCN' },
+  ]) {
+    try {
+      const fares = await getWizzTimetable({
+        origin,
+        destination: dest,
+        from: dateFrom,
+        to: wizzTo.toISOString().slice(0, 10),
+      });
+      console.log(`${origin}→${dest} (Wizz): ${fares.length} days with fares`);
+      for (const f of fares.slice(0, 3)) {
+        console.log(`  ${f.date} dep=${f.departureTime.slice(11, 16)} ${f.price} ${f.currency}`);
+      }
+    } catch (err) {
+      console.error(`${origin}→${dest} getWizzTimetable ERROR:`, err);
+    }
+    await new Promise((r) => setTimeout(r, 400));
   }
 }
 

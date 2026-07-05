@@ -20,6 +20,46 @@ function sleep(ms: number): Promise<void> {
 }
 
 export async function fetchJson<T>(url: string, extraHeaders?: Record<string, string>): Promise<T> {
+  return request<T>(url, { extraHeaders });
+}
+
+/**
+ * POST a JSON body and parse a JSON response, with the same retry/backoff and
+ * browser-header handling as fetchJson. Used by carriers whose fare search is a
+ * POST endpoint (e.g. Wizz Air timetable).
+ */
+export async function fetchJsonPost<T>(
+  url: string,
+  body: unknown,
+  extraHeaders?: Record<string, string>,
+): Promise<T> {
+  return request<T>(url, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    extraHeaders: { 'Content-Type': 'application/json;charset=UTF-8', ...extraHeaders },
+  });
+}
+
+/**
+ * GET a raw text body (no JSON parsing). Used to scrape the current Wizz Air API
+ * version out of the public site.
+ */
+export async function fetchText(
+  url: string,
+  extraHeaders?: Record<string, string>,
+): Promise<string> {
+  return request<string>(url, { extraHeaders, raw: true });
+}
+
+interface RequestOptions {
+  method?: string;
+  body?: string;
+  extraHeaders?: Record<string, string>;
+  raw?: boolean;
+}
+
+async function request<T>(url: string, opts: RequestOptions): Promise<T> {
+  const { method = 'GET', body, extraHeaders, raw = false } = opts;
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -29,6 +69,8 @@ export async function fetchJson<T>(url: string, extraHeaders?: Record<string, st
 
     try {
       const res = await fetch(url, {
+        method,
+        body,
         headers: { ...BROWSER_HEADERS, ...extraHeaders },
       });
 
@@ -41,7 +83,7 @@ export async function fetchJson<T>(url: string, extraHeaders?: Record<string, st
         throw new Error(`HTTP ${res.status} from ${url}`);
       }
 
-      return (await res.json()) as T;
+      return (raw ? await res.text() : await res.json()) as T;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       if (attempt === MAX_RETRIES - 1) throw lastError;

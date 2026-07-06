@@ -21,7 +21,7 @@ import { DayPillsComponent } from '../../shared/filters/day-pills.component';
 import { FilterCardComponent } from '../../shared/filters/filter-card.component';
 import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
 import { OnwardPanelComponent } from './onward-panel.component';
-import { normalize } from '../../shared/text';
+import { normalize, relativeTimePl } from '../../shared/text';
 
 const WD = ['ndz', 'pon', 'wt', 'śr', 'czw', 'pt', 'sob'];
 const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -240,11 +240,27 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
           </div>
         </div>
 
-        <!-- Row 2: day-of-week pills + price + sort + reset -->
+        <!-- Row 2: day-of-week pills + source + price + sort + reset -->
         <div class="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-border pt-4">
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium text-muted-foreground">Dni tygodnia wylotu</label>
             <app-day-pills [selected]="selectedDaysArray()" (toggled)="toggleDay($event)" />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-muted-foreground">Dostawca</label>
+            <div class="flex items-center gap-1">
+              @for (s of sourceOptions; track s.value) {
+                <button
+                  hlmBtn
+                  size="sm"
+                  [variant]="selectedSources().has(s.value) ? 'default' : 'outline'"
+                  class="h-7 shrink-0 rounded-full px-2.5 text-xs"
+                  (click)="toggleSource(s.value)"
+                >
+                  {{ s.label }}
+                </button>
+              }
+            </div>
           </div>
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium text-muted-foreground">Maks. cena (zł)</label>
@@ -411,6 +427,12 @@ export class OneWayPageComponent {
     { value: 'price', label: 'Najtańsze najpierw' },
     { value: 'date', label: 'Data wylotu' },
   ];
+  // Multi-select source pills; empty selection = all sources.
+  readonly sourceOptions = [
+    { value: 'RYANAIR', label: 'Ryanair' },
+    { value: 'WIZZAIR', label: 'Wizz Air' },
+    { value: 'RAINBOW', label: 'Czartery' },
+  ];
 
   direction = signal<OneWayDirection>('OUT');
   loading = signal(true);
@@ -442,21 +464,13 @@ export class OneWayPageComponent {
   expandedFareId = signal<string | null>(null);
 
   selectedDays = signal<Set<number>>(new Set());
+  selectedSources = signal<Set<string>>(new Set());
   dateFrom = signal<string>('');
   dateTo = signal<string>('');
   maxPrice = signal<number | null>(null);
   sort = signal<'price' | 'date'>('price');
 
-  lastUpdate = computed(() => {
-    const ts = this.meta().lastUpdated;
-    if (!ts) return null;
-    return new Date(ts).toLocaleString('pl-PL', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  });
+  lastUpdate = computed(() => relativeTimePl(this.meta().lastUpdated));
   minDate = computed(() => this.meta().dateMin?.slice(0, 10) ?? '');
   maxDate = computed(() => this.meta().dateMax?.slice(0, 10) ?? '');
 
@@ -469,6 +483,7 @@ export class OneWayPageComponent {
       this.selectedPlAirports().length > 0 ||
       this.selectedDest().length > 0 ||
       this.selectedDays().size > 0 ||
+      this.selectedSources().size > 0 ||
       !!this.dateFrom() ||
       !!this.dateTo() ||
       this.maxPrice() != null,
@@ -479,6 +494,7 @@ export class OneWayPageComponent {
     if (this.selectedPlAirports().length > 0) n++;
     if (this.selectedDest().length > 0) n++;
     if (this.selectedDays().size > 0) n++;
+    if (this.selectedSources().size > 0) n++;
     if (this.dateFrom() || this.dateTo()) n++;
     if (this.maxPrice() != null) n++;
     return n;
@@ -564,6 +580,7 @@ export class OneWayPageComponent {
               .join(',') || null,
           dest: dest || null,
           days: [...this.selectedDays()].join(',') || null,
+          src: [...this.selectedSources()].join(',') || null,
           from: this.dateFrom() || null,
           to: this.dateTo() || null,
           max: this.maxPrice() ?? null,
@@ -582,6 +599,13 @@ export class OneWayPageComponent {
         .map(Number)
         .filter((d) => d >= 0 && d <= 6);
       this.selectedDays.set(new Set(days));
+    }
+    if (p['src']) {
+      const valid = new Set(this.sourceOptions.map((s) => s.value));
+      const sources = String(p['src'])
+        .split(',')
+        .filter((s) => valid.has(s));
+      this.selectedSources.set(new Set(sources));
     }
     if (p['from']) this.dateFrom.set(p['from']);
     if (p['to']) this.dateTo.set(p['to']);
@@ -645,6 +669,7 @@ export class OneWayPageComponent {
     this.destInput.set('');
     this.destPanelOpen.set(false);
     this.selectedDays.set(new Set());
+    this.selectedSources.set(new Set());
     this.dateFrom.set('');
     this.dateTo.set('');
     this.maxPrice.set(null);
@@ -764,6 +789,14 @@ export class OneWayPageComponent {
     this.load();
   }
 
+  toggleSource(source: string) {
+    const next = new Set(this.selectedSources());
+    if (next.has(source)) next.delete(source);
+    else next.add(source);
+    this.selectedSources.set(next);
+    this.load();
+  }
+
   setDateFrom(e: Event) {
     this.dateFrom.set((e.target as HTMLInputElement).value);
     this.load();
@@ -794,6 +827,7 @@ export class OneWayPageComponent {
     this.destInput.set('');
     this.destPanelOpen.set(false);
     this.selectedDays.set(new Set());
+    this.selectedSources.set(new Set());
     this.dateFrom.set('');
     this.dateTo.set('');
     this.maxPrice.set(null);
@@ -837,6 +871,7 @@ export class OneWayPageComponent {
         days: [...this.selectedDays()].join(',') || undefined,
         maxPrice: this.maxPrice() ?? undefined,
         sort: this.sort(),
+        source: [...this.selectedSources()].join(',') || undefined,
       })
       .subscribe({
         next: (fares) => {

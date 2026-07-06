@@ -70,6 +70,7 @@ export interface OneWayFaresQuery {
   minPrice?: number;
   maxPrice?: number;
   sort?: OneWayFaresSort;
+  source?: string[]; // "RYANAIR" | "WIZZAIR" | "RAINBOW" (charters); empty = all
 }
 
 @Injectable()
@@ -89,6 +90,7 @@ export class OneWayService {
         ...(query.minPrice != null ? { gte: query.minPrice } : {}),
         ...(query.maxPrice != null ? { lte: query.maxPrice } : {}),
       },
+      ...(query.source?.length ? { source: { in: query.source } } : {}),
     };
 
     if (query.plAirport?.length) {
@@ -132,8 +134,8 @@ export class OneWayService {
         // Day-of-week filtering happens in JS below, so overfetch when active.
         take: query.days?.length ? MAX_RESULTS * 4 : MAX_RESULTS,
       }),
-      // Charters always depart Poland, so they only exist for OUT.
-      query.direction === 'out'
+      // Charters exist in both directions; findCharterFares picks the right leg.
+      !query.source?.length || query.source.includes('RAINBOW')
         ? this.findCharterFares(query)
         : Promise.resolve([]),
     ]);
@@ -160,14 +162,18 @@ export class OneWayService {
     return filtered.slice(0, MAX_RESULTS);
   }
 
-  // One-way Rainbow charters mapped onto the OneWayFare row shape. The
+  // One-way Rainbow charters mapped onto the OneWayFare row shape. Charter
+  // rows exist in BOTH directions: destCountry === 'Polska' marks a flight
+  // into Poland (dep side foreign), anything else departs Poland. The
   // country/city/airport OR-filter is applied in JS because the charter city
   // is a label like "Kreta - Heraklion" that needs fuzzy matching.
   private async findCharterFares(
     query: OneWayFaresQuery,
   ): Promise<OneWayFareRow[]> {
+    const isIn = query.direction === 'in';
     const where: Prisma.CharterFlightWhereInput = {
       oneWay: true,
+      destCountry: isIn ? 'Polska' : { not: 'Polska' },
       date: {
         gte: query.dateFrom
           ? new Date(`${query.dateFrom}T00:00:00Z`)
@@ -178,7 +184,11 @@ export class OneWayService {
         ...(query.minPrice != null ? { gte: query.minPrice } : {}),
         ...(query.maxPrice != null ? { lte: query.maxPrice } : {}),
       },
-      ...(query.plAirport?.length ? { depIata: { in: query.plAirport } } : {}),
+      ...(query.plAirport?.length
+        ? isIn
+          ? { destIata: { in: query.plAirport } }
+          : { depIata: { in: query.plAirport } }
+        : {}),
     };
 
     const rows = await prisma.charterFlight.findMany({
@@ -186,6 +196,12 @@ export class OneWayService {
       orderBy: query.sort === 'date' ? [{ date: 'asc' }] : [{ price: 'asc' }],
       take: MAX_RESULTS * 4,
     });
+
+    // IN rows carry no origin-country; resolve it from the synced Airport
+    // table (ISO code → Polish name) so the country filter and UI work.
+    const countryByIata = isIn
+      ? await this.polishCountryNames([...new Set(rows.map((r) => r.depIata))])
+      : new Map<string, string>();
 
     const hasDestFilter =
       !!query.country?.length ||
@@ -196,13 +212,18 @@ export class OneWayService {
     const cityNeedles = (query.city ?? []).map(normalize);
 
     return rows
-      .filter(
-        (c) =>
-          !hasDestFilter ||
-          countries.has(c.destCountry) ||
-          airports.has(c.destIata) ||
-          cityNeedles.some((n) => normalize(c.destName).includes(n)),
-      )
+      .filter((c) => {
+        if (!hasDestFilter) return true;
+        // Match the foreign end: dest for OUT, dep for IN.
+        const [iata, label, country] = isIn
+          ? [c.depIata, c.depAirport, countryByIata.get(c.depIata) ?? '']
+          : [c.destIata, c.destName, c.destCountry];
+        return (
+          countries.has(country) ||
+          airports.has(iata) ||
+          cityNeedles.some((n) => normalize(label).includes(n))
+        );
+      })
       .map((c) => {
         const departureTime = timeOnDate(c.date, c.depTime);
         // arrTime has no date of its own — an "earlier" arrival means the
@@ -214,10 +235,10 @@ export class OneWayService {
         );
         return {
           id: c.id,
-          direction: 'OUT',
+          direction: isIn ? 'IN' : 'OUT',
           origin: c.depIata,
           originCity: c.depAirport,
-          originCountry: 'Polska',
+          originCountry: isIn ? (countryByIata.get(c.depIata) ?? '') : 'Polska',
           destination: c.destIata,
           destCity: c.destName,
           destCountry: c.destCountry,
@@ -238,6 +259,27 @@ export class OneWayService {
           },
         };
       });
+  }
+
+  // IATA → Polish country name, via the synced Airport table's ISO codes.
+  private async polishCountryNames(
+    iatas: string[],
+  ): Promise<Map<string, string>> {
+    if (!iatas.length) return new Map();
+    const airports = await prisma.airport.findMany({
+      where: { iata: { in: iatas } },
+    });
+    const regionNames = new Intl.DisplayNames(['pl'], { type: 'region' });
+    const out = new Map<string, string>();
+    for (const a of airports) {
+      try {
+        const name = regionNames.of(a.country.toUpperCase());
+        if (name) out.set(a.iata, name);
+      } catch {
+        /* unknown code — leave unmapped */
+      }
+    }
+    return out;
   }
 
   // Filter domain for the UI: Polish airports, foreign countries, date range.
@@ -365,71 +407,93 @@ export class OneWayService {
       lastUpdated: latest?.updatedAt ?? null,
     };
 
-    // OUT results also include one-way charters — extend the filter domains
+    // Both directions include one-way charters — extend the filter domains
     // with their airports/countries so charter-only destinations are pickable.
-    if (direction === 'out') {
-      const charterWhere = { oneWay: true, date: { gte: new Date() } };
-      const [chDeps, chDests, chDates] = await Promise.all([
-        prisma.charterFlight.groupBy({
-          by: ['depIata', 'depAirport'],
-          where: charterWhere,
-        }),
-        prisma.charterFlight.groupBy({
-          by: ['destIata', 'destName', 'destCountry'],
-          where: charterWhere,
-        }),
-        prisma.charterFlight.aggregate({
-          where: charterWhere,
-          _min: { date: true },
-          _max: { date: true },
-        }),
-      ]);
+    // OUT: Polish side = dep, foreign side = dest. IN: mirrored.
+    const isIn = direction === 'in';
+    const charterWhere = {
+      oneWay: true,
+      destCountry: isIn ? 'Polska' : { not: 'Polska' },
+      date: { gte: new Date() },
+    };
+    const [chDeps, chDests, chDates] = await Promise.all([
+      prisma.charterFlight.groupBy({
+        by: ['depIata', 'depAirport'],
+        where: charterWhere,
+      }),
+      prisma.charterFlight.groupBy({
+        by: ['destIata', 'destName', 'destCountry'],
+        where: charterWhere,
+      }),
+      prisma.charterFlight.aggregate({
+        where: charterWhere,
+        _min: { date: true },
+        _max: { date: true },
+      }),
+    ]);
 
-      const plSeen = new Set(meta.plAirports.map((a) => a.iata));
-      for (const d of chDeps) {
-        if (plSeen.has(d.depIata)) continue;
-        plSeen.add(d.depIata);
-        meta.plAirports.push({ iata: d.depIata, city: d.depAirport });
-      }
-      meta.plAirports.sort((a, b) => a.city.localeCompare(b.city, 'pl'));
+    // Normalize to (polish side, foreign side) regardless of direction.
+    const polishSide = isIn
+      ? chDests.map((d) => ({ iata: d.destIata, city: d.destName }))
+      : chDeps.map((d) => ({ iata: d.depIata, city: d.depAirport }));
+    let foreignSide: { iata: string; city: string; country: string }[];
+    if (isIn) {
+      const countryByIata = await this.polishCountryNames(
+        chDeps.map((d) => d.depIata),
+      );
+      foreignSide = chDeps.map((d) => ({
+        iata: d.depIata,
+        city: d.depAirport,
+        country: countryByIata.get(d.depIata) ?? '',
+      }));
+    } else {
+      foreignSide = chDests.map((d) => ({
+        iata: d.destIata,
+        city: d.destName,
+        country: d.destCountry,
+      }));
+    }
 
-      const countrySeen = new Set(meta.countries);
-      const citySeen = new Set(meta.cities.map((c) => c.name));
-      const airportSeen = new Set(meta.airports.map((a) => a.iata));
-      for (const d of chDests) {
-        if (!countrySeen.has(d.destCountry)) {
-          countrySeen.add(d.destCountry);
-          meta.countries.push(d.destCountry);
-        }
-        if (!citySeen.has(d.destName)) {
-          citySeen.add(d.destName);
-          meta.cities.push({ name: d.destName, country: d.destCountry });
-        }
-        if (!airportSeen.has(d.destIata)) {
-          airportSeen.add(d.destIata);
-          meta.airports.push({
-            iata: d.destIata,
-            city: d.destName,
-            country: d.destCountry,
-          });
-        }
-      }
-      meta.countries.sort((a, b) => a.localeCompare(b, 'pl'));
-      meta.cities.sort((a, b) => a.name.localeCompare(b.name, 'pl'));
-      meta.airports.sort((a, b) => a.iata.localeCompare(b.iata));
+    const plSeen = new Set(meta.plAirports.map((a) => a.iata));
+    for (const d of polishSide) {
+      if (plSeen.has(d.iata)) continue;
+      plSeen.add(d.iata);
+      meta.plAirports.push({ iata: d.iata, city: d.city });
+    }
+    meta.plAirports.sort((a, b) => a.city.localeCompare(b.city, 'pl'));
 
-      if (
-        chDates._min.date &&
-        (!meta.dateMin || chDates._min.date < meta.dateMin)
-      ) {
-        meta.dateMin = chDates._min.date;
+    const countrySeen = new Set(meta.countries);
+    const citySeen = new Set(meta.cities.map((c) => c.name));
+    const airportSeen = new Set(meta.airports.map((a) => a.iata));
+    for (const d of foreignSide) {
+      if (d.country && !countrySeen.has(d.country)) {
+        countrySeen.add(d.country);
+        meta.countries.push(d.country);
       }
-      if (
-        chDates._max.date &&
-        (!meta.dateMax || chDates._max.date > meta.dateMax)
-      ) {
-        meta.dateMax = chDates._max.date;
+      if (!citySeen.has(d.city)) {
+        citySeen.add(d.city);
+        meta.cities.push({ name: d.city, country: d.country });
       }
+      if (!airportSeen.has(d.iata)) {
+        airportSeen.add(d.iata);
+        meta.airports.push({ iata: d.iata, city: d.city, country: d.country });
+      }
+    }
+    meta.countries.sort((a, b) => a.localeCompare(b, 'pl'));
+    meta.cities.sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+    meta.airports.sort((a, b) => a.iata.localeCompare(b.iata));
+
+    if (
+      chDates._min.date &&
+      (!meta.dateMin || chDates._min.date < meta.dateMin)
+    ) {
+      meta.dateMin = chDates._min.date;
+    }
+    if (
+      chDates._max.date &&
+      (!meta.dateMax || chDates._max.date > meta.dateMax)
+    ) {
+      meta.dateMax = chDates._max.date;
     }
 
     return meta;

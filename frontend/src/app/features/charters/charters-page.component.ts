@@ -13,6 +13,7 @@ import {
   type SegmentOption,
 } from '../../shared/filters/segmented-toggle.component';
 import { DayPillsComponent } from '../../shared/filters/day-pills.component';
+import { relativeTimePl } from '../../shared/text';
 import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
 import { FilterCardComponent } from '../../shared/filters/filter-card.component';
 import { ChartersService } from '../../core/services/charters.service';
@@ -370,16 +371,7 @@ export class ChartersPageComponent {
   maxPrice = signal<number | null>(null);
   sort = signal<'price' | 'date'>('price');
 
-  lastUpdate = computed(() => {
-    const ts = this.meta().lastUpdate;
-    if (!ts) return null;
-    return new Date(ts).toLocaleString('pl-PL', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  });
+  lastUpdate = computed(() => relativeTimePl(this.meta().lastUpdate));
   minDate = computed(() => this.meta().minDate?.slice(0, 10) ?? '');
   maxDate = computed(() => this.meta().maxDate?.slice(0, 10) ?? '');
 

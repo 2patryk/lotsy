@@ -192,10 +192,11 @@ export class OnwardService {
       flights = await this.getWindow(carrier, mode, airport, windowStart);
     }
 
-    // One-way charters only fly Poland → destination, so they can feed an
-    // arrivals lookup. Piggyback on the base (ryanair) stream — DB, no cost.
-    if (carrier === 'ryanair' && mode === 'arrivals') {
-      flights = [...flights, ...(await this.getCharterArrivals(airport, date))];
+    // One-way charters exist in both directions (Poland→dest and dest→Poland),
+    // so they can feed either mode. Piggyback on the base (ryanair) stream —
+    // DB lookup, no extra cost.
+    if (carrier === 'ryanair') {
+      flights = [...flights, ...(await this.getCharters(mode, airport, date))];
     }
 
     return flights
@@ -451,16 +452,18 @@ export class OnwardService {
     });
   }
 
-  // One-way Rainbow charters landing at `airport` on `date`, straight from
-  // the DB snapshot (no caching needed).
-  private async getCharterArrivals(
+  // One-way Rainbow charters touching `airport` on `date`, straight from the
+  // DB snapshot (no caching needed). arrivals → charters landing there;
+  // departures → charters taking off there (dest→Poland legs).
+  private async getCharters(
+    mode: OnwardMode,
     airport: string,
     date: string,
   ): Promise<OnwardFlight[]> {
     const rows = await prisma.charterFlight.findMany({
       where: {
         oneWay: true,
-        destIata: airport,
+        ...(mode === 'arrivals' ? { destIata: airport } : { depIata: airport }),
         date: new Date(`${date}T00:00:00Z`),
       },
     });
@@ -475,7 +478,8 @@ export class OnwardService {
         origin: c.depIata,
         destination: c.destIata,
         originCity: c.depAirport,
-        originCountry: 'Polska',
+        // Whichever end is not Poland has no country in charter data.
+        originCountry: c.destCountry === 'Polska' ? '' : 'Polska',
         destCity: c.destName,
         destCountry: c.destCountry,
         date,

@@ -22,6 +22,7 @@ export interface OneWayFaresQueryParams {
   minPrice?: number;
   maxPrice?: number;
   sort?: 'price' | 'date';
+  source?: string; // comma-separated: RYANAIR,WIZZAIR,RAINBOW; empty = all
 }
 
 @Injectable({ providedIn: 'root' })
@@ -40,6 +41,7 @@ export class OneWayService {
     if (query.minPrice != null) params = params.set('minPrice', String(query.minPrice));
     if (query.maxPrice != null) params = params.set('maxPrice', String(query.maxPrice));
     if (query.sort) params = params.set('sort', query.sort);
+    if (query.source) params = params.set('source', query.source);
     return this.http.get<OneWayFare[]>(`${environment.apiUrl}/oneway/fares`, { params });
   }
 

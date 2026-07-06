@@ -9,6 +9,7 @@ import {
   type MultiSelectOption,
 } from '../../shared/filters/multi-select-dropdown.component';
 import { DayPillsComponent } from '../../shared/filters/day-pills.component';
+import { relativeTimePl } from '../../shared/text';
 import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
 import { FilterCardComponent } from '../../shared/filters/filter-card.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -504,10 +505,7 @@ export class DealsPageComponent {
 
     this.dealsService.getHealth().subscribe({
       next: (h) => {
-        if (h.lastSuccessfulRun) {
-          const mins = Math.round((Date.now() - new Date(h.lastSuccessfulRun).getTime()) / 60000);
-          this.lastUpdate.set(mins < 60 ? `${mins} min temu` : `${Math.round(mins / 60)} h temu`);
-        }
+        this.lastUpdate.set(relativeTimePl(h.lastSuccessfulRun));
       },
       error: () => {},
     });

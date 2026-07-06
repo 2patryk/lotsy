@@ -58,6 +58,7 @@ export class OneWayController {
     @Query('minPrice') minPrice?: string,
     @Query('maxPrice') maxPrice?: string,
     @Query('sort') sort?: OneWayFaresSort,
+    @Query('source') source?: string,
   ) {
     return this.oneWayService.findFares({
       direction: toDirection(direction),
@@ -71,6 +72,7 @@ export class OneWayController {
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
       sort,
+      source: csv(source)?.map((s) => s.toUpperCase()),
     });
   }
 

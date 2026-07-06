@@ -12,7 +12,7 @@ import { SavedDealsService } from '../services/saved-deals.service';
     <header class="sticky top-0 z-50 h-14 border-b border-border bg-card">
       <div class="mx-auto flex h-full max-w-[1100px] items-center gap-3 px-3 sm:gap-5 sm:px-6">
         <a
-          [routerLink]="['/deals']"
+          [routerLink]="['/']"
           class="flex shrink-0 items-center gap-2 text-foreground"
           aria-label="Lotsy"
         >
@@ -31,12 +31,11 @@ import { SavedDealsService } from '../services/saved-deals.service';
             hlmBtn
             variant="ghost"
             size="sm"
-            [routerLink]="['/deals']"
+            [routerLink]="['/jedna-strona']"
             routerLinkActive="bg-primary/10 text-primary font-semibold"
-            [routerLinkActiveOptions]="{ exact: true }"
             class="shrink-0 text-muted-foreground"
           >
-            Okazje
+            W jedną stronę
           </a>
           <a
             hlmBtn
@@ -52,11 +51,12 @@ import { SavedDealsService } from '../services/saved-deals.service';
             hlmBtn
             variant="ghost"
             size="sm"
-            [routerLink]="['/jedna-strona']"
+            [routerLink]="['/deals']"
             routerLinkActive="bg-primary/10 text-primary font-semibold"
+            [routerLinkActiveOptions]="{ exact: true }"
             class="shrink-0 text-muted-foreground"
           >
-            W jedną stronę
+            Okazje
           </a>
         </nav>
 

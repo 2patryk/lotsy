@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'deals', pathMatch: 'full' },
+  { path: '', redirectTo: 'jedna-strona', pathMatch: 'full' },
   {
     path: 'deals',
     loadComponent: () =>

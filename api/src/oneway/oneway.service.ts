@@ -4,6 +4,53 @@ import type { Prisma } from '@lotsy/db';
 
 const MAX_RESULTS = 300;
 
+// One-way Rainbow charters (CharterFlight rows) are merged into the OUT
+// results at query time — they can't live in OneWayFare because several
+// charters may share (origin, destination, date), which its unique key forbids.
+interface CharterExtras {
+  destCountryUrl: string;
+  destNameUrl: string;
+  pakietId: string | null;
+  baggageKg: number | null;
+}
+
+export interface OneWayFareRow {
+  id: string;
+  direction: string;
+  origin: string;
+  originCity: string;
+  originCountry: string;
+  destination: string;
+  destCity: string;
+  destCountry: string;
+  date: Date;
+  departureTime: Date;
+  arrivalTime: Date;
+  flightNumber: string | null;
+  price: number;
+  currency: string;
+  source: string;
+  airline: string;
+  updatedAt: Date;
+  charter?: CharterExtras;
+}
+
+// "HH:MM" local wall-clock + the flight's UTC-midnight date → Date, matching
+// the wall-clock-as-UTC convention used by OneWayFare rows.
+function timeOnDate(date: Date, hhmm: string, extraDays = 0): Date {
+  const [h = 0, m = 0] = hhmm.split(':').map(Number);
+  return new Date(date.getTime() + ((extraDays * 24 + h) * 60 + m) * 60_000);
+}
+
+// Diacritic- and case-insensitive normalization for label matching.
+function normalize(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[łŁ]/g, 'l')
+    .toLowerCase();
+}
+
 export type OneWayDirection = 'out' | 'in';
 export type OneWayFaresSort = 'price' | 'date';
 
@@ -78,21 +125,119 @@ export class OneWayService {
         ? [{ departureTime: 'asc' }, { price: 'asc' }]
         : [{ price: 'asc' }, { departureTime: 'asc' }];
 
-    const fares = await prisma.oneWayFare.findMany({
-      where,
-      orderBy,
-      // Day-of-week filtering happens in JS below, so overfetch when active.
-      take: query.days?.length ? MAX_RESULTS * 4 : MAX_RESULTS,
-    });
+    const [fares, charters] = await Promise.all([
+      prisma.oneWayFare.findMany({
+        where,
+        orderBy,
+        // Day-of-week filtering happens in JS below, so overfetch when active.
+        take: query.days?.length ? MAX_RESULTS * 4 : MAX_RESULTS,
+      }),
+      // Charters always depart Poland, so they only exist for OUT.
+      query.direction === 'out'
+        ? this.findCharterFares(query)
+        : Promise.resolve([]),
+    ]);
+
+    const merged: OneWayFareRow[] = [
+      ...(fares as OneWayFareRow[]),
+      ...charters,
+    ];
 
     const daySet = query.days?.length ? new Set(query.days) : null;
     const filtered = daySet
-      ? fares
-          .filter((f) => daySet.has(f.date.getUTCDay()))
-          .slice(0, MAX_RESULTS)
-      : fares;
+      ? merged.filter((f) => daySet.has(f.date.getUTCDay()))
+      : merged;
 
-    return filtered;
+    // Two sources merge in JS, so the DB orderBy alone is not enough.
+    filtered.sort((a, b) =>
+      query.sort === 'date'
+        ? a.departureTime.getTime() - b.departureTime.getTime() ||
+          a.price - b.price
+        : a.price - b.price ||
+          a.departureTime.getTime() - b.departureTime.getTime(),
+    );
+
+    return filtered.slice(0, MAX_RESULTS);
+  }
+
+  // One-way Rainbow charters mapped onto the OneWayFare row shape. The
+  // country/city/airport OR-filter is applied in JS because the charter city
+  // is a label like "Kreta - Heraklion" that needs fuzzy matching.
+  private async findCharterFares(
+    query: OneWayFaresQuery,
+  ): Promise<OneWayFareRow[]> {
+    const where: Prisma.CharterFlightWhereInput = {
+      oneWay: true,
+      date: {
+        gte: query.dateFrom
+          ? new Date(`${query.dateFrom}T00:00:00Z`)
+          : new Date(),
+        ...(query.dateTo ? { lte: new Date(`${query.dateTo}T23:59:59Z`) } : {}),
+      },
+      price: {
+        ...(query.minPrice != null ? { gte: query.minPrice } : {}),
+        ...(query.maxPrice != null ? { lte: query.maxPrice } : {}),
+      },
+      ...(query.plAirport?.length ? { depIata: { in: query.plAirport } } : {}),
+    };
+
+    const rows = await prisma.charterFlight.findMany({
+      where,
+      orderBy: query.sort === 'date' ? [{ date: 'asc' }] : [{ price: 'asc' }],
+      take: MAX_RESULTS * 4,
+    });
+
+    const hasDestFilter =
+      !!query.country?.length ||
+      !!query.city?.length ||
+      !!query.airport?.length;
+    const countries = new Set(query.country ?? []);
+    const airports = new Set(query.airport ?? []);
+    const cityNeedles = (query.city ?? []).map(normalize);
+
+    return rows
+      .filter(
+        (c) =>
+          !hasDestFilter ||
+          countries.has(c.destCountry) ||
+          airports.has(c.destIata) ||
+          cityNeedles.some((n) => normalize(c.destName).includes(n)),
+      )
+      .map((c) => {
+        const departureTime = timeOnDate(c.date, c.depTime);
+        // arrTime has no date of its own — an "earlier" arrival means the
+        // flight lands the next day.
+        const arrivalTime = timeOnDate(
+          c.date,
+          c.arrTime,
+          c.arrTime < c.depTime ? 1 : 0,
+        );
+        return {
+          id: c.id,
+          direction: 'OUT',
+          origin: c.depIata,
+          originCity: c.depAirport,
+          originCountry: 'Polska',
+          destination: c.destIata,
+          destCity: c.destName,
+          destCountry: c.destCountry,
+          date: c.date,
+          departureTime,
+          arrivalTime,
+          flightNumber: c.flightNo,
+          price: c.price,
+          currency: 'PLN',
+          source: 'RAINBOW',
+          airline: c.airline,
+          updatedAt: c.updatedAt,
+          charter: {
+            destCountryUrl: c.destCountryUrl,
+            destNameUrl: c.destNameUrl,
+            pakietId: c.pakietId,
+            baggageKg: c.baggageKg,
+          },
+        };
+      });
   }
 
   // Filter domain for the UI: Polish airports, foreign countries, date range.
@@ -210,7 +355,7 @@ export class OneWayService {
             country: a.destCountry,
           }));
 
-    return {
+    const meta = {
       plAirports: plAirportList,
       countries: countryList,
       cities: cityList,
@@ -219,5 +364,74 @@ export class OneWayService {
       dateMax: dateRange._max.date,
       lastUpdated: latest?.updatedAt ?? null,
     };
+
+    // OUT results also include one-way charters — extend the filter domains
+    // with their airports/countries so charter-only destinations are pickable.
+    if (direction === 'out') {
+      const charterWhere = { oneWay: true, date: { gte: new Date() } };
+      const [chDeps, chDests, chDates] = await Promise.all([
+        prisma.charterFlight.groupBy({
+          by: ['depIata', 'depAirport'],
+          where: charterWhere,
+        }),
+        prisma.charterFlight.groupBy({
+          by: ['destIata', 'destName', 'destCountry'],
+          where: charterWhere,
+        }),
+        prisma.charterFlight.aggregate({
+          where: charterWhere,
+          _min: { date: true },
+          _max: { date: true },
+        }),
+      ]);
+
+      const plSeen = new Set(meta.plAirports.map((a) => a.iata));
+      for (const d of chDeps) {
+        if (plSeen.has(d.depIata)) continue;
+        plSeen.add(d.depIata);
+        meta.plAirports.push({ iata: d.depIata, city: d.depAirport });
+      }
+      meta.plAirports.sort((a, b) => a.city.localeCompare(b.city, 'pl'));
+
+      const countrySeen = new Set(meta.countries);
+      const citySeen = new Set(meta.cities.map((c) => c.name));
+      const airportSeen = new Set(meta.airports.map((a) => a.iata));
+      for (const d of chDests) {
+        if (!countrySeen.has(d.destCountry)) {
+          countrySeen.add(d.destCountry);
+          meta.countries.push(d.destCountry);
+        }
+        if (!citySeen.has(d.destName)) {
+          citySeen.add(d.destName);
+          meta.cities.push({ name: d.destName, country: d.destCountry });
+        }
+        if (!airportSeen.has(d.destIata)) {
+          airportSeen.add(d.destIata);
+          meta.airports.push({
+            iata: d.destIata,
+            city: d.destName,
+            country: d.destCountry,
+          });
+        }
+      }
+      meta.countries.sort((a, b) => a.localeCompare(b, 'pl'));
+      meta.cities.sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+      meta.airports.sort((a, b) => a.iata.localeCompare(b.iata));
+
+      if (
+        chDates._min.date &&
+        (!meta.dateMin || chDates._min.date < meta.dateMin)
+      ) {
+        meta.dateMin = chDates._min.date;
+      }
+      if (
+        chDates._max.date &&
+        (!meta.dateMax || chDates._max.date > meta.dateMax)
+      ) {
+        meta.dateMax = chDates._max.date;
+      }
+    }
+
+    return meta;
   }
 }

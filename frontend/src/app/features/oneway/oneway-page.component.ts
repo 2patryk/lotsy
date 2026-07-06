@@ -345,13 +345,13 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
               <!-- ── Left ─────────────────────── -->
               <div class="flex min-w-0 flex-col gap-2">
                 <div class="flex flex-wrap items-center gap-1.5">
-                  <!-- Flag and country of the foreign side: destination when
-                       flying out of Poland, origin when flying back in. -->
-                  @if (foreignFlag(f)) {
-                    <span class="text-[15px]">{{ foreignFlag(f) }}</span>
-                  }
-                  <span class="text-[15px] font-bold">{{ f.originCity }} → {{ f.destCity }}</span>
+                  <span class="text-[15px] font-bold"
+                    >{{ flagPl(f.originCountry) }} {{ f.originCity }} → {{ flagPl(f.destCountry) }}
+                    {{ f.destCity }}</span
+                  >
                   <span class="text-border max-sm:hidden">·</span>
+                  <!-- Country label of the foreign side: destination when
+                       flying out of Poland, origin when flying back in. -->
                   <span class="text-[13px] text-muted-foreground">{{
                     direction() === 'IN' ? f.originCountry : f.destCountry
                   }}</span>
@@ -488,10 +488,7 @@ export class OneWayPageComponent {
   sort = signal<'price' | 'date'>('price');
 
   lastUpdate = computed(() => relativeTimePl(this.meta().lastUpdated));
-
-  foreignFlag(f: OneWayFare): string {
-    return countryFlagPl(this.direction() === 'IN' ? f.originCountry : f.destCountry);
-  }
+  readonly flagPl = countryFlagPl;
   minDate = computed(() => this.meta().dateMin?.slice(0, 10) ?? '');
   maxDate = computed(() => this.meta().dateMax?.slice(0, 10) ?? '');
 

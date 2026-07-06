@@ -21,21 +21,10 @@ import { DayPillsComponent } from '../../shared/filters/day-pills.component';
 import { FilterCardComponent } from '../../shared/filters/filter-card.component';
 import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
 import { OnwardPanelComponent } from './onward-panel.component';
+import { normalize } from '../../shared/text';
 
 const WD = ['ndz', 'pon', 'wt', 'śr', 'czw', 'pt', 'sob'];
 const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
-
-// Diacritic- and case-insensitive normalization, e.g. "wlochy" matches "Włochy".
-function normalize(s: string): string {
-  return (
-    s
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      // NFD does not decompose stroked letters, so map Polish l-stroke by hand.
-      .replace(/[łŁ]/g, 'l')
-      .toLowerCase()
-  );
-}
 
 interface DestSuggestion {
   kind: 'country' | 'city' | 'airport';

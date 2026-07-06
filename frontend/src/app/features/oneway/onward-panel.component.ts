@@ -3,9 +3,11 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import type { Subscription } from 'rxjs';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { OneWayService } from '../../core/services/oneway.service';
 import type { OneWayFare, OnwardFlight, OnwardMode } from '../../core/models/oneway-fare.model';
+import { normalize } from '../../shared/text';
 
 const WD = ['ndz', 'pon', 'wt', 'śr', 'czw', 'pt', 'sob'];
 const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -40,7 +42,7 @@ function dayLabel(date: string): string {
 @Component({
   selector: 'app-onward-panel',
   standalone: true,
-  imports: [CommonModule, DecimalPipe, HlmBadge, HlmButton, HlmSpinner],
+  imports: [CommonModule, DecimalPipe, HlmBadge, HlmButton, HlmInput, HlmSpinner],
   template: `
     <div class="flex flex-col gap-3 border-t border-border bg-accent/20 px-3.5 py-4 sm:px-5">
       <div class="flex flex-col gap-0.5">
@@ -64,7 +66,7 @@ function dayLabel(date: string): string {
         </span>
       </div>
 
-      <!-- Day selector: base day … ±7 -->
+      <!-- Day selector: base day … ±7, plus a text filter over fetched results -->
       <div class="flex flex-wrap items-center gap-1">
         @for (d of days(); track d.date) {
           <button
@@ -77,6 +79,17 @@ function dayLabel(date: string): string {
             {{ d.label }}
           </button>
         }
+        <input
+          hlmInput
+          class="h-7 w-40 text-xs sm:ml-auto"
+          type="text"
+          [placeholder]="
+            mode() === 'departures' ? 'Dokąd? Kraj lub miasto…' : 'Skąd? Kraj lub miasto…'
+          "
+          [value]="searchQuery()"
+          (input)="onSearchInput($event)"
+          (click)="$event.stopPropagation()"
+        />
       </div>
 
       <!-- Google Flights is fetched only on demand (unofficial API, can be
@@ -122,7 +135,11 @@ function dayLabel(date: string): string {
         </div>
       } @else if (!flights().length && !anyLoading()) {
         <div class="py-3 text-sm text-muted-foreground">
-          Brak połączeń tego dnia{{ isBaseDay() ? ' (min. 2 h na przesiadkę)' : '' }}.
+          @if (searchQuery().trim()) {
+            Brak połączeń dla „{{ searchQuery() }}" tego dnia.
+          } @else {
+            Brak połączeń tego dnia{{ isBaseDay() ? ' (min. 2 h na przesiadkę)' : '' }}.
+          }
         </div>
       } @else {
         <div
@@ -245,6 +262,31 @@ export class OnwardPanelComponent {
   });
   anyLoading = computed(() => this.ryanLoading() || this.wizzLoading() || this.googleLoading());
 
+  // Text filter over the fetched list, matching the varying end of each
+  // flight (destination for departures, origin for arrivals) by city or
+  // country. Kept across day switches.
+  searchQuery = signal('');
+  // Wizz/Google rows carry ISO country codes; translate for matching "hiszpania".
+  private regionNames = new Intl.DisplayNames(['pl'], { type: 'region' });
+
+  private matchesQuery(x: OnwardFlight, q: string): boolean {
+    const [city, country] =
+      this.mode() === 'departures' ? [x.destCity, x.destCountry] : [x.originCity, x.originCountry];
+    let countryFull = country;
+    if (/^[A-Z]{2}$/.test(country)) {
+      try {
+        countryFull = this.regionNames.of(country) ?? country;
+      } catch {
+        /* keep the raw code */
+      }
+    }
+    return (
+      normalize(city).includes(q) ||
+      normalize(country).includes(q) ||
+      normalize(countryFull).includes(q)
+    );
+  }
+
   // Merged, price-sorted list with the 2h transfer buffer applied on the
   // fare's own day (other days need no time constraint).
   flights = computed<OnwardFlight[]>(() => {
@@ -264,6 +306,8 @@ export class OnwardPanelComponent {
                 new Date(f.departureTime).getTime() - MIN_TRANSFER_MS,
             );
     }
+    const q = normalize(this.searchQuery().trim());
+    if (q) all = all.filter((x) => this.matchesQuery(x, q));
     return all.sort((a, b) => a.price - b.price);
   });
 
@@ -282,6 +326,10 @@ export class OnwardPanelComponent {
     if (this.selectedDate() === date) return;
     this.selectedDate.set(date);
     this.load(date);
+  }
+
+  onSearchInput(e: Event) {
+    this.searchQuery.set((e.target as HTMLInputElement).value);
   }
 
   private load(date: string) {

@@ -396,10 +396,11 @@ export class OneWayService {
             city: a.originCity,
           }));
 
-    const countryList =
+    const countryList = (
       direction === 'in'
         ? (countries as { originCountry: string }[]).map((c) => c.originCountry)
-        : (countries as { destCountry: string }[]).map((c) => c.destCountry);
+        : (countries as { destCountry: string }[]).map((c) => c.destCountry)
+    ).filter((c) => c.trim() !== ''); // unresolved countries are stored as ''
 
     const cityList =
       direction === 'in'

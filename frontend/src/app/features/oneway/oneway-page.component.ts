@@ -539,7 +539,8 @@ export class OneWayPageComponent {
 
     const countries: DestSuggestion[] = this.meta()
       .countries.filter(
-        (c) => !selectedCountries.has(c) && (!query || normalize(c).includes(query)),
+        // Rows with an unresolved country come through as '' — never suggest them.
+        (c) => !!c.trim() && !selectedCountries.has(c) && (!query || normalize(c).includes(query)),
       )
       .map((name): DestSuggestion => ({ kind: 'country', name, negated }));
 
@@ -725,6 +726,9 @@ export class OneWayPageComponent {
   }
 
   onPlAirportFocus() {
+    // Container clicks are stopPropagation()-ed, so document:click never
+    // closes the sibling dropdown — close it here instead.
+    this.destPanelOpen.set(false);
     this.plAirportPanelOpen.set(true);
     this.plAirportHighlight.set(0);
   }
@@ -775,6 +779,7 @@ export class OneWayPageComponent {
   }
 
   onDestFocus() {
+    this.plAirportPanelOpen.set(false);
     this.destPanelOpen.set(true);
     this.destHighlight.set(0);
   }

@@ -2,14 +2,19 @@ name: Keep API awake
 
 # Render's free tier spins the service down after 15 minutes without traffic
 # (cold start ~30-60s + the onward panel's in-memory caches are lost).
-# A /health ping every 10 minutes keeps the instance warm; one service
+# A /health ping every ~10 minutes keeps the instance warm; one service
 # running 24/7 fits within Render's 750 free instance-hours per month.
-# Note: GitHub pauses scheduled workflows after ~60 days of repo inactivity.
+#
+# GitHub cron is BEST-EFFORT and heavily throttled at round minutes
+# (:00/:10/...), so we fire at odd minutes; if it still skips, use an
+# external pinger (UptimeRobot / cron-job.org) as the primary keepalive.
+# Note: GitHub also pauses scheduled workflows after ~60 days of repo
+# inactivity.
 
 on:
   workflow_dispatch: # manual trigger for testing
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '4,17,29,43,56 * * * *'
 
 jobs:
   ping:

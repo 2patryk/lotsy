@@ -24,10 +24,15 @@ poniższa analiza dotyczy wyłącznie API.
 ## Rekomendacja (kolejność)
 
 1. **Pinger na Render free (0 zł)** — wdrożone: `.github/workflows/keepalive.yml`
-   pinguje `https://lotsy-api.onrender.com/health` co 10 min. Uwaga: GitHub
-   wyłącza harmonogramy po ~60 dniach bez aktywności w repo (przyjdzie mail,
-   trzeba kliknąć „re-enable") oraz cron potrafi mieć kilkuminutowe opóźnienia
-   — dla podtrzymania procesu bez znaczenia.
+   pinguje `https://lotsy-api.onrender.com/health` ~co 10 min (nietypowe
+   minuty, bo GitHub dławi crony o okrągłych). **Uwaga (potwierdzone w
+   praktyce 2026-07-06):** cron GitHuba jest best-effort — potrafił odpalić
+   raz na kilka godzin. Jeśli po zmianie minut nadal gubi strzały, jako
+   podstawowy pinger załóż darmowy monitor HTTP w
+   [UptimeRobot](https://uptimerobot.com) (interwał 5 min, URL
+   `https://lotsy-api.onrender.com/health`) — 2 minuty klikania, wymaga
+   założenia konta. GitHub dodatkowo wyłącza harmonogramy po ~60 dniach bez
+   aktywności w repo (mail + „re-enable").
 2. Jeśli Render zacznie przeszkadzać (limity, restarty kasujące cache):
    **Oracle Free** (0 zł, więcej pracy) albo **Mikrus 2.1 / Fly.io** (grosze,
    mniej pracy). Do Mikrusa/Oracle potrzebny Dockerfile + Cloudflare Tunnel

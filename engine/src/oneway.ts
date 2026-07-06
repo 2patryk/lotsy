@@ -547,6 +547,37 @@ async function main() {
       'searchRun.create',
     );
 
+    // Price history: record a sample only when the price for a (route, day)
+    // differs from the previous snapshot — keeps the table small while still
+    // capturing every change for future charts.
+    const previous = await withDbRetry(
+      () =>
+        prisma.oneWayFare.findMany({
+          select: { origin: true, destination: true, date: true, price: true },
+        }),
+      'oneWayFare read for history',
+    );
+    const prevPrice = new Map(
+      previous.map((r) => [`${r.origin}:${r.destination}:${r.date.toISOString()}`, r.price]),
+    );
+    const historyRows = rows
+      .filter(
+        (r) =>
+          prevPrice.get(`${r.origin}:${r.destination}:${(r.date as Date).toISOString()}`) !==
+          r.price,
+      )
+      .map((r) => ({
+        origin: r.origin,
+        destination: r.destination,
+        date: r.date as Date,
+        price: r.price,
+        // Rows built in fetchDetails always carry these; the ?? only narrows
+        // the optional row type.
+        source: r.source ?? 'RYANAIR',
+        airline: r.airline ?? '',
+      }));
+
+    const today = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
     await withDbRetry(
       () =>
         prisma.$transaction([
@@ -556,11 +587,21 @@ async function main() {
               data: rows.slice(i * INSERT_CHUNK, (i + 1) * INSERT_CHUNK),
             }),
           ),
+          // History of flights that already departed is no longer chartable.
+          prisma.oneWayPriceHistory.deleteMany({ where: { date: { lt: today } } }),
+          ...Array.from({ length: Math.ceil(historyRows.length / INSERT_CHUNK) }, (_, i) =>
+            prisma.oneWayPriceHistory.createMany({
+              data: historyRows.slice(i * INSERT_CHUNK, (i + 1) * INSERT_CHUNK),
+            }),
+          ),
         ]),
       'oneWayFare write',
     );
 
-    console.log(`[oneway] saved ${rows.length} rows across ${routes.length} routes`);
+    console.log(
+      `[oneway] saved ${rows.length} rows across ${routes.length} routes, ` +
+        `${historyRows.length} price-history samples`,
+    );
 
     await prisma.searchRun.update({
       where: { id: runRecord!.id },

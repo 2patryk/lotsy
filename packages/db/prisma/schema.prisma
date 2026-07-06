@@ -154,6 +154,23 @@ model OneWayFare {
   @@index([direction, date])
 }
 
+// Price-over-time samples for one-way fares, one row per observed price
+// CHANGE of (origin, destination, flight day) — written by the oneway sync,
+// meant for future price-history charts. Rows for departed flights are pruned.
+model OneWayPriceHistory {
+  id          Int      @id @default(autoincrement())
+  origin      String
+  destination String
+  date        DateTime // flight day (UTC midnight)
+  price       Float // PLN
+  source      String // RYANAIR | WIZZAIR
+  airline     String
+  recordedAt  DateTime @default(now())
+
+  @@index([origin, destination, date])
+  @@index([date])
+}
+
 model Airport {
   iata     String  @id
   name     String  // city name in Polish (from Ryanair /pl/ locale)

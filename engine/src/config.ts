@@ -134,8 +134,10 @@ export const TOP_N_PER_ROUTE = 3;
 // Rolling search horizon in weeks
 export const HORIZON_WEEKS = 6;
 
-// Rolling one-way last-minute window, in days (today → today + N)
-export const ONEWAY_HORIZON_DAYS = 10;
+// Rolling one-way window, in days (today → today + N). 30 days costs little:
+// Ryanair fetches per route+month (30d = 2 months max), Wizz covers the whole
+// window in a single call per route.
+export const ONEWAY_HORIZON_DAYS = 30;
 
 // Max concurrent HTTP requests to Ryanair API
 export const MAX_CONCURRENT = 3;

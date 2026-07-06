@@ -10,6 +10,7 @@ import {
   toPln,
 } from '@lotsy/flights-client';
 import { createQuery, getFlights, Passengers } from 'fast-flights-ts';
+import { timeOnDate, type CharterExtras } from './oneway.service.js';
 
 // One row in the onward-connections panel, price already normalized to PLN.
 // mode=departures: flights leaving `airport` (after an OUT fare's arrival).
@@ -26,9 +27,10 @@ export interface OnwardFlight {
   arrivalTime: string;
   price: number; // PLN
   currency: 'PLN';
-  source: 'RYANAIR' | 'WIZZAIR' | 'GOOGLE';
+  source: 'RYANAIR' | 'WIZZAIR' | 'GOOGLE' | 'RAINBOW';
   airline: string;
   flightNumber: string | null;
+  charter?: CharterExtras; // r.pl deep-link data, source === 'RAINBOW' only
 }
 
 export type OnwardMode = 'departures' | 'arrivals';
@@ -188,6 +190,12 @@ export class OnwardService {
       flights = await this.getRyanairDeparturesDay(airport, date);
     } else {
       flights = await this.getWindow(carrier, mode, airport, windowStart);
+    }
+
+    // One-way charters only fly Poland → destination, so they can feed an
+    // arrivals lookup. Piggyback on the base (ryanair) stream — DB, no cost.
+    if (carrier === 'ryanair' && mode === 'arrivals') {
+      flights = [...flights, ...(await this.getCharterArrivals(airport, date))];
     }
 
     return flights
@@ -440,6 +448,51 @@ export class OnwardService {
 
       await this.enrichCities(flights, iatas);
       return flights;
+    });
+  }
+
+  // One-way Rainbow charters landing at `airport` on `date`, straight from
+  // the DB snapshot (no caching needed).
+  private async getCharterArrivals(
+    airport: string,
+    date: string,
+  ): Promise<OnwardFlight[]> {
+    const rows = await prisma.charterFlight.findMany({
+      where: {
+        oneWay: true,
+        destIata: airport,
+        date: new Date(`${date}T00:00:00Z`),
+      },
+    });
+    return rows.map((c) => {
+      const departureTime = timeOnDate(c.date, c.depTime);
+      const arrivalTime = timeOnDate(
+        c.date,
+        c.arrTime,
+        c.arrTime < c.depTime ? 1 : 0,
+      );
+      return {
+        origin: c.depIata,
+        destination: c.destIata,
+        originCity: c.depAirport,
+        originCountry: 'Polska',
+        destCity: c.destName,
+        destCountry: c.destCountry,
+        date,
+        departureTime: departureTime.toISOString(),
+        arrivalTime: arrivalTime.toISOString(),
+        price: c.price,
+        currency: 'PLN' as const,
+        source: 'RAINBOW' as const,
+        airline: c.airline,
+        flightNumber: c.flightNo,
+        charter: {
+          destCountryUrl: c.destCountryUrl,
+          destNameUrl: c.destNameUrl,
+          pakietId: c.pakietId,
+          baggageKg: c.baggageKg,
+        },
+      };
     });
   }
 

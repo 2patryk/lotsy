@@ -7,7 +7,7 @@ const MAX_RESULTS = 300;
 // One-way Rainbow charters (CharterFlight rows) are merged into the OUT
 // results at query time — they can't live in OneWayFare because several
 // charters may share (origin, destination, date), which its unique key forbids.
-interface CharterExtras {
+export interface CharterExtras {
   destCountryUrl: string;
   destNameUrl: string;
   pakietId: string | null;
@@ -37,7 +37,7 @@ export interface OneWayFareRow {
 
 // "HH:MM" local wall-clock + the flight's UTC-midnight date → Date, matching
 // the wall-clock-as-UTC convention used by OneWayFare rows.
-function timeOnDate(date: Date, hhmm: string, extraDays = 0): Date {
+export function timeOnDate(date: Date, hhmm: string, extraDays = 0): Date {
   const [h = 0, m = 0] = hhmm.split(':').map(Number);
   return new Date(date.getTime() + ((extraDays * 24 + h) * 60 + m) * 60_000);
 }

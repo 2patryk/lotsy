@@ -169,9 +169,13 @@ function dayLabel(date: string): string {
                     variant="secondary"
                     [class]="
                       'gap-1 border-transparent text-[11px] font-medium' +
-                      (f.source === 'WIZZAIR' ? ' bg-[#e6007e]/10 text-[#c6007e]' : '')
+                      (f.source === 'WIZZAIR'
+                        ? ' bg-[#e6007e]/10 text-[#c6007e]'
+                        : f.source === 'RAINBOW'
+                          ? ' bg-amber-500/15 text-amber-700'
+                          : '')
                     "
-                    >{{ f.airline }}
+                    >{{ f.source === 'RAINBOW' ? 'Czarter · ' + f.airline : f.airline }}
                     @if (f.flightNumber) {
                       <span class="font-normal opacity-70">{{ f.flightNumber }}</span>
                     }
@@ -415,6 +419,12 @@ export class OnwardPanelComponent {
   }
 
   bookingUrl(f: OnwardFlight): string {
+    if (f.source === 'RAINBOW' && f.charter) {
+      // Same deep-link pattern as the charters tab.
+      const qs = new URLSearchParams({ oneWay: 'true', data: f.date });
+      if (f.charter.pakietId) qs.set('idWylot', f.charter.pakietId);
+      return `https://r.pl/bilety-czarterowe/${f.charter.destCountryUrl}/${f.charter.destNameUrl}?${qs}`;
+    }
     if (f.source === 'GOOGLE') {
       // Other carriers have no uniform deep link — hand off to Google Flights.
       const q = `Flights from ${f.origin} to ${f.destination} on ${f.date}`;

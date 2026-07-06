@@ -62,7 +62,7 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
       <div class="flex flex-col gap-1">
         <h1 class="text-2xl font-bold tracking-tight">Loty w jedną stronę</h1>
         <p class="text-sm text-muted-foreground">
-          Bilety Ryanair bez przesiadek · cena za osobę
+          Ryanair + Wizz Air + czartery · bez przesiadek · cena za osobę
           @if (lastUpdate()) {
             <span class="text-muted-foreground/70"> · Odświeżono: {{ lastUpdate() }}</span>
           }
@@ -349,9 +349,13 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                       variant="secondary"
                       [class]="
                         'gap-1 border-transparent font-medium' +
-                        (f.source === 'WIZZAIR' ? ' bg-[#e6007e]/10 text-[#c6007e]' : '')
+                        (f.source === 'WIZZAIR'
+                          ? ' bg-[#e6007e]/10 text-[#c6007e]'
+                          : f.source === 'RAINBOW'
+                            ? ' bg-amber-500/15 text-amber-700'
+                            : '')
                       "
-                      >{{ f.airline }}
+                      >{{ f.source === 'RAINBOW' ? 'Czarter · ' + f.airline : f.airline }}
                       @if (f.flightNumber) {
                         <span class="font-normal opacity-70">{{ f.flightNumber }}</span>
                       }
@@ -864,6 +868,13 @@ export class OneWayPageComponent {
 
   bookingUrl(f: OneWayFare): string {
     const dateOut = f.date.slice(0, 10);
+
+    if (f.source === 'RAINBOW' && f.charter) {
+      // Same deep-link pattern as the charters tab.
+      const qs = new URLSearchParams({ oneWay: 'true', data: dateOut });
+      if (f.charter.pakietId) qs.set('idWylot', f.charter.pakietId);
+      return `https://r.pl/bilety-czarterowe/${f.charter.destCountryUrl}/${f.charter.destNameUrl}?${qs}`;
+    }
 
     if (f.source === 'WIZZAIR') {
       // Path-based deep link: /select-flight/{dep}/{arr}/{out}/{ret}/{adt}/{chd}/{inf}/null.

@@ -64,6 +64,10 @@ export interface OneWayFaresQuery {
   country?: string[]; // Foreign-side Polish country names (destCountry when OUT, originCountry when IN)
   city?: string[]; // Foreign-side city names; a row matches when its country OR city is selected
   airport?: string[]; // Foreign-side IATA codes, OR-ed with country/city
+  // Negative variants ("wszystko oprócz") — AND-ed exclusions on the foreign side.
+  excludeCountry?: string[];
+  excludeCity?: string[];
+  excludeAirport?: string[];
   dateFrom?: string; // YYYY-MM-DD
   dateTo?: string;
   days?: number[]; // JS day numbers: 0=Sun … 6=Sat
@@ -118,6 +122,31 @@ export class OneWayService {
           or.push({ destination: { in: query.airport } });
       }
       where.OR = or;
+    }
+
+    // Exclusions: none of these may match (NOT array = AND of negations).
+    if (
+      query.excludeCountry?.length ||
+      query.excludeCity?.length ||
+      query.excludeAirport?.length
+    ) {
+      const not: Prisma.OneWayFareWhereInput[] = [];
+      if (query.direction === 'in') {
+        if (query.excludeCountry?.length)
+          not.push({ originCountry: { in: query.excludeCountry } });
+        if (query.excludeCity?.length)
+          not.push({ originCity: { in: query.excludeCity } });
+        if (query.excludeAirport?.length)
+          not.push({ origin: { in: query.excludeAirport } });
+      } else {
+        if (query.excludeCountry?.length)
+          not.push({ destCountry: { in: query.excludeCountry } });
+        if (query.excludeCity?.length)
+          not.push({ destCity: { in: query.excludeCity } });
+        if (query.excludeAirport?.length)
+          not.push({ destination: { in: query.excludeAirport } });
+      }
+      where.NOT = not;
     }
 
     // departureTime carries the flight's day and hour, so sorting by it alone
@@ -210,14 +239,24 @@ export class OneWayService {
     const countries = new Set(query.country ?? []);
     const airports = new Set(query.airport ?? []);
     const cityNeedles = (query.city ?? []).map(normalize);
+    const exCountries = new Set(query.excludeCountry ?? []);
+    const exAirports = new Set(query.excludeAirport ?? []);
+    const exCityNeedles = (query.excludeCity ?? []).map(normalize);
 
     return rows
       .filter((c) => {
-        if (!hasDestFilter) return true;
-        // Match the foreign end: dest for OUT, dep for IN.
+        // Match/exclude on the foreign end: dest for OUT, dep for IN.
         const [iata, label, country] = isIn
           ? [c.depIata, c.depAirport, countryByIata.get(c.depIata) ?? '']
           : [c.destIata, c.destName, c.destCountry];
+        if (
+          exCountries.has(country) ||
+          exAirports.has(iata) ||
+          exCityNeedles.some((n) => normalize(label).includes(n))
+        ) {
+          return false;
+        }
+        if (!hasDestFilter) return true;
         return (
           countries.has(country) ||
           airports.has(iata) ||

@@ -31,6 +31,8 @@ interface DestSuggestion {
   name: string;
   country?: string;
   iata?: string;
+  // "wszystko oprócz" — chip excludes instead of includes (typed with a '!' prefix).
+  negated?: boolean;
 }
 
 interface PlAirportSuggestion {
@@ -152,9 +154,20 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
               [class.border-primary]="hasDestSelection()"
             >
               @if (selectedDest().length) {
-                @for (s of selectedDest(); track s.kind + '|' + s.name + '|' + (s.iata ?? '')) {
-                  <span hlmBadge variant="secondary" class="gap-1 border-transparent pr-1">
-                    {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
+                @for (
+                  s of selectedDest();
+                  track (s.negated ? '!' : '') + s.kind + '|' + s.name + '|' + (s.iata ?? '')
+                ) {
+                  <span
+                    hlmBadge
+                    variant="secondary"
+                    [class]="
+                      'gap-1 border-transparent pr-1' +
+                      (s.negated ? ' bg-destructive/10 text-destructive' : '')
+                    "
+                  >
+                    {{ s.negated ? 'oprócz: ' : ''
+                    }}{{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
                     <button
                       type="button"
                       class="flex size-4 items-center justify-center rounded-full hover:bg-foreground/10"
@@ -170,7 +183,7 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                 #destInputEl
                 class="min-w-20 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 type="text"
-                placeholder="Kraj lub miasto…"
+                placeholder="Kraj lub miasto… (! wyklucza)"
                 [value]="destInput()"
                 (input)="onDestInput($event)"
                 (focus)="onDestFocus()"
@@ -193,8 +206,9 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
                     (mousedown)="$event.preventDefault()"
                     (click)="selectDestSuggestion(s)"
                   >
-                    <span>
-                      {{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
+                    <span [class.text-destructive]="s.negated">
+                      {{ s.negated ? 'oprócz: ' : ''
+                      }}{{ s.kind === 'airport' ? s.name + ' (' + s.iata + ')' : s.name }}
                       @if (s.kind === 'city' || s.kind === 'airport') {
                         <span class="text-muted-foreground">({{ s.country }})</span>
                       }
@@ -506,7 +520,10 @@ export class OneWayPageComponent {
   // matching airports by city name too would duplicate every city with its airports).
   // Shows the full list (countries + cities, no airports) when input is empty.
   destSuggestions = computed<DestSuggestion[]>(() => {
-    const query = normalize(this.destInput().trim());
+    const raw = this.destInput().trim();
+    // Leading '!' turns the picked suggestion into an exclusion chip.
+    const negated = raw.startsWith('!');
+    const query = normalize(negated ? raw.slice(1) : raw);
     const selected = this.selectedDest();
     const selectedCountries = new Set(
       selected.filter((s) => s.kind === 'country').map((s) => s.name),
@@ -520,20 +537,28 @@ export class OneWayPageComponent {
       .countries.filter(
         (c) => !selectedCountries.has(c) && (!query || normalize(c).includes(query)),
       )
-      .map((name) => ({ kind: 'country', name }));
+      .map((name): DestSuggestion => ({ kind: 'country', name, negated }));
 
     const cities: DestSuggestion[] = this.meta()
       .cities.filter(
         (c) => !selectedCities.has(c.name) && (!query || normalize(c.name).includes(query)),
       )
-      .map((c) => ({ kind: 'city', name: c.name, country: c.country }));
+      .map((c): DestSuggestion => ({ kind: 'city', name: c.name, country: c.country, negated }));
 
     const airports: DestSuggestion[] = query
       ? this.meta()
           .airports.filter(
             (a) => !selectedAirports.has(a.iata) && normalize(a.iata).includes(query),
           )
-          .map((a) => ({ kind: 'airport', name: a.city, country: a.country, iata: a.iata }))
+          .map(
+            (a): DestSuggestion => ({
+              kind: 'airport',
+              name: a.city,
+              country: a.country,
+              iata: a.iata,
+              negated,
+            }),
+          )
       : [];
 
     return [...countries, ...cities, ...airports].slice(0, MAX_DEST_SUGGESTIONS);
@@ -565,9 +590,14 @@ export class OneWayPageComponent {
     // Mirror the active filters into the query string so views are shareable.
     effect(() => {
       const dest = this.selectedDest()
-        .map((s) =>
-          s.kind === 'country' ? `c:${s.name}` : s.kind === 'city' ? `m:${s.name}` : `a:${s.iata}`,
-        )
+        .map((s) => {
+          const neg = s.negated ? '!' : '';
+          return s.kind === 'country'
+            ? `c:${neg}${s.name}`
+            : s.kind === 'city'
+              ? `m:${neg}${s.name}`
+              : `a:${neg}${s.iata}`;
+        })
         .join(',');
       this.router.navigate([], {
         relativeTo: this.route,
@@ -627,15 +657,22 @@ export class OneWayPageComponent {
 
     const dest = this.pendingDest
       .map((token): DestSuggestion | null => {
-        const [kind, value] = [token.slice(0, 2), token.slice(2)];
-        if (kind === 'c:' && m.countries.includes(value)) return { kind: 'country', name: value };
+        const kind = token.slice(0, 2);
+        let value = token.slice(2);
+        const negated = value.startsWith('!');
+        if (negated) value = value.slice(1);
+        if (kind === 'c:' && m.countries.includes(value)) {
+          return { kind: 'country', name: value, negated };
+        }
         if (kind === 'm:') {
           const city = m.cities.find((c) => c.name === value);
-          return city ? { kind: 'city', name: city.name, country: city.country } : null;
+          return city ? { kind: 'city', name: city.name, country: city.country, negated } : null;
         }
         if (kind === 'a:') {
           const ap = m.airports.find((a) => a.iata === value);
-          return ap ? { kind: 'airport', name: ap.city, country: ap.country, iata: ap.iata } : null;
+          return ap
+            ? { kind: 'airport', name: ap.city, country: ap.country, iata: ap.iata, negated }
+            : null;
         }
         return null;
       })
@@ -772,10 +809,26 @@ export class OneWayPageComponent {
     queueMicrotask(() => this.destInputEl?.nativeElement.focus());
   }
 
+  // CSV of selected dest chips of one kind, split by include/exclude.
+  private destParam(kind: DestSuggestion['kind'], negated: boolean): string | undefined {
+    return (
+      this.selectedDest()
+        .filter((s) => s.kind === kind && !!s.negated === negated)
+        .map((s) => (kind === 'airport' ? s.iata! : s.name))
+        .join(',') || undefined
+    );
+  }
+
   removeDestItem(item: DestSuggestion) {
     this.selectedDest.set(
       this.selectedDest().filter(
-        (s) => !(s.kind === item.kind && s.name === item.name && s.iata === item.iata),
+        (s) =>
+          !(
+            s.kind === item.kind &&
+            s.name === item.name &&
+            s.iata === item.iata &&
+            !!s.negated === !!item.negated
+          ),
       ),
     );
     this.load();
@@ -851,21 +904,12 @@ export class OneWayPageComponent {
           this.selectedPlAirports()
             .map((a) => a.iata)
             .join(',') || undefined,
-        country:
-          this.selectedDest()
-            .filter((s) => s.kind === 'country')
-            .map((s) => s.name)
-            .join(',') || undefined,
-        city:
-          this.selectedDest()
-            .filter((s) => s.kind === 'city')
-            .map((s) => s.name)
-            .join(',') || undefined,
-        airport:
-          this.selectedDest()
-            .filter((s) => s.kind === 'airport')
-            .map((s) => s.iata)
-            .join(',') || undefined,
+        country: this.destParam('country', false),
+        city: this.destParam('city', false),
+        airport: this.destParam('airport', false),
+        excludeCountry: this.destParam('country', true),
+        excludeCity: this.destParam('city', true),
+        excludeAirport: this.destParam('airport', true),
         dateFrom: this.dateFrom() || undefined,
         dateTo: this.dateTo() || undefined,
         days: [...this.selectedDays()].join(',') || undefined,

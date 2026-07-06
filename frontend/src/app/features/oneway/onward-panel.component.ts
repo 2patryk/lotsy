@@ -310,8 +310,11 @@ export class OnwardPanelComponent {
                 new Date(f.departureTime).getTime() - MIN_TRANSFER_MS,
             );
     }
-    const q = normalize(this.searchQuery().trim());
-    if (q) all = all.filter((x) => this.matchesQuery(x, q));
+    // Leading '!' inverts the filter ("wszystko oprócz").
+    const raw = this.searchQuery().trim();
+    const negated = raw.startsWith('!');
+    const q = normalize(negated ? raw.slice(1) : raw);
+    if (q) all = all.filter((x) => this.matchesQuery(x, q) !== negated);
     return all.sort((a, b) => a.price - b.price);
   });
 

@@ -13,7 +13,7 @@ import {
   type SegmentOption,
 } from '../../shared/filters/segmented-toggle.component';
 import { DayPillsComponent } from '../../shared/filters/day-pills.component';
-import { relativeTimePl } from '../../shared/text';
+import { relativeTimePl, countryFlagPl } from '../../shared/text';
 import { SortSelectComponent, type SortOption } from '../../shared/filters/sort-select.component';
 import { FilterCardComponent } from '../../shared/filters/filter-card.component';
 import { ChartersService } from '../../core/services/charters.service';
@@ -193,12 +193,13 @@ const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'pa�
           @for (f of flights(); track f.id) {
             <div
               class="offer-row relative grid grid-cols-[1fr_auto] items-center gap-3 px-3.5 py-3 transition-colors hover:bg-accent/40 sm:gap-6 sm:px-5 sm:py-3.5"
-              [class.has-photo]="!!f.imageUrl"
-              [style.--thumb]="f.imageUrl ? 'url(' + f.imageUrl + ')' : 'none'"
             >
               <!-- ── Left ─────────────────────── -->
               <div class="relative z-10 flex min-w-0 flex-col gap-2.5">
                 <div class="flex flex-wrap items-center gap-1.5">
+                  @if (flag(f.destCountry)) {
+                    <span class="text-[15px]">{{ flag(f.destCountry) }}</span>
+                  }
                   <span class="text-[15px] font-bold">{{ f.destName }}</span>
                   <span class="text-[13px] font-medium text-muted-foreground max-sm:hidden"
                     >({{ f.destIata }})</span
@@ -315,35 +316,6 @@ const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'pa�
       }
     </main>
   `,
-  styles: [
-    `
-      /* Destination-photo backdrop has no utility-class equivalent. */
-      .offer-row::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        width: 200px;
-        background: var(--thumb, none) center / cover no-repeat;
-        mask-image: linear-gradient(to right, black 0%, transparent 100%);
-        -webkit-mask-image: linear-gradient(to right, black 0%, transparent 100%);
-        opacity: 0.46;
-        pointer-events: none;
-        z-index: 0;
-      }
-      @media (min-width: 640px) {
-        .offer-row.has-photo {
-          padding-left: 88px;
-        }
-      }
-      @media (max-width: 639.98px) {
-        .offer-row::before {
-          display: none;
-        }
-      }
-    `,
-  ],
 })
 export class ChartersPageComponent {
   private chartersService = inject(ChartersService);
@@ -372,6 +344,7 @@ export class ChartersPageComponent {
   sort = signal<'price' | 'date'>('price');
 
   lastUpdate = computed(() => relativeTimePl(this.meta().lastUpdate));
+  readonly flag = countryFlagPl;
   minDate = computed(() => this.meta().minDate?.slice(0, 10) ?? '');
   maxDate = computed(() => this.meta().maxDate?.slice(0, 10) ?? '');
 

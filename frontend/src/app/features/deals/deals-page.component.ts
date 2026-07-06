@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect, untracked } from '@angular/core';
+import { Component, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { HlmButton } from '@spartan-ng/helm/button';
@@ -18,7 +18,6 @@ import { DealCardComponent } from './deal-card.component';
 import { DealsService, type DealsQueryParams } from '../../core/services/deals.service';
 import { SavedDealsService } from '../../core/services/saved-deals.service';
 import { AirportsService } from '../../core/services/airports.service';
-import { CityImagesService } from '../../core/services/city-images.service';
 import type { Deal } from '../../core/models/deal.model';
 
 const ALL_COUNTRIES: { code: string; name: string }[] = [
@@ -341,7 +340,6 @@ export class DealsPageComponent {
   private dealsService = inject(DealsService);
   private savedService = inject(SavedDealsService);
   private airportsSvc = inject(AirportsService);
-  cityImages = inject(CityImagesService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -469,14 +467,6 @@ export class DealsPageComponent {
       });
 
     effect(() => search$.next(this.query()));
-
-    effect(() => {
-      const deals = this.allDeals();
-      const nameMap = this.airportsSvc.nameMap();
-      if (deals.length === 0 || nameMap.size === 0) return;
-      const cities = [...new Set(deals.map((d) => this.airportsSvc.cityName(d.destAirport)))];
-      untracked(() => this.cityImages.fetchBatch(cities));
-    });
 
     effect(() => {
       const c = this.selectedCountries(),

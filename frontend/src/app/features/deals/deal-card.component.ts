@@ -5,7 +5,7 @@ import { HlmBadge } from '@spartan-ng/helm/badge';
 import type { Deal } from '../../core/models/deal.model';
 import { SavedDealsService } from '../../core/services/saved-deals.service';
 import { AirportsService } from '../../core/services/airports.service';
-import { CityImagesService } from '../../core/services/city-images.service';
+import { countryFlag } from '../../shared/text';
 
 const COUNTRY_NAMES: Record<string, string> = {
   IT: 'Włochy',
@@ -78,14 +78,15 @@ function fmtTime(iso: string): string {
     <div
       class="deal-row relative grid cursor-pointer grid-cols-[1fr_auto] items-center gap-3 border-b border-b-border border-l-[3px] border-l-transparent bg-card px-3.5 py-3 transition-colors hover:bg-accent/40 sm:gap-6 sm:px-5 sm:py-3.5"
       [class.border-l-primary!]="selected()"
-      [class.has-photo]="!!thumbUrl()"
-      [style.--thumb]="thumbUrl() ? 'url(' + thumbUrl() + ')' : 'none'"
       (click)="select.emit(deal().id)"
     >
       <!-- ── Left ─────────────────────────── -->
       <div class="relative z-10 flex min-w-0 flex-col gap-2.5">
         <!-- Destination header -->
         <div class="flex flex-wrap items-center gap-1.5">
+          @if (flag()) {
+            <span class="text-[15px]">{{ flag() }}</span>
+          }
           <span class="text-[15px] font-bold">{{ cityName() }}</span>
           <span class="text-[13px] font-medium text-muted-foreground max-sm:hidden"
             >({{ deal().destAirport }})</span
@@ -272,32 +273,8 @@ function fmtTime(iso: string): string {
   `,
   styles: [
     `
-      /* City-photo backdrop and week-dot glyphs are custom visuals with no
-         utility-class equivalent; everything else lives in the template. */
-      .deal-row::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: -3px;
-        width: 200px;
-        background: var(--thumb, none) center / cover no-repeat;
-        mask-image: linear-gradient(to right, black 0%, transparent 100%);
-        -webkit-mask-image: linear-gradient(to right, black 0%, transparent 100%);
-        opacity: 0.46;
-        pointer-events: none;
-        z-index: 0;
-      }
-      @media (min-width: 640px) {
-        .deal-row.has-photo {
-          padding-left: 88px;
-        }
-      }
-      @media (max-width: 639.98px) {
-        .deal-row::before {
-          display: none;
-        }
-      }
+      /* Week-dot glyphs are custom visuals with no utility-class
+         equivalent; everything else lives in the template. */
       :host(:last-child) .deal-row {
         border-bottom: none;
       }
@@ -333,7 +310,6 @@ export class DealCardComponent {
 
   private savedService = inject(SavedDealsService);
   private airportsSvc = inject(AirportsService);
-  private cityImagesSvc = inject(CityImagesService);
   isSaved = computed(() => this.savedService.isSaved(this.deal().id));
 
   readonly fmtDate = fmtDate;
@@ -416,7 +392,7 @@ export class DealCardComponent {
     return this.airportsSvc.cityName(this.deal().destAirport);
   }
 
-  thumbUrl = computed(() => this.cityImagesSvc.imageUrl(this.cityName()));
+  flag = computed(() => countryFlag(this.deal().destCountry));
   countryLabel(): string {
     return COUNTRY_NAMES[this.deal().destCountry] ?? this.deal().destCountry;
   }

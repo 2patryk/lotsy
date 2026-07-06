@@ -1,0 +1,36 @@
+# Hosting API — analiza kosztów (stan: 2026-07-06)
+
+Kontekst: API (NestJS) stoi na **Render free** i usypia po 15 min bezczynności —
+zimny start ~30–60 s, a do tego znika cache in-memory panelu „loty dalsze"
+(okna Wizza, dni Google). Frontend (Cloudflare Pages), baza (Neon free)
+i silnik (GitHub Actions cron) są darmowe i nie ma powodu ich ruszać —
+poniższa analiza dotyczy wyłącznie API.
+
+## Porównanie opcji (mały ruch, hobby)
+
+| Opcja | Koszt | Nie usypia? | Uwagi |
+|---|---|---|---|
+| **Render free + pinger** ✅ wdrożone | 0 zł | tak (obejście) | Ping `/health` co 10 min; 750 h/mies. limitu starcza na 1 serwis 24/7. Cache i tak znika przy deployu/restarcie. |
+| **Oracle Cloud Always Free** | 0 zł | tak | ARM do 4 rdzeni / 24 GB RAM, na zawsze. Haczyki: kapryśna rejestracja, bywa brak wolnych ARM w regionie, samodzielny VPS. Najlepsza darmowa opcja „na poważnie". |
+| **Mikrus 2.1** | 75 zł/rok (~6 zł/mies.) | tak | 1 GB RAM, Docker, LXC (Helsinki). Brak własnego IPv4 → HTTPS przez Cloudflare Tunnel/AAAA. Ryzyko: współdzielone IP wychodzące może łapać 403/429 od Ryanaira/Wizza/Google — do sprawdzenia w praniu. Mikrus 1.0 (35 zł/rok, 384 MB, bez Dockera) — na styk, goły Node+systemd. |
+| **Fly.io** | ~$2–4/mies. | tak | shared-cpu 256–512 MB, Frankfurt, deploy z Dockerfile, shared IPv4 w cenie. Najmniej dłubania z płatnych. |
+| **Render Starter** | $7/mies. | tak | Zero migracji — jedno pole w dashboardzie. |
+| **AWS Lightsail** | $5/mies. | tak | 512 MB, stały IP. Najprostszy „prawdziwy AWS". |
+| **AWS EC2 t4g.nano** | ~$7–8/mies. | tak | $3 instancja + $1 EBS + $3.6 publiczny IPv4. Więcej pracy niż Lightsail, bez korzyści. |
+| **AWS Lambda + API GW** | ~0–1 $/mies. | n/d | Odpada: gubi cache in-memory między wywołaniami, a fan-out Google trwa 60 s+. Wymagałoby Redis/DynamoDB na cache. |
+| **AWS App Runner / Fargate 24/7** | $9–15/mies. | tak | Za drogo jak na ten projekt. |
+| **RDS zamiast Neona** | +$15–20/mies. | — | Nie ruszać — Neon free wystarcza. |
+
+## Rekomendacja (kolejność)
+
+1. **Pinger na Render free (0 zł)** — wdrożone: `.github/workflows/keepalive.yml`
+   pinguje `https://lotsy-api.onrender.com/health` co 10 min. Uwaga: GitHub
+   wyłącza harmonogramy po ~60 dniach bez aktywności w repo (przyjdzie mail,
+   trzeba kliknąć „re-enable") oraz cron potrafi mieć kilkuminutowe opóźnienia
+   — dla podtrzymania procesu bez znaczenia.
+2. Jeśli Render zacznie przeszkadzać (limity, restarty kasujące cache):
+   **Oracle Free** (0 zł, więcej pracy) albo **Mikrus 2.1 / Fly.io** (grosze,
+   mniej pracy). Do Mikrusa/Oracle potrzebny Dockerfile + Cloudflare Tunnel
+   i podmiana `apiUrl` w `frontend/src/environments/environment.prod.ts`.
+
+Ceny orientacyjne — sprawdzić aktualne cenniki przed decyzją.

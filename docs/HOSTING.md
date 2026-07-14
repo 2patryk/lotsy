@@ -38,4 +38,21 @@ poniższa analiza dotyczy wyłącznie API.
    mniej pracy). Do Mikrusa/Oracle potrzebny Dockerfile + Cloudflare Tunnel
    i podmiana `apiUrl` w `frontend/src/environments/environment.prod.ts`.
 
+## GitHub Actions — limit minut (incydent 2026-07-14)
+
+2026-07-13 ~23:30 wszystkie workflow zaczęły padać z komunikatem o billingu:
+skończyło się **2000 darmowych minut/mies. dla prywatnego repo**. Keepalive
+(~150 min/dzień, już usunięty — API pinguje się samo) tylko przyspieszył to,
+co i tak by nastąpiło: same silniki (search + oneway + charters co 3 h) palą
+~350–400 min/dzień ≈ 10–12 tys. min/mies., czyli ~5× ponad darmowy limit.
+
+Opcje:
+1. **Repo publiczne (rekomendacja, 0 zł)** — publiczne repozytoria mają
+   darmowe minuty bez limitu na standardowych runnerach. Jedno kliknięcie:
+   Settings → General → Danger Zone → Change visibility (sekrety w Actions
+   pozostają ukryte; upewnić się, że w historii repo nie ma credentiali).
+2. Podbić spending limit — przy tym zużyciu ~$65–80/mies. Bez sensu.
+3. Przenieść crony silników poza GitHub (np. na przyszły VPS/Mikrus) —
+   opcja na później, wymaga własnego schedulera.
+
 Ceny orientacyjne — sprawdzić aktualne cenniki przed decyzją.

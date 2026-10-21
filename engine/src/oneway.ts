@@ -80,7 +80,7 @@ function windowBounds(): { from: Date; to: Date; fromKey: string; toKey: string 
   return { from, to, fromKey: toDateKey(from), toKey: toDateKey(to) };
 }
 
-// Every calendar month touched by the window (1 or 2 entries).
+// Every calendar month touched by the window.
 function monthsInWindow(from: Date, to: Date): Array<{ year: number; month: number }> {
   const months = new Map<string, { year: number; month: number }>();
   const cursor = new Date(from);

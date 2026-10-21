@@ -57,7 +57,7 @@ Fakty (przetestowane):
 
 Zakładka **„W jedną stronę"**: płaska lista (1 wiersz = najtańszy lot danego
 dnia na trasie), przełącznik kierunku **PL→ / →PL**, sort domyślnie cena
-rosnąco. Okno stałe: dziś → +10 dni (`ONEWAY_HORIZON_DAYS = 10` w configu,
+rosnąco. Okno stałe: dziś → +81 dni (`ONEWAY_HORIZON_DAYS = 81` w configu,
 łatwe do podniesienia). 1 pasażer, tylko Ryanair (loty bezpośrednie).
 
 - **Bez progu cenowego w silniku** — zapisujemy całe okno

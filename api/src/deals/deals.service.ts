@@ -37,8 +37,8 @@ function matchesTime(d: Date, times: string[]): boolean {
   return times.some(
     (t) =>
       (t === 'morning' && h < 12) ||
-      (t === 'afternoon' && h >= 12 && h < 18) ||
-      (t === 'evening' && h >= 18),
+      (t === 'afternoon' && h >= 10 && h < 16) ||
+      (t === 'evening' && h >= 16),
   );
 }
 

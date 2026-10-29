@@ -26,8 +26,8 @@ import { normalize, relativeTimePl, countryFlagPl } from '../../shared/text';
 const WD = ['ndz', 'pon', 'wt', 'śr', 'czw', 'pt', 'sob'];
 const TIMES = [
   { id: 'morning', label: 'Rano', sub: '0–12' },
-  { id: 'afternoon', label: 'Popoł.', sub: '12–18' },
-  { id: 'evening', label: 'Wiecz.', sub: '18–24' },
+  { id: 'afternoon', label: 'Południe', sub: '10–16' },
+  { id: 'evening', label: 'Wiecz.', sub: '16–24' },
 ];
 const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
 

@@ -67,7 +67,6 @@ const DAYS = [
 ];
 
 const TIMES = [
-  { id: 'night', label: 'Noc', sub: '0–6' },
   { id: 'morning', label: 'Rano', sub: '6–12' },
   { id: 'afternoon', label: 'Popoł.', sub: '12–18' },
   { id: 'evening', label: 'Wiecz.', sub: '18–24' },

@@ -13,7 +13,7 @@ export interface DealsQueryParams {
   maxNights?: number;
   depDays?: string; // comma-separated JS day numbers: "1,2,3" (0=Sun)
   retDays?: string;
-  depTimes?: string; // comma-separated: "night,morning,afternoon,evening"
+  depTimes?: string; // comma-separated: "morning,afternoon,evening"
   retTimes?: string;
 }
 

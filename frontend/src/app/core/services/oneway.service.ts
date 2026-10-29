@@ -22,7 +22,7 @@ export interface OneWayFaresQueryParams {
   dateFrom?: string; // YYYY-MM-DD
   dateTo?: string;
   days?: string; // comma-separated JS day numbers: "1,2,3" (0=Sun)
-  times?: string; // comma-separated: "night,morning,afternoon,evening"
+  times?: string; // comma-separated: "morning,afternoon,evening"
   minPrice?: number;
   maxPrice?: number;
   sort?: 'price' | 'date';

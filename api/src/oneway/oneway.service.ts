@@ -42,7 +42,6 @@ function matchesTime(d: Date, times: string[]): boolean {
   const h = d.getUTCHours();
   return times.some(
     (t) =>
-      (t === 'night' && h < 6) ||
       (t === 'morning' && h >= 6 && h < 12) ||
       (t === 'afternoon' && h >= 12 && h < 18) ||
       (t === 'evening' && h >= 18),
@@ -83,7 +82,7 @@ export interface OneWayFaresQuery {
   dateFrom?: string; // YYYY-MM-DD
   dateTo?: string;
   days?: number[]; // JS day numbers: 0=Sun … 6=Sat
-  times?: string[]; // 'night' | 'morning' | 'afternoon' | 'evening' (departure hour)
+  times?: string[]; // 'morning' | 'afternoon' | 'evening' (departure hour)
   minPrice?: number;
   maxPrice?: number;
   sort?: OneWayFaresSort;

@@ -42,7 +42,7 @@ function matchesTime(d: Date, times: string[]): boolean {
   const h = d.getUTCHours();
   return times.some(
     (t) =>
-      (t === 'morning' && h >= 6 && h < 12) ||
+      (t === 'morning' && h < 12) ||
       (t === 'afternoon' && h >= 12 && h < 18) ||
       (t === 'evening' && h >= 18),
   );

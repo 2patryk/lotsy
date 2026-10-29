@@ -24,6 +24,11 @@ import { OnwardPanelComponent } from './onward-panel.component';
 import { normalize, relativeTimePl, countryFlagPl } from '../../shared/text';
 
 const WD = ['ndz', 'pon', 'wt', 'śr', 'czw', 'pt', 'sob'];
+const TIMES = [
+  { id: 'morning', label: 'Rano', sub: '6–12' },
+  { id: 'afternoon', label: 'Popoł.', sub: '12–18' },
+  { id: 'evening', label: 'Wiecz.', sub: '18–24' },
+];
 const MON = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
 
 interface DestSuggestion {
@@ -261,6 +266,22 @@ const MAX_PL_AIRPORT_SUGGESTIONS = 12;
             <app-day-pills [selected]="selectedDaysArray()" (toggled)="toggleDay($event)" />
           </div>
           <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-medium text-muted-foreground">Pora wylotu</label>
+            <div class="flex items-center gap-1">
+              @for (t of TIMES; track t.id) {
+                <button
+                  hlmBtn
+                  size="sm"
+                  [variant]="selectedTimes().has(t.id) ? 'default' : 'outline'"
+                  class="h-9 shrink-0 flex-col gap-0 rounded-full px-2.5 text-xs leading-tight"
+                  (click)="toggleTime(t.id)"
+                >
+                  {{ t.label }}<span class="text-[9px] font-normal opacity-70">{{ t.sub }}</span>
+                </button>
+              }
+            </div>
+          </div>
+          <div class="flex flex-col gap-1.5">
             <label class="text-xs font-medium text-muted-foreground">Dostawca</label>
             <div class="flex items-center gap-1">
               @for (s of sourceOptions; track s.value) {
@@ -445,6 +466,7 @@ export class OneWayPageComponent {
     { value: 'date', label: 'Data wylotu' },
   ];
   // Multi-select source pills; empty selection = all sources.
+  readonly TIMES = TIMES;
   readonly sourceOptions = [
     { value: 'RYANAIR', label: 'Ryanair' },
     { value: 'WIZZAIR', label: 'Wizz Air' },
@@ -481,6 +503,7 @@ export class OneWayPageComponent {
   expandedFareId = signal<string | null>(null);
 
   selectedDays = signal<Set<number>>(new Set());
+  selectedTimes = signal<Set<string>>(new Set());
   selectedSources = signal<Set<string>>(new Set());
   dateFrom = signal<string>('');
   dateTo = signal<string>('');
@@ -501,6 +524,7 @@ export class OneWayPageComponent {
       this.selectedPlAirports().length > 0 ||
       this.selectedDest().length > 0 ||
       this.selectedDays().size > 0 ||
+      this.selectedTimes().size > 0 ||
       this.selectedSources().size > 0 ||
       !!this.dateFrom() ||
       !!this.dateTo() ||
@@ -512,6 +536,7 @@ export class OneWayPageComponent {
     if (this.selectedPlAirports().length > 0) n++;
     if (this.selectedDest().length > 0) n++;
     if (this.selectedDays().size > 0) n++;
+    if (this.selectedTimes().size > 0) n++;
     if (this.selectedSources().size > 0) n++;
     if (this.dateFrom() || this.dateTo()) n++;
     if (this.maxPrice() != null) n++;
@@ -615,6 +640,7 @@ export class OneWayPageComponent {
               .join(',') || null,
           dest: dest || null,
           days: [...this.selectedDays()].join(',') || null,
+          times: [...this.selectedTimes()].join(',') || null,
           src: [...this.selectedSources()].join(',') || null,
           from: this.dateFrom() || null,
           to: this.dateTo() || null,
@@ -634,6 +660,13 @@ export class OneWayPageComponent {
         .map(Number)
         .filter((d) => d >= 0 && d <= 6);
       this.selectedDays.set(new Set(days));
+    }
+    if (p['times']) {
+      const valid = new Set(TIMES.map((t) => t.id));
+      const times = String(p['times'])
+        .split(',')
+        .filter((t) => valid.has(t));
+      this.selectedTimes.set(new Set(times));
     }
     if (p['src']) {
       const valid = new Set(this.sourceOptions.map((s) => s.value));
@@ -711,6 +744,7 @@ export class OneWayPageComponent {
     this.destInput.set('');
     this.destPanelOpen.set(false);
     this.selectedDays.set(new Set());
+    this.selectedTimes.set(new Set());
     this.selectedSources.set(new Set());
     this.dateFrom.set('');
     this.dateTo.set('');
@@ -851,6 +885,14 @@ export class OneWayPageComponent {
     this.load();
   }
 
+  toggleTime(id: string) {
+    const next = new Set(this.selectedTimes());
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    this.selectedTimes.set(next);
+    this.load();
+  }
+
   toggleSource(source: string) {
     const next = new Set(this.selectedSources());
     if (next.has(source)) next.delete(source);
@@ -889,6 +931,7 @@ export class OneWayPageComponent {
     this.destInput.set('');
     this.destPanelOpen.set(false);
     this.selectedDays.set(new Set());
+    this.selectedTimes.set(new Set());
     this.selectedSources.set(new Set());
     this.dateFrom.set('');
     this.dateTo.set('');
@@ -922,6 +965,7 @@ export class OneWayPageComponent {
         dateFrom: this.dateFrom() || undefined,
         dateTo: this.dateTo() || undefined,
         days: [...this.selectedDays()].join(',') || undefined,
+        times: [...this.selectedTimes()].join(',') || undefined,
         maxPrice: this.maxPrice() ?? undefined,
         sort: this.sort(),
         source: [...this.selectedSources()].join(',') || undefined,

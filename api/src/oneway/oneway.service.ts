@@ -37,6 +37,17 @@ export interface OneWayFareRow {
 
 // "HH:MM" local wall-clock + the flight's UTC-midnight date → Date, matching
 // the wall-clock-as-UTC convention used by OneWayFare rows.
+// departureTime is local wall-clock stored as UTC, so UTC hours are local hours.
+function matchesTime(d: Date, times: string[]): boolean {
+  const h = d.getUTCHours();
+  return times.some(
+    (t) =>
+      (t === 'morning' && h >= 6 && h < 12) ||
+      (t === 'afternoon' && h >= 12 && h < 18) ||
+      (t === 'evening' && h >= 18),
+  );
+}
+
 export function timeOnDate(date: Date, hhmm: string, extraDays = 0): Date {
   const [h = 0, m = 0] = hhmm.split(':').map(Number);
   return new Date(date.getTime() + ((extraDays * 24 + h) * 60 + m) * 60_000);
@@ -71,6 +82,7 @@ export interface OneWayFaresQuery {
   dateFrom?: string; // YYYY-MM-DD
   dateTo?: string;
   days?: number[]; // JS day numbers: 0=Sun … 6=Sat
+  times?: string[]; // 'morning' | 'afternoon' | 'evening' (departure hour)
   minPrice?: number;
   maxPrice?: number;
   sort?: OneWayFaresSort;
@@ -160,8 +172,11 @@ export class OneWayService {
       prisma.oneWayFare.findMany({
         where,
         orderBy,
-        // Day-of-week filtering happens in JS below, so overfetch when active.
-        take: query.days?.length ? MAX_RESULTS * 4 : MAX_RESULTS,
+        // Day-of-week and time-of-day filtering happen in JS below, so overfetch when active.
+        take:
+          query.days?.length || query.times?.length
+            ? MAX_RESULTS * 4
+            : MAX_RESULTS,
       }),
       // Charters exist in both directions; findCharterFares picks the right leg.
       !query.source?.length || query.source.includes('RAINBOW')
@@ -175,9 +190,12 @@ export class OneWayService {
     ];
 
     const daySet = query.days?.length ? new Set(query.days) : null;
-    const filtered = daySet
-      ? merged.filter((f) => daySet.has(f.date.getUTCDay()))
-      : merged;
+    const times = query.times?.length ? query.times : null;
+    const filtered = merged.filter(
+      (f) =>
+        (!daySet || daySet.has(f.date.getUTCDay())) &&
+        (!times || matchesTime(f.departureTime, times)),
+    );
 
     // Two sources merge in JS, so the DB orderBy alone is not enough.
     filtered.sort((a, b) =>

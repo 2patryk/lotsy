@@ -22,6 +22,7 @@ export interface OneWayFaresQueryParams {
   dateFrom?: string; // YYYY-MM-DD
   dateTo?: string;
   days?: string; // comma-separated JS day numbers: "1,2,3" (0=Sun)
+  times?: string; // comma-separated: "morning,afternoon,evening"
   minPrice?: number;
   maxPrice?: number;
   sort?: 'price' | 'date';
@@ -44,6 +45,7 @@ export class OneWayService {
     if (query.dateFrom) params = params.set('dateFrom', query.dateFrom);
     if (query.dateTo) params = params.set('dateTo', query.dateTo);
     if (query.days) params = params.set('days', query.days);
+    if (query.times) params = params.set('times', query.times);
     if (query.minPrice != null) params = params.set('minPrice', String(query.minPrice));
     if (query.maxPrice != null) params = params.set('maxPrice', String(query.maxPrice));
     if (query.sort) params = params.set('sort', query.sort);

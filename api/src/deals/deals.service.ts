@@ -24,7 +24,7 @@ export interface DealsQuery {
   perCountry?: number;
   depDays?: number[]; // JS day numbers: 0=Sun, 1=Mon … 6=Sat
   retDays?: number[];
-  depTimes?: string[]; // 'morning' | 'afternoon' | 'evening'
+  depTimes?: string[]; // 'night' | 'morning' | 'afternoon' | 'evening'
   retTimes?: string[];
 }
 
@@ -36,6 +36,7 @@ function matchesTime(d: Date, times: string[]): boolean {
   const h = hourOf(d);
   return times.some(
     (t) =>
+      (t === 'night' && h < 6) ||
       (t === 'morning' && h >= 6 && h < 12) ||
       (t === 'afternoon' && h >= 12 && h < 18) ||
       (t === 'evening' && h >= 18),
